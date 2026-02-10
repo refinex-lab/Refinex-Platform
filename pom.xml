@@ -35,9 +35,8 @@
         <mysql.version>8.3.0</mysql.version>
         <mapstruct.version>1.6.0.Beta1</mapstruct.version>
         <sa-token.version>1.44.0</sa-token.version>
-        <commons-lang.version>2.6</commons-lang.version>
-        <httpclient.version>4.5.14</httpclient.version>
         <sensitive-logback.version>1.7.0</sensitive-logback.version>
+        <commons-collections.version>4.5.0</commons-collections.version>
 
         <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
@@ -122,18 +121,6 @@
                 <artifactId>mapstruct</artifactId>
                 <version>${mapstruct.version}</version>
             </dependency>
-            <!-- Commons Lang -->
-            <dependency>
-                <groupId>commons-lang</groupId>
-                <artifactId>commons-lang</artifactId>
-                <version>${commons-lang.version}</version>
-            </dependency>
-            <!-- HttpClient -->
-            <dependency>
-                <groupId>org.apache.httpcomponents</groupId>
-                <artifactId>httpclient</artifactId>
-                <version>${httpclient.version}</version>
-            </dependency>
             <!-- Sensitive Logback: 基于注解的 Java 日志脱敏工具框架 https://github.com/houbb/sensitive -->
             <dependency>
                 <groupId>com.github.houbb</groupId>
@@ -144,6 +131,13 @@
                 <groupId>com.github.houbb</groupId>
                 <artifactId>sensitive-core</artifactId>
                 <version>${sensitive-logback.version}</version>
+            </dependency>
+            <!-- Apache Commons Collections -->
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-collections4</artifactId>
+                <version>${commons-collections.version}</version>
+                <scope>compile</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>
