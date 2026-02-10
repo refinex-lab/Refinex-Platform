@@ -160,6 +160,26 @@
                 <artifactId>jetcache-starter-redisson</artifactId>
                 <version>${jetcache.version}</version>
             </dependency>
+
+            <!-- 内部封装模块 -->
+            <!-- Refinex 基础模块 -->
+            <dependency>
+                <groupId>cn.refinex</groupId>
+                <artifactId>refinex-base</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <!-- Refinex 缓存模块 -->
+            <dependency>
+                <groupId>cn.refinex</groupId>
+                <artifactId>refinex-cache</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <!-- Refinex Sa-Token 模块 -->
+            <dependency>
+                <groupId>cn.refinex</groupId>
+                <artifactId>refinex-sa-token</artifactId>
+                <version>${revision}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
