@@ -180,6 +180,12 @@
                 <artifactId>refinex-sa-token</artifactId>
                 <version>${revision}</version>
             </dependency>
+            <!-- Refinex Web 模块 -->
+            <dependency>
+                <groupId>cn.refinex</groupId>
+                <artifactId>refinex-web</artifactId>
+                <version>${revision}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
