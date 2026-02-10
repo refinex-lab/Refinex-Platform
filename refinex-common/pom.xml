@@ -8,10 +8,13 @@
     </parent>
 
     <artifactId>refinex-common</artifactId>
-    <packaging>jar</packaging>
+    <packaging>pom</packaging>
 
     <name>refinex-common</name>
     <description>Refinex Common</description>
+    <modules>
+        <module>refinex-sa-token</module>
+    </modules>
 
     <dependencies>
         <dependency>
