@@ -10,10 +10,12 @@
     <artifactId>refinex-common</artifactId>
     <packaging>pom</packaging>
 
-    <name>refinex-common</name>
+    <name>${project.artifactId}</name>
     <description>Refinex Common</description>
+
     <modules>
         <module>refinex-sa-token</module>
+        <module>refinex-base</module>
     </modules>
 
     <dependencies>
