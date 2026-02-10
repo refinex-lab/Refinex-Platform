@@ -37,6 +37,9 @@
         <sa-token.version>1.44.0</sa-token.version>
         <sensitive-logback.version>1.7.0</sensitive-logback.version>
         <commons-collections.version>4.5.0</commons-collections.version>
+        <redisson.version>4.2.0</redisson.version>
+        <caffeine.version>3.2.3</caffeine.version>
+        <jetcache.version>2.7.8</jetcache.version>
 
         <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
@@ -138,6 +141,24 @@
                 <artifactId>commons-collections4</artifactId>
                 <version>${commons-collections.version}</version>
                 <scope>compile</scope>
+            </dependency>
+            <!-- Redisson -->
+            <dependency>
+                <groupId>org.redisson</groupId>
+                <artifactId>redisson-spring-boot-starter</artifactId>
+                <version>${redisson.version}</version>
+            </dependency>
+            <!-- Caffeine -->
+            <dependency>
+                <groupId>com.github.ben-manes.caffeine</groupId>
+                <artifactId>caffeine</artifactId>
+                <version>${caffeine.version}</version>
+            </dependency>
+            <!-- JetCache -->
+            <dependency>
+                <groupId>com.alicp.jetcache</groupId>
+                <artifactId>jetcache-starter-redisson</artifactId>
+                <version>${jetcache.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

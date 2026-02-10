@@ -16,6 +16,7 @@
     <modules>
         <module>refinex-sa-token</module>
         <module>refinex-base</module>
+        <module>refinex-cache</module>
     </modules>
 
     <dependencies>

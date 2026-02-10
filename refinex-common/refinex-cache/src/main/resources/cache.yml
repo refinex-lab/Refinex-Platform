@@ -1,0 +1,111 @@
+spring:
+  data:
+    redis:
+      # =========================================================
+      # 1. Spring Data Redis 基础配置
+      # 作用：供 Spring Boot Actuator 健康检查、简单的 RedisTemplate 使用
+      # =========================================================
+      host: ${refinex.redis.url}           # Redis 主机地址
+      port: ${refinex.redis.port}          # Redis 端口
+      password: ${refinex.redis.password}  # 认证密码
+      ssl:
+        enabled: true                      # 【安全】开启 SSL 加密链路（云Redis通常需要）
+
+  redis:
+    redisson:
+      # =========================================================
+      # 2. Redisson 客户端配置 (用于分布式锁、JetCache远程后端)
+      # 格式：YAML Block String (|) 用于内嵌 Redisson 原生配置
+      # =========================================================
+      config: |
+        singleServerConfig:
+          # --- 连接与超时设置 ---
+          # 闲置连接超时（毫秒）：连接池里的连接多久没用就关闭
+          idleConnectionTimeout: 10000
+          # 连接超时（毫秒）：TCP 三次握手建立连接的最大等待时间
+          connectTimeout: 10000
+          # 命令等待超时（毫秒）：发送命令后等待 Redis 返回结果的最大时间
+          timeout: 3000
+        
+          # --- 重试策略 ---
+          # 命令失败重试次数：网络抖动时的自动重试
+          retryAttempts: 3
+          # 重试间隔（毫秒）
+          retryInterval: 1500
+        
+          # --- 认证与地址 ---
+          password: ${refinex.redis.password}
+          # 每个连接的最大订阅数量（Pub/Sub模式用）
+          subscriptionsPerConnection: 5
+          clientName: null
+          # 地址格式：redis://host:port (SSL/TLS连接应使用 rediss://)
+          address: "rediss://${refinex.redis.url}:${refinex.redis.port}"
+        
+          # --- 连接池配置 (核心性能参数) ---
+          # 发布订阅连接池：最小空闲数 / 最大连接数
+          subscriptionConnectionMinimumIdleSize: 1
+          subscriptionConnectionPoolSize: 50
+          # 业务命令连接池：
+          # 最小空闲连接数：保持常驻，避免频繁创建销毁
+          connectionMinimumIdleSize: 24
+          # 最大连接池大小：决定了并发上限，生产环境建议 64~200，视业务量而定
+          connectionPoolSize: 64
+        
+          # 数据库索引：默认 0
+          database: 0
+          # DNS 监测间隔：防止 Redis 域名解析变更后无法重连
+          dnsMonitoringInterval: 5000
+        
+        # --- 线程模型配置 (Netty) ---
+        # Redisson 内部逻辑处理线程数（默认核心数 * 2）
+        threads: 16
+        # Netty 网络 IO 线程数（建议与 CPU 核心数一致或 x2）
+        nettyThreads: 32
+        
+        # --- 序列化与传输 ---
+        # 编码方式：这里指定为 StringCodec，主要用于分布式锁 Key 的可读性
+        # 注意：JetCache 会覆盖 Value 的序列化方式，这里主要影响 RedissonClient 直接使用时的行为
+        codec: !<org.redisson.client.codec.StringCodec> {}
+        # 传输模式：NIO (默认), EPOLL (Linux下性能更优, 需引入 netty-transport-native-epoll)
+        transportMode: "NIO"
+
+# =========================================================
+# 3. JetCache 多级缓存配置 (核心)
+# =========================================================
+jetcache:
+  # 统计间隔（分钟）：每隔多久在控制台打印一次缓存命中率报告
+  statIntervalMinutes: 1
+  # 是否把 @Cached 的 area 属性作为缓存 Key 前缀的一部分（通常设为 false 保持 Key 简洁）
+  areaInCacheName: false
+
+  # --- Level 1: 本地缓存 (JVM 内存) ---
+  local:
+    default:
+      # 类型：Caffeine (高性能本地缓存，替代 Guava Cache)
+      type: caffeine
+      # Key 转换器：将复杂的 Java 对象 Key 转换为 String
+      keyConvertor: fastjson2
+
+  # --- Level 2: 远程缓存 (Redis) ---
+  remote:
+    default:
+      # 类型：Redisson (复用上面的 Redisson 连接配置)
+      type: redisson
+      # Key 转换器
+      keyConvertor: fastjson2
+      # 广播通道：用于本地缓存失效通知 (Cache Invalidation)
+      # 当某个节点修改缓存时，通过此 Channel 通知其他节点清除本地 Caffeine
+      broadcastChannel: ${spring.application.name}
+      # Key 全局前缀：防止不同应用 Key 冲突
+      keyPrefix: ${spring.application.name}
+
+      # --- 序列化策略 ---
+      # Value 编码：java (使用 JDK 原生序列化)
+      # 优点：兼容性最强，支持复杂对象图，无需额外配置
+      # 缺点：序列化后字节流较大，跨语言不友好
+      # 替代方案：kryo (快、小), fastjson2 (可读性好)
+      valueEncoder: java
+      valueDecoder: java
+
+      # 默认过期时间（毫秒）：如果注解没写 expire，默认 5 秒过期
+      defaultExpireInMillis: 5000
