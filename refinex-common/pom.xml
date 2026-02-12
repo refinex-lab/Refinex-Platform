@@ -19,6 +19,7 @@
         <module>refinex-cache</module>
         <module>refinex-web</module>
         <module>refinex-datasource</module>
+        <module>refinex-lock</module>
     </modules>
 
     <dependencies>
