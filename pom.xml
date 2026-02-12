@@ -50,6 +50,8 @@
         <aliyun-sdk-oss.version>3.17.4</aliyun-sdk-oss.version>
         <jaxb-api.version>2.3.1</jaxb-api.version>
         <jaxb-runtime.version>2.3.3</jaxb-runtime.version>
+        <easy-es.version>2.0.0-beta8</easy-es.version>
+        <elasticsearch-rest-high-level-client.version>7.17.20</elasticsearch-rest-high-level-client.version>
 
         <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
@@ -246,6 +248,20 @@
                 <groupId>org.glassfish.jaxb</groupId>
                 <artifactId>jaxb-runtime</artifactId>
                 <version>${jaxb-runtime.version}</version>
+            </dependency>
+
+            <!-- Easy-ES -->
+            <dependency>
+                <groupId>org.dromara.easy-es</groupId>
+                <artifactId>easy-es-boot-starter</artifactId>
+                <version>${easy-es.version}</version>
+            </dependency>
+
+            <!-- Elasticsearch REST High Level Client -->
+            <dependency>
+                <groupId>org.elasticsearch.client</groupId>
+                <artifactId>elasticsearch-rest-high-level-client</artifactId>
+                <version>${elasticsearch-rest-high-level-client.version}</version>
             </dependency>
 
             <!-- 内部封装模块 -->
