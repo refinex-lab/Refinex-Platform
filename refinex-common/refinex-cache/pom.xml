@@ -11,7 +11,7 @@
     <packaging>jar</packaging>
 
     <name>${project.artifactId}</name>
-    <description>Refinex Cache</description>
+    <description>Refinex Cache 组件</description>
 
     <dependencies>
         <dependency>

@@ -11,7 +11,7 @@
     <packaging>jar</packaging>
 
     <name>${project.artifactId}</name>
-    <description>Refinex Web</description>
+    <description>Refinex Web 组件</description>
 
     <dependencies>
         <dependency>

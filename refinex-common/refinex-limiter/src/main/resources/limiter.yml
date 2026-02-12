@@ -1,0 +1,24 @@
+spring:
+  cloud:
+    sentinel:
+      # 开启饥饿加载，防止第一次请求慢
+      eager: true
+      transport:
+        dashboard: ${refinex.sentinel.dashboard:localhost:8080}
+      datasource:
+        # 1. 流量控制规则
+        flow-rules:
+          nacos:
+            server-addr: ${refinex.nacos.server-addr:localhost:8848}
+            data-id: ${spring.application.name}-flow-rules
+            group-id: SENTINEL_GROUP
+            rule-type: FLOW
+            data-type: json
+        # 2. 参数热点规则
+        param-flow-rules:
+          nacos:
+            server-addr: ${refinex.nacos.server-addr:localhost:8848}
+            data-id: ${spring.application.name}-param-rules
+            group-id: SENTINEL_GROUP
+            rule-type: PARAM_FLOW
+            data-type: json

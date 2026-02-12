@@ -11,7 +11,7 @@
     <packaging>jar</packaging>
 
     <name>${project.artifactId}</name>
-    <description>Refinex Sa-Token</description>
+    <description>Refinex Sa-Token 组件</description>
 
     <dependencies>
         <dependency>

@@ -20,6 +20,7 @@
         <module>refinex-web</module>
         <module>refinex-datasource</module>
         <module>refinex-lock</module>
+        <module>refinex-limiter</module>
     </modules>
 
     <dependencies>

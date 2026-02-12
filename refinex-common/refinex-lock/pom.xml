@@ -11,7 +11,7 @@
     <packaging>jar</packaging>
 
     <name>${project.artifactId}</name>
-    <description>Refinex Distributed Lock</description>
+    <description>Refinex 分布式锁组件</description>
 
     <dependencies>
         <!-- 依赖 refinex-cache 提供 Redis / Redisson 能力 -->
