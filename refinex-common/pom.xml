@@ -22,6 +22,7 @@
         <module>refinex-lock</module>
         <module>refinex-limiter</module>
         <module>refinex-job</module>
+        <module>refinex-stream</module>
     </modules>
 
     <dependencies>
