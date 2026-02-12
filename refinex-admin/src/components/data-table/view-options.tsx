@@ -14,6 +14,20 @@ type DataTableViewOptionsProps<TData> = {
   table: Table<TData>
 }
 
+const defaultColumnLabels: Record<string, string> = {
+  username: '用户名',
+  fullName: '姓名',
+  name: '名称',
+  email: '邮箱',
+  phoneNumber: '手机号',
+  status: '状态',
+  role: '角色',
+  id: 'ID',
+  title: '标题',
+  priority: '优先级',
+  label: '标签',
+}
+
 export function DataTableViewOptions<TData>({
   table,
 }: DataTableViewOptionsProps<TData>) {
@@ -26,11 +40,11 @@ export function DataTableViewOptions<TData>({
           className='ms-auto hidden h-8 lg:flex'
         >
           <MixerHorizontalIcon className='size-4' />
-          View
+          视图
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align='end' className='w-[150px]'>
-        <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+        <DropdownMenuLabel>显示列</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {table
           .getAllColumns()
@@ -46,7 +60,7 @@ export function DataTableViewOptions<TData>({
                 checked={column.getIsVisible()}
                 onCheckedChange={(value) => column.toggleVisibility(!!value)}
               >
-                {column.id}
+                {defaultColumnLabels[column.id] ?? column.id}
               </DropdownMenuCheckboxItem>
             )
           })}

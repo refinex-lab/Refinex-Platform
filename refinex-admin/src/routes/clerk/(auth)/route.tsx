@@ -18,7 +18,7 @@ function ClerkAuthLayout() {
           className='relative z-20 flex items-center text-lg font-medium'
         >
           <Logo className='me-2' />
-          Shadcn Admin
+          Refinex 管理后台
         </Link>
 
         <ClerkFullLogo className='relative m-auto size-96' />
@@ -26,10 +26,9 @@ function ClerkAuthLayout() {
         <div className='relative z-20 mt-auto'>
           <blockquote className='space-y-2'>
             <p className='text-lg'>
-              &ldquo; Lorem ipsum dolor sit amet consectetur adipisicing elit.
-              Sint, magni debitis inventore asperiores velit! &rdquo;
+              &ldquo; 简洁高效的后台系统，让团队协作与数据管理更轻松。&rdquo;
             </p>
-            <footer className='text-sm'>John Doe</footer>
+            <footer className='text-sm'>Refinex 团队</footer>
           </blockquote>
         </div>
       </div>
@@ -42,15 +41,15 @@ function ClerkAuthLayout() {
             }}
             contentProps={{ side: 'top', align: 'end', className: 'w-auto' }}
           >
-            Welcome to the example Clerk auth page. <br />
-            Back to{' '}
+            欢迎来到 Clerk 认证示例页面。<br />
+            返回{' '}
             <Link
               to='/'
               className='underline decoration-dashed underline-offset-2'
             >
-              Dashboard
+              仪表盘
             </Link>{' '}
-            ?
+            吗？
           </LearnMore>
           <Outlet />
         </div>

@@ -52,20 +52,20 @@ function MissingClerkPubKey() {
         <div className='max-w-2xl'>
           <Alert>
             <Key className='size-4' />
-            <AlertTitle>No Publishable Key Found!</AlertTitle>
+            <AlertTitle>未找到可发布密钥！</AlertTitle>
             <AlertDescription>
               <p className='text-balance'>
-                You need to generate a publishable key from Clerk and put it
-                inside the <code className={codeBlock}>.env</code> file.
+                你需要在 Clerk 中生成可发布密钥，并将其写入{' '}
+                <code className={codeBlock}>.env</code> 文件。
               </p>
             </AlertDescription>
           </Alert>
 
-          <h1 className='mt-4 text-2xl font-bold'>Set your Clerk API key</h1>
+          <h1 className='mt-4 text-2xl font-bold'>配置 Clerk API 密钥</h1>
           <div className='mt-4 flex flex-col gap-y-4 text-foreground/75'>
             <ol className='list-inside list-decimal space-y-1.5'>
               <li>
-                In the{' '}
+                在{' '}
                 <a
                   href='https://go.clerk.com/GttUAaK'
                   target='_blank'
@@ -76,22 +76,20 @@ function MissingClerkPubKey() {
                     <ExternalLink className='inline-block size-4' />
                   </sup>
                 </a>{' '}
-                Dashboard, navigate to the API keys page.
+                控制台中进入 API keys 页面。
               </li>
               <li>
-                In the <strong>Quick Copy</strong> section, copy your Clerk
-                Publishable Key.
+                在 <strong>快速复制</strong> 区域复制 Clerk 可发布密钥。
               </li>
               <li>
-                Rename <code className={codeBlock}>.env.example</code> to{' '}
+                将 <code className={codeBlock}>.env.example</code> 重命名为{' '}
                 <code className={codeBlock}>.env</code>
               </li>
               <li>
-                Paste your key into your <code className={codeBlock}>.env</code>{' '}
-                file.
+                将密钥粘贴到 <code className={codeBlock}>.env</code> 文件中。
               </li>
             </ol>
-            <p>The final result should resemble the following:</p>
+            <p>最终效果应类似如下：</p>
 
             <div className='@container space-y-2 rounded-md bg-slate-800 px-3 py-3 text-sm text-slate-200'>
               <span className='ps-1'>.env</span>
@@ -108,23 +106,20 @@ function MissingClerkPubKey() {
           <Separator className='my-4 w-full' />
 
           <Alert>
-            <AlertTitle>Clerk Integration is Optional</AlertTitle>
+            <AlertTitle>Clerk 集成是可选的</AlertTitle>
             <AlertDescription>
               <p className='text-balance'>
-                The Clerk integration lives entirely inside{' '}
-                <code className={codeBlock}>src/routes/clerk</code>. If you plan
-                to use Clerk as your auth service, you might want to place{' '}
-                <code className={codeBlock}>ClerkProvider</code> at the root
-                route.
+                Clerk 集成代码全部位于{' '}
+                <code className={codeBlock}>src/routes/clerk</code>。如果你计划
+                使用 Clerk 作为认证服务，可以将{' '}
+                <code className={codeBlock}>ClerkProvider</code> 放在根路由中。
               </p>
               <p>
-                However, if you don't plan to use Clerk, you can safely remove
-                this directory and related dependency_{' '}
-                <code className={codeBlock}>@clerk/clerk-react</code>.
+                如果你不打算使用 Clerk，可安全删除该目录及相关依赖{' '}
+                <code className={codeBlock}>@clerk/clerk-react</code>。
               </p>
               <p className='mt-2 text-sm'>
-                This setup is modular by design and won't affect the rest of the
-                application.
+                该设计是模块化的，不会影响其余应用功能。
               </p>
             </AlertDescription>
           </Alert>
