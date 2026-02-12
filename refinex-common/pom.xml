@@ -21,6 +21,7 @@
         <module>refinex-datasource</module>
         <module>refinex-lock</module>
         <module>refinex-limiter</module>
+        <module>refinex-job</module>
     </modules>
 
     <dependencies>

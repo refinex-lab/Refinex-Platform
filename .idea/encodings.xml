@@ -7,6 +7,8 @@
     <file url="file://$PROJECT_DIR$/refinex-common/refinex-cache/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/refinex-common/refinex-datasource/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/refinex-common/refinex-datasource/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/refinex-common/refinex-job/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/refinex-common/refinex-job/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/refinex-common/refinex-limiter/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/refinex-common/refinex-limiter/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/refinex-common/refinex-lock/src/main/java" charset="UTF-8" />

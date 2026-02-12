@@ -1,0 +1,16 @@
+refinex:
+  job:
+    xxl:
+      # 开关：开发环境可能关闭，生产开启
+      enabled: true
+      # 调度中心地址
+      admin-addresses: http://${refinex.xxl-job.admin.host:127.0.0.1}:${refinex.xxl-job.admin.port:8080}/xxl-job-admin
+      # 执行器名称 (通常复用服务名)
+      app-name: ${spring.application.name}
+      # 访问令牌
+      access-token: ${refinex.xxl-job.access-token:default_token}
+      # 执行器端口 (注意：不同微服务部署在同一台物理机时端口不能冲突)
+      port: ${refinex.xxl-job.executor.port:9999}
+      # 日志路径
+      log-path: /data/logs/xxl-job/${spring.application.name}
+      log-retention-days: 7
