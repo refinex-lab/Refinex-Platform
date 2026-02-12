@@ -1,0 +1,59 @@
+spring:
+  autoconfigure:
+    # 如果不使用分库分表，必须排除 ShardingSphere 自动配置，防止冲突
+    exclude: org.apache.shardingsphere.spring.boot.ShardingSphereAutoConfiguration
+
+  datasource:
+    # 基础连接信息
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    type: com.alibaba.druid.pool.DruidDataSource
+    url: ${refinex.mysql.url}
+    username: ${refinex.mysql.username}
+    password: ${refinex.mysql.password}
+
+    # Druid 连接池核心配置
+    druid:
+      # 初始化连接数
+      initial-size: 10
+      # 最小空闲连接数
+      min-idle: 10
+      # 最大活跃连接数 (视业务并发量调整)
+      max-active: 100
+      # 获取连接等待超时时间 (毫秒)
+      max-wait: 60000
+
+      # --- 检测与回收 ---
+      # 检测间隔 (毫秒)
+      time-between-eviction-runs-millis: 60000
+      # 连接最小生存时间 (毫秒)
+      min-evictable-idle-time-millis: 300000
+      # 验证 SQL
+      validation-query: SELECT 1
+      # 申请连接时不检测 (性能较好)
+      test-on-borrow: false
+      # 归还连接时不检测
+      test-on-return: false
+      # 空闲时检测 (建议开启)
+      test-while-idle: true
+
+      # --- PSCache (针对 Oracle/MySQL 5.5+ 有效) ---
+      pool-prepared-statements: true
+      max-pool-prepared-statement-per-connection-size: 20
+
+      # --- 监控与过滤器 ---
+      # 启用 stat (监控), wall (防火墙), slf4j (日志)
+      filters: stat,slf4j
+
+# MyBatis Plus 配置
+mybatis-plus:
+  configuration:
+    # 开启驼峰命名转换
+    map-underscore-to-camel-case: true
+    # 开启二级缓存 (视情况而定，默认建议 false)
+    cache-enabled: false
+    # 打印 SQL 日志 (开发环境开启，生产建议改为 STDOUT_LOGGING 关闭)
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  # XML 映射文件位置
+  mapper-locations: classpath*:mapper/*.xml
+  # 实体别名包
+  type-aliases-package: cn.refinex.**.domain.entity

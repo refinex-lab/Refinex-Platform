@@ -18,6 +18,7 @@
         <module>refinex-base</module>
         <module>refinex-cache</module>
         <module>refinex-web</module>
+        <module>refinex-datasource</module>
     </modules>
 
     <dependencies>
