@@ -25,6 +25,7 @@
         <module>refinex-stream</module>
         <module>refinex-api</module>
         <module>refinex-skywalking</module>
+        <module>refinex-seata</module>
     </modules>
 
     <dependencies>

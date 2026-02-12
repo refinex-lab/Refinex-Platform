@@ -1,0 +1,33 @@
+seata:
+  enabled: true
+  application-id: ${spring.application.name}
+  # 事务服务组 (需与 Seata Server 配置映射)
+  tx-service-group: default_tx_group
+
+  # 客户端配置
+  client:
+    rm:
+      async-commit-buffer-limit: 10000
+      report-retry-count: 5
+    tm:
+      commit-retry-count: 5
+      rollback-retry-count: 5
+
+  # 注册中心配置 (Nacos)
+  registry:
+    type: nacos
+    nacos:
+      application: seata-server
+      server-addr: ${refinex.nacos.server-addr:localhost:8848}
+      group: SEATA_GROUP
+      namespace: ${refinex.nacos.namespace:}
+      cluster: default
+
+  # 配置中心配置 (Nacos)
+  config:
+    type: nacos
+    nacos:
+      server-addr: ${refinex.nacos.server-addr:localhost:8848}
+      group: SEATA_GROUP
+      namespace: ${refinex.nacos.namespace:}
+      data-id: seata-server.properties # Seata 2.0 推荐读取 server 端的 properties

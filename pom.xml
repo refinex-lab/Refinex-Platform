@@ -45,6 +45,8 @@
         <mybatis-plus-generator.version>3.5.15</mybatis-plus-generator.version>
         <mybatis-plus-jsqlparser.version>3.5.15</mybatis-plus-jsqlparser.version>
         <apm-toolkit.version>9.4.0</apm-toolkit.version>
+        <seata-all.version>2.0.0</seata-all.version>
+        <shardingsphere.version>5.2.1</shardingsphere.version>
 
         <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
@@ -206,6 +208,18 @@
                 <groupId>org.apache.skywalking</groupId>
                 <artifactId>apm-toolkit-trace</artifactId>
                 <version>${apm-toolkit.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.seata</groupId>
+                <artifactId>seata-all</artifactId>
+                <version>${seata-all.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.shardingsphere</groupId>
+                <artifactId>shardingsphere-transaction-core</artifactId>
+                <version>${shardingsphere.version}</version>
+                <scope>provided</scope>
             </dependency>
 
             <!-- 内部封装模块 -->
