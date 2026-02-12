@@ -44,6 +44,7 @@
         <mybatis-plus.version>3.5.15</mybatis-plus.version>
         <mybatis-plus-generator.version>3.5.15</mybatis-plus-generator.version>
         <mybatis-plus-jsqlparser.version>3.5.15</mybatis-plus-jsqlparser.version>
+        <apm-toolkit.version>9.4.0</apm-toolkit.version>
 
         <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
@@ -193,6 +194,18 @@
                 <groupId>com.xuxueli</groupId>
                 <artifactId>xxl-job-core</artifactId>
                 <version>${xxl-job.version}</version>
+            </dependency>
+
+            <!-- SkyWalking APM Toolkit -->
+            <dependency>
+                <groupId>org.apache.skywalking</groupId>
+                <artifactId>apm-toolkit-logback-1.x</artifactId>
+                <version>${apm-toolkit.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.skywalking</groupId>
+                <artifactId>apm-toolkit-trace</artifactId>
+                <version>${apm-toolkit.version}</version>
             </dependency>
 
             <!-- 内部封装模块 -->

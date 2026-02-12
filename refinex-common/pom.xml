@@ -24,6 +24,7 @@
         <module>refinex-job</module>
         <module>refinex-stream</module>
         <module>refinex-api</module>
+        <module>refinex-skywalking</module>
     </modules>
 
     <dependencies>
