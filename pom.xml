@@ -12,6 +12,7 @@
 
     <modules>
         <module>refinex-common</module>
+        <module>refinex-gateway</module>
     </modules>
 
     <properties>
@@ -52,6 +53,7 @@
         <jaxb-runtime.version>2.3.3</jaxb-runtime.version>
         <easy-es.version>3.0.0</easy-es.version>
         <elasticsearch-rest-high-level-client.version>7.17.29</elasticsearch-rest-high-level-client.version>
+        <sensitive-logback.version>1.7.0</sensitive-logback.version>
 
         <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
@@ -96,6 +98,11 @@
             <dependency>
                 <groupId>cn.dev33</groupId>
                 <artifactId>sa-token-redis-jackson</artifactId>
+                <version>${sa-token.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>cn.dev33</groupId>
+                <artifactId>sa-token-reactor-spring-boot3-starter</artifactId>
                 <version>${sa-token.version}</version>
             </dependency>
 
@@ -264,6 +271,13 @@
                 <version>${elasticsearch-rest-high-level-client.version}</version>
             </dependency>
 
+            <!-- Sensitive Logback -->
+            <dependency>
+                <groupId>com.github.houbb</groupId>
+                <artifactId>sensitive-logback</artifactId>
+                <version>${sensitive-logback.version}</version>
+            </dependency>
+
             <!-- 内部封装模块 -->
             <!-- Refinex 基础模块 -->
             <dependency>
@@ -287,6 +301,12 @@
             <dependency>
                 <groupId>cn.refinex</groupId>
                 <artifactId>refinex-web</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <!-- Refinex API 模块 -->
+            <dependency>
+                <groupId>cn.refinex</groupId>
+                <artifactId>refinex-api</artifactId>
                 <version>${revision}</version>
             </dependency>
         </dependencies>

@@ -3,7 +3,7 @@ package cn.refinex.file.support;
 import cn.refinex.base.exception.SystemException;
 import cn.refinex.base.exception.code.BizErrorCode;
 import cn.refinex.file.api.FileService;
-import cn.refinex.file.autoconfigure.FileProperties;
+import cn.refinex.file.autoconfigure.FileOSSProperties;
 import com.aliyun.oss.OSS;
 import com.aliyun.oss.model.PutObjectRequest;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +22,7 @@ import java.io.InputStream;
 public class AliyunOssFileService implements FileService {
 
     private final OSS ossClient;
-    private final FileProperties properties;
+    private final FileOSSProperties properties;
 
     /**
      * 文件上传

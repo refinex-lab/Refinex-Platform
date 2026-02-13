@@ -1,0 +1,23 @@
+seata:
+  application-id: ${spring.application.name}
+  # 事务服务组 (需与 Seata Server 配置映射)
+  tx-service-group: default_tx_group
+
+  # 注册中心配置 (Nacos)
+  registry:
+    type: nacos
+    nacos:
+      application: seata-server
+      server-addr: ${refinex.nacos.server-addr}
+      group: ${refinex.seata.nacos.group}
+      namespace: ${refinex.seata.nacos.namespace}
+      cluster: default
+
+  # 配置中心配置 (Nacos)
+  config:
+    type: nacos
+    nacos:
+      server-addr: ${refinex.nacos.server-addr}
+      group: ${refinex.seata.nacos.group}
+      data-id: ${refinex.seata.nacos.data-id}
+      namespace: ${refinex.seata.nacos.namespace}

@@ -7,10 +7,12 @@
     <file url="file://$PROJECT_DIR$/refinex-common/refinex-base/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/refinex-common/refinex-cache/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/refinex-common/refinex-cache/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/refinex-common/refinex-config/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/refinex-common/refinex-config/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/refinex-common/refinex-datasource/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/refinex-common/refinex-datasource/src/main/resources" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/refinex-common/refinex-es/src/main/java" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/refinex-common/refinex-es/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/refinex-common/refinex-elasticsearch/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/refinex-common/refinex-elasticsearch/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/refinex-common/refinex-file/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/refinex-common/refinex-file/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/refinex-common/refinex-job/src/main/java" charset="UTF-8" />
@@ -31,6 +33,8 @@
     <file url="file://$PROJECT_DIR$/refinex-common/refinex-web/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/refinex-common/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/refinex-common/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/refinex-gateway/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/refinex-gateway/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/main/resources" charset="UTF-8" />
   </component>

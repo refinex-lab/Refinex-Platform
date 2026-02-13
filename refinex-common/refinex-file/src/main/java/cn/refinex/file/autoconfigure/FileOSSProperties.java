@@ -10,12 +10,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  */
 @Data
 @ConfigurationProperties(prefix = "refinex.file.oss")
-public class FileProperties {
+public class FileOSSProperties {
 
     /**
      * 是否启用 OSS (默认 false，使用 Mock)
      */
-    private boolean enabled = false;
+    private boolean enable = false;
 
     /**
      * Endpoint (地域节点)

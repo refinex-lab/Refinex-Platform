@@ -1,0 +1,34 @@
+spring:
+  cloud:
+    # Nacos 全局基础配置 (提取公共参数，简化配置)
+    nacos:
+      # 服务地址 (带默认值兜底)
+      server-addr: ${refinex.nacos.server-addr:127.0.0.1:8848}
+      # 服务账号
+      username: ${refinex.nacos.username:nacos}
+      # 服务密码
+      password: ${refinex.nacos.password:nacos}
+      # 命名空间 ID (用于环境隔离，如 dev、test、prod)
+      namespace: ${refinex.nacos.namespace:}
+
+      # =======================================================
+      # 1. 服务发现与注册配置
+      # =======================================================
+      discovery:
+        # 服务注册分组
+        group: ${refinex.nacos.discovery-group:Refinex-Platform}
+        # 是否注册到 Nacos (开发调试时可设为 false，只订阅不注册)
+        register-enabled: true
+
+      # =======================================================
+      # 2. 配置中心配置
+      # =======================================================
+      config:
+        # 配置文件分组
+        group: ${refinex.nacos.config-group:Refinex-Platform}
+        # 配置文件扩展名 (支持 yaml/properties)
+        file-extension: ${refinex.nacos.file-extension:yaml}
+        # 配置文件前缀 (决定了 Nacos 中的 Data ID 为: ${prefix}.${file-extension})
+        prefix: ${spring.application.name}
+        # 是否开启配置动态刷新 (默认 true)
+        refresh-enabled: true

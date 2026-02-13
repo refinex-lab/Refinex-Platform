@@ -1,6 +1,6 @@
 package cn.refinex.es.autoconfigure;
 
-import org.dromara.easyes.starter.register.EsMapperScan;
+import org.dromara.easyes.spring.annotation.EsMapperScan;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
@@ -16,7 +16,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 @AutoConfiguration
 // 关键：扫描所有模块下的 infrastructure.es.mapper 包
 @EsMapperScan("cn.refinex.**.infrastructure.es.mapper")
-@ConditionalOnProperty(prefix = "refinex.es", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "refinex.elasticsearch", name = "enabled", havingValue = "true")
 public class EsAutoConfiguration {
 
     // Easy-ES 的核心配置 (GlobalConfig 等) 通常由 Starter 自动加载，

@@ -1,0 +1,32 @@
+# Spring Elasticsearch 配置
+spring:
+  elasticsearch:
+    # 是否启用
+    enabled: ${refinex.elasticsearch.enabled:false}
+    # 服务器地址
+    uris: ${refinex.elasticsearch.url:127.0.0.1:9200}
+    # 认证信息
+    username: ${refinex.elasticsearch.username:}
+    password: ${refinex.elasticsearch.password:}
+
+# Easy-ES 配置
+easy-es:
+  # 开关 (对应 EsConfiguration 中的 @ConditionalOnProperty)
+  enable: ${refinex.elasticsearch.enabled:false}
+  # ES 地址，多个地址用逗号分隔
+  # 格式: ip:port (不需要 http:// 前缀，除非 Easy-ES 版本有特殊说明，2.x 通常只需要 ip:port)
+  address: ${refinex.elasticsearch.url:127.0.0.1:9200}
+  # 认证信息
+  username: ${refinex.elasticsearch.username:}
+  password: ${refinex.elasticsearch.password:}
+
+  # 扩展配置
+  global-config:
+    # 是否打印 banner
+    banner: false
+    # 数据库配置
+    db-config:
+      # 表前缀 (索引前缀)
+      table-prefix: ${refinex.elasticsearch.index-prefix:}
+      # 字段策略: 默认 NOT_NULL (自动过滤 null 字段不写入 ES)
+      field-strategy: NOT_NULL

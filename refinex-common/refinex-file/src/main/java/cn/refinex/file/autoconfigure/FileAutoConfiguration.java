@@ -19,15 +19,15 @@ import org.springframework.context.annotation.Bean;
  * @author refinex
  */
 @AutoConfiguration
-@EnableConfigurationProperties(FileProperties.class)
+@EnableConfigurationProperties(FileOSSProperties.class)
 public class FileAutoConfiguration {
 
     /**
-     * 1. 当 refinex.file.oss.enabled=true 时，初始化 OSS Client
+     * 1. 当 refinex.file.oss.enable=true 时，初始化 OSS Client
      */
     @Bean(destroyMethod = "shutdown")
-    @ConditionalOnProperty(prefix = "refinex.file.oss", name = "enabled", havingValue = "true")
-    public OSS ossClient(FileProperties properties) {
+    @ConditionalOnProperty(prefix = "refinex.file.oss", name = "enable", havingValue = "true")
+    public OSS ossClient(FileOSSProperties properties) {
         CredentialsProvider credentialsProvider = new DefaultCredentialProvider(
                 properties.getAccessKey(),
                 properties.getAccessSecret()
@@ -40,11 +40,11 @@ public class FileAutoConfiguration {
     }
 
     /**
-     * 2. 当 refinex.file.oss.enabled=true 时，初始化 AliyunOssFileService
+     * 2. 当 refinex.file.oss.enable=true 时，初始化 AliyunOssFileService
      */
     @Bean
-    @ConditionalOnProperty(prefix = "refinex.file.oss", name = "enabled", havingValue = "true")
-    public FileService ossFileService(OSS ossClient, FileProperties properties) {
+    @ConditionalOnProperty(prefix = "refinex.file.oss", name = "enable", havingValue = "true")
+    public FileService ossFileService(OSS ossClient, FileOSSProperties properties) {
         return new AliyunOssFileService(ossClient, properties);
     }
 

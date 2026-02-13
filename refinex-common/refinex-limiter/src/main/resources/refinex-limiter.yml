@@ -1,0 +1,20 @@
+spring:
+  cloud:
+    sentinel:
+      transport:
+        dashboard: ${refinex.sentinel.url}
+      datasource:
+        # 1. 流量控制规则
+        flow:
+          nacos:
+            server-addr: ${refinex.nacos.server-addr}
+            data-id: business-flow-rules
+            group-id: SENTINEL_GROUP
+            rule-type: FLOW
+        # 2. 参数热点规则
+        param-flow:
+          nacos:
+            server-addr: ${refinex.nacos.server-addr}
+            data-id: business-param-flow-rules
+            group-id: SENTINEL_GROUP
+            rule-type: PARAM_FLOW

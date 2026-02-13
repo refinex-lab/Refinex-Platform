@@ -1,0 +1,103 @@
+refinex:
+  # Nacos 配置
+  nacos:
+    # 服务地址
+    server-addr: 127.0.0.1:8848
+    # 服务账号
+    username: nacos
+    # 服务密码
+    password: nacos
+    # 配置分组
+    config-group: Refinex-Platform
+    # 服务发现分组
+    discovery-group: Refinex-Platform
+    # 配置文件格式
+    file-extension: yaml
+    # 命名空间
+    namespace: dev
+
+  # MySQL 配置
+  mysql:
+    # 数据库地址
+    url: jdbc:mysql://127.0.0.1:3306/refinex?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=UTC
+    # 数据库账号
+    username: root
+    # 数据库密码
+    password: 123456
+
+  # Redis 配置
+  redis:
+    # 服务器地址
+    url: 192.168.0.1
+    # 服务器端口
+    port: 6379
+    # 服务器密码
+    password: 123456
+
+  # Elasticsearch 配置
+  elasticsearch:
+    # 是否启用
+    enable: false
+    # 服务器地址
+    url: 192.168.0.1:9200
+    # 服务器账号
+    username: elastic
+    # 服务器密码
+    password: 123456
+    # 索引前缀
+    index-prefix: refinex-
+
+  # XXL-JOB 配置
+  xxl-job:
+    # 调度中心地址, 如调度中心集群部署存在多个地址，则用逗号分隔。
+    admin-addresses: http://127.0.0.1:8080/xxl-job-admin
+    # 执行器名称 默认读取 spring.application.name
+    app-name: xxl-job-executor
+    # 执行器 AccessToken (安全性校验) 需与调度中心配置保持一致
+    access-token: default_token
+
+  # Sentinel 配置
+  sentinel:
+    # Sentinel地址 + 端口号
+    url: 192.168.0.1:8099
+    # Sentinel 端口号
+    port: 8098
+    # Nacos 配置
+    nacos:
+      # Sentinel 配置保存在 Nacos 上的数据 ID
+      data-id: refinex-gateway-sentinel.yml
+
+  # RocketMQ 配置
+  stream:
+    # 是否启用 RocketMQ
+    enabled: true
+    # 服务器地址
+    name-server: 192.168.0.1:9876
+
+  # Seata 配置
+  seata:
+    # Nacos 配置
+    nacos:
+      # Seata 配置保存在 Nacos 上的数据 ID
+      data-id: seataServer.yml
+      # 服务分组
+      group: seata
+      # 命名空间
+      namespace: 7ebdfb9b-cd9d-4a5e-8969-1ada0bb9ba04
+
+  # 文件处理配置
+  file:
+    # 对象存储服务配置 OSS
+    oss:
+      # 是否启用 OSS (默认 false，使用 Mock)
+      enable: true
+      # Endpoint (地域节点)
+      endpoint: https://oss-cn-hangzhou.aliyuncs.com
+      # Bucket 名称
+      bucket: refinex-oss
+      # AccessKey ID
+      access-key: xxxxxx
+      # AccessKey Secret
+      access-secret: xxxxxx
+      # 访问域名 (CDN 自定义域名) 可选。如果配置了 CDN，返回的 URL 将使用此域名。 例如: https://cdn.example.com
+      domain: https://cdn.example.com

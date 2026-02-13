@@ -20,7 +20,7 @@ import org.springframework.util.StringUtils;
 @AutoConfiguration
 @ConditionalOnClass(XxlJobSpringExecutor.class)
 @EnableConfigurationProperties(XxlJobProperties.class)
-@ConditionalOnProperty(prefix = "refinex.job.xxl", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "spring.xxl.job", name = "enabled", havingValue = "true")
 public class XxlJobAutoConfiguration {
 
     @Bean

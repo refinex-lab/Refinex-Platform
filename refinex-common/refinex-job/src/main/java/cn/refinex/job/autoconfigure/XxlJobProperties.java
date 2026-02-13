@@ -6,12 +6,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /**
  * XXL-JOB 配置属性
  * <p>
- * 对应配置文件前缀: refinex.job.xxl
+ * 对应配置文件前缀: refinex.xxl-job
  *
  * @author refinex
  */
 @Data
-@ConfigurationProperties(prefix = "refinex.job.xxl")
+@ConfigurationProperties(prefix = "spring.xxl.job")
 public class XxlJobProperties {
 
     /**
@@ -49,7 +49,7 @@ public class XxlJobProperties {
      * 默认 0 或 -1 表示自动寻找可用端口
      * 建议在 K8s 环境下显式指定，或使用 server.port + offset 策略
      */
-    private int port = 9999;
+    private int port = 0;
 
     /**
      * 执行器运行日志文件存储磁盘路径

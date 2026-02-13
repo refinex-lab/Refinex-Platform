@@ -1,0 +1,68 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: refinex-gateway
+
+  # 【配置中心加载
+  config:
+    import:
+      # 导入 Nacos 上的应用配置 (refinex-gateway.yml)
+      - nacos:${spring.application.name}.yml?refreshEnabled=true&group=${refinex.nacos.group:DEFAULT_GROUP}
+      # 导入内部模块的共享配置
+      - classpath:refinex-base.yml      # see refinex-common/refinex-base/src/main/resources/refinex-base.yml
+      - classpath:refinex-cache.yml     # see refinex-common/refinex-cache/src/main/resources/refinex-cache.yml
+      - classpath:refinex-config.yml    # see refinex-common/refinex-config/src/main/resources/refinex-config.yml
+      # 导入 Nacos 上的共享配置
+      #- nacos:refinex-xxx.yml?group=DEFAULT_GROUP&refreshEnabled=true
+
+  cloud:
+    nacos:
+      # Nacos 服务器地址
+      server-addr: ${refinex.nacos.server-addr:127.0.0.1:8848}
+      username: ${refinex.nacos.username:nacos}
+      password: ${refinex.nacos.password:nacos}
+
+    # Sentinel 监控
+    sentinel:
+      transport:
+        # Sentinel 监控 Dashboard 地址
+        dashboard: ${refinex.sentinel.dashboard:127.0.0.1:8080}
+      # Sentinel 规则持久化 (网关流控规则)
+      datasource:
+        gateway-flow:
+          nacos:
+            server-addr: ${spring.cloud.nacos.server-addr}
+            data-id: ${spring.application.name}-flow-rules
+            group-id: SENTINEL_GROUP
+            rule-type: GW_FLOW
+
+    gateway:
+      # Spring Cloud Gateway 5.0 新前缀配置
+      server:
+        webflux:
+          # 全局 CORS
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                allowedHeaders: '*'
+                allowedMethods: '*'
+                allowedOrigins: '*'
+                allowCredentials: true
+
+          # 默认过滤器
+          default-filters:
+            - DedupeResponseHeader=Access-Control-Allow-Origin, RETAIN_UNIQUE
+
+          # 路由定义
+          routes:
+            - id: refinex-auth
+              uri: lb://refinex-auth
+              predicates:
+                - Path=/auth/**, /token/**
+
+            - id: refinex-business
+              uri: lb://refinex-business
+              predicates:
+                - Path=/trade/**, /order/**, /user/**, /wxPay/**

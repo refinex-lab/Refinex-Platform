@@ -7,13 +7,18 @@
         <version>${revision}</version>
     </parent>
 
-    <artifactId>refinex-es</artifactId>
+    <artifactId>refinex-elasticsearch</artifactId>
     <packaging>jar</packaging>
 
     <name>${project.artifactId}</name>
     <description>Refinex 搜索引擎组件 (Easy-ES)</description>
 
     <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-elasticsearch</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.dromara.easy-es</groupId>
             <artifactId>easy-es-boot-starter</artifactId>
