@@ -29,6 +29,7 @@
         <module>refinex-file</module>
         <module>refinex-elasticsearch</module>
         <module>refinex-config</module>
+        <module>refinex-sms</module>
     </modules>
 
     <dependencies>

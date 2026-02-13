@@ -13,6 +13,7 @@
     <modules>
         <module>refinex-common</module>
         <module>refinex-gateway</module>
+        <module>refinex-auth</module>
     </modules>
 
     <properties>
@@ -307,6 +308,18 @@
             <dependency>
                 <groupId>cn.refinex</groupId>
                 <artifactId>refinex-api</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <!-- Refinex Lock 模块 -->
+            <dependency>
+                <groupId>cn.refinex</groupId>
+                <artifactId>refinex-lock</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <!-- Refinex SMS 模块 -->
+            <dependency>
+                <groupId>cn.refinex</groupId>
+                <artifactId>refinex-sms</artifactId>
                 <version>${revision}</version>
             </dependency>
         </dependencies>
