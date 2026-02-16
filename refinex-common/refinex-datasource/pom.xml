@@ -15,6 +15,11 @@
 
     <dependencies>
         <dependency>
+            <groupId>cn.refinex</groupId>
+            <artifactId>refinex-api</artifactId>
+        </dependency>
+
+        <dependency>
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
         </dependency>

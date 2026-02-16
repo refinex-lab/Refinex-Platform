@@ -1,0 +1,58 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: refinex-auth
+
+  config:
+    import:
+      - nacos:${spring.application.name}.yml?refreshEnabled=true&group=${refinex.nacos.group:DEFAULT_GROUP}
+      - classpath:refinex-base.yml
+      - classpath:refinex-cache.yml
+      - classpath:refinex-config.yml
+      - classpath:refinex-datasource.yml
+
+  cloud:
+    nacos:
+      server-addr: ${refinex.nacos.server-addr:127.0.0.1:8848}
+      username: ${refinex.nacos.username:nacos}
+      password: ${refinex.nacos.password:nacos}
+
+sa-token:
+  # Token 名称 (默认：satoken)
+  token-name: Refinex-Token
+  # Token 有效期 (秒) 默认2小时
+  timeout: ${refinex.auth.token-timeout-seconds:7200}
+  # Token 临时有效期 (活跃超时)
+  active-timeout: ${refinex.auth.active-timeout-seconds:1800}
+  # 是否允许多地同时登录
+  is-concurrent: true
+  # 同账号多地登录是否互斥
+  is-share: true
+  # Token 风格
+  token-style: uuid
+
+refinex:
+  auth:
+    sms-code-expire-seconds: 300
+    sms-code-interval-seconds: 60
+    sms-code-length: 6
+    login-fail-threshold: 5
+    lock-minutes: 30
+    token-timeout-seconds: 7200
+    active-timeout-seconds: 1800
+    default-role-code: TENANT_USER
+    default-system-code: tenant
+    auto-register-on-sms-login: false
+    default-create-estab: false
+    sms-ip-limit: 20
+    sms-phone-limit: 10
+    sms-device-limit: 20
+    sms-window-seconds: 3600
+    register-ip-limit: 10
+    register-identifier-limit: 5
+    register-window-seconds: 3600
+    login-ip-limit: 60
+    login-identifier-limit: 30
+    login-window-seconds: 60

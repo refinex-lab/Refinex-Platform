@@ -3,10 +3,8 @@ package cn.refinex.gateway.auth;
 import cn.dev33.satoken.session.SaSession;
 import cn.dev33.satoken.stp.StpInterface;
 import cn.dev33.satoken.stp.StpUtil;
-import cn.refinex.api.user.enums.UserPermission;
-import cn.refinex.api.user.enums.UserRole;
-import cn.refinex.api.user.enums.UserState;
-import cn.refinex.api.user.model.vo.UserInfo;
+import cn.refinex.api.user.enums.UserStatus;
+import cn.refinex.api.user.model.context.LoginUser;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -33,34 +31,20 @@ public class StpInterfaceImpl implements StpInterface {
      */
     @Override
     public List<String> getPermissionList(Object loginId, String loginType) {
-        // 根据登录id获取用户信息
-        UserInfo userInfo = getUserInfo(loginId);
-        if (userInfo == null) {
+        // 根据登录id获取登录用户信息
+        LoginUser loginUser = getLoginUser(loginId);
+        if (loginUser == null) {
             return Collections.emptyList();
         }
 
-        // 获取用户状态
-        String state = userInfo.getState();
-
-        // 管理员、活跃用户、已认证用户 -> 拥有基础权限 + 认证权限
-        if (userInfo.getUserRole() == UserRole.ADMIN
-                || UserState.ACTIVE.name().equals(state)
-                || UserState.AUTH.name().equals(state)) {
-            return List.of(UserPermission.BASIC.name(), UserPermission.AUTH.name());
+        // 非启用用户不下发权限
+        if (loginUser.getStatus() != null && loginUser.getStatus() != UserStatus.ENABLED) {
+            return Collections.emptyList();
         }
 
-        // 初始用户 -> 仅基础权限
-        if (UserState.INIT.name().equals(state)) {
-            return List.of(UserPermission.BASIC.name());
-        }
-
-        // 冻结用户 -> 仅冻结权限
-        if (UserState.FROZEN.name().equals(state)) {
-            return List.of(UserPermission.FROZEN.name());
-        }
-
-        // 其他状态 (游客) -> 无权限
-        return List.of(UserPermission.NONE.name());
+        // 直接返回预聚合权限列表
+        List<String> permissionCodes = loginUser.getPermissionCodes();
+        return permissionCodes == null ? Collections.emptyList() : permissionCodes;
     }
 
     /**
@@ -72,33 +56,33 @@ public class StpInterfaceImpl implements StpInterface {
      */
     @Override
     public List<String> getRoleList(Object loginId, String loginType) {
-        // 根据登录id获取用户信息
-        UserInfo userInfo = getUserInfo(loginId);
-        if (userInfo == null) {
+        // 根据登录id获取登录用户信息
+        LoginUser loginUser = getLoginUser(loginId);
+        if (loginUser == null) {
             return Collections.emptyList();
         }
 
-        // 管理员 -> 管理员角色
-        if (userInfo.getUserRole() == UserRole.ADMIN) {
-            return List.of(UserRole.ADMIN.name());
-        }
-
-        // 普通用户 -> 普通用户角色
-        return List.of(UserRole.CUSTOMER.name());
+        // 直接返回预聚合角色列表
+        List<String> roleCodes = loginUser.getRoleCodes();
+        return roleCodes == null ? Collections.emptyList() : roleCodes;
     }
 
     /**
-     * 从 Sa-Session 获取 UserInfo
+     * 从 Sa-Session 获取 LoginUser
      *
      * @param loginId 登录id
-     * @return UserInfo
+     * @return LoginUser
      */
-    private UserInfo getUserInfo(Object loginId) {
+    private LoginUser getLoginUser(Object loginId) {
         try {
             SaSession session = StpUtil.getSessionByLoginId(loginId);
-            return (UserInfo) session.get(String.valueOf(loginId));
+            LoginUser loginUser = (LoginUser) session.get(LoginUser.SESSION_KEY);
+            if (loginUser != null) {
+                return loginUser;
+            }
+            return (LoginUser) session.get(String.valueOf(loginId));
         } catch (Exception e) {
-            log.warn("Failed to get UserInfo from session for loginId: {}", loginId);
+            log.warn("Failed to get LoginUser from session for loginId: {}", loginId);
             return null;
         }
     }

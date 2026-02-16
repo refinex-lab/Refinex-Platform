@@ -32,6 +32,24 @@ public class BaseEntity implements Serializable {
     private Long id;
 
     /**
+     * 创建人用户ID
+     */
+    @TableField(fill = FieldFill.INSERT)
+    private Long createBy;
+
+    /**
+     * 更新人用户ID
+     */
+    @TableField(fill = FieldFill.INSERT_UPDATE)
+    private Long updateBy;
+
+    /**
+     * 删除人用户ID
+     */
+    @TableField(fill = FieldFill.UPDATE)
+    private Long deleteBy;
+
+    /**
      * 逻辑删除标识
      * 0: 未删除, 1: 已删除 (推荐使用 Integer 而非 Boolean 以适配更多 DB 场景)
      */

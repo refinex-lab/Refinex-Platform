@@ -14,6 +14,7 @@
         <module>refinex-common</module>
         <module>refinex-gateway</module>
         <module>refinex-auth</module>
+        <module>refinex-business</module>
     </modules>
 
     <properties>
@@ -292,6 +293,12 @@
                 <artifactId>refinex-cache</artifactId>
                 <version>${revision}</version>
             </dependency>
+            <!-- Refinex 限流模块 -->
+            <dependency>
+                <groupId>cn.refinex</groupId>
+                <artifactId>refinex-limiter</artifactId>
+                <version>${revision}</version>
+            </dependency>
             <!-- Refinex Sa-Token 模块 -->
             <dependency>
                 <groupId>cn.refinex</groupId>
@@ -308,6 +315,12 @@
             <dependency>
                 <groupId>cn.refinex</groupId>
                 <artifactId>refinex-api</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <!-- Refinex Datasource 模块 -->
+            <dependency>
+                <groupId>cn.refinex</groupId>
+                <artifactId>refinex-datasource</artifactId>
                 <version>${revision}</version>
             </dependency>
             <!-- Refinex Lock 模块 -->

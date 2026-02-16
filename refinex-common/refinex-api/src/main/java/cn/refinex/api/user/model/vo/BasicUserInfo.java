@@ -24,12 +24,17 @@ public class BasicUserInfo implements Serializable {
     private Long userId;
 
     /**
+     * 显示名称
+     */
+    private String displayName;
+
+    /**
      * 昵称
      */
-    private String nickName;
+    private String nickname;
 
     /**
      * 头像 URL
      */
-    private String profilePhotoUrl;
+    private String avatarUrl;
 }

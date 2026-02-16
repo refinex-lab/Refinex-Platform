@@ -1,5 +1,6 @@
 package cn.refinex.datasource.config;
 
+import cn.refinex.api.user.context.CurrentUserProvider;
 import cn.refinex.datasource.handler.RefinexMetaObjectHandler;
 import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
@@ -7,12 +8,13 @@ import com.baomidou.mybatisplus.extension.plugins.inner.BlockAttackInnerIntercep
 import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
  * 数据源及 MyBatis Plus 核心配置
- *
+ * <p>
  * 1. 配置 MP 插件（分页、乐观锁、防全表更新）。
  * 2. 配置自动填充处理器。
  * 3. 扫描 Mapper 接口。
@@ -28,8 +30,8 @@ public class DatasourceConfiguration {
      * 用于处理 createTime, updateTime 等字段的自动填充
      */
     @Bean
-    public RefinexMetaObjectHandler metaObjectHandler() {
-        return new RefinexMetaObjectHandler();
+    public RefinexMetaObjectHandler metaObjectHandler(ObjectProvider<CurrentUserProvider> currentUserProvider) {
+        return new RefinexMetaObjectHandler(currentUserProvider.getIfAvailable());
     }
 
     /**
