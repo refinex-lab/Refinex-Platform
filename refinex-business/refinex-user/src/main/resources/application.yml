@@ -1,20 +1,56 @@
+# ============================================================
+# refinex-user 本地启动引导配置
+# 仅负责连接 Nacos 并导入远程配置，不承载业务参数
+# ============================================================
+
 server:
+  # User 服务本地监听端口（可被远程配置覆盖）
   port: 8082
 
 spring:
   application:
+    # 服务名，对应 Nacos 服务注册名与服务配置 DataId 前缀
     name: refinex-user
 
   config:
     import:
-      - nacos:${spring.application.name}.yml?refreshEnabled=true&group=${refinex.nacos.group:DEFAULT_GROUP}
-      - classpath:refinex-base.yml
-      - classpath:refinex-cache.yml
-      - classpath:refinex-config.yml
-      - classpath:refinex-datasource.yml
+      # 共享基础参数
+      - optional:nacos:refinex-base.yml?group=${refinex.nacos.shared-group:REFINEX_SHARED}&refreshEnabled=true
+      # Nacos 客户端通用配置
+      - optional:nacos:refinex-config.yml?group=${refinex.nacos.shared-group:REFINEX_SHARED}&refreshEnabled=true
+      # 缓存与 Redis 配置
+      - optional:nacos:refinex-cache.yml?group=${refinex.nacos.shared-group:REFINEX_SHARED}&refreshEnabled=true
+      # 数据源配置
+      - optional:nacos:refinex-datasource.yml?group=${refinex.nacos.shared-group:REFINEX_SHARED}&refreshEnabled=true
+      # 当前服务专属配置（refinex-user.yml）
+      - optional:nacos:${spring.application.name}.yml?group=${refinex.nacos.service-group:REFINEX_SERVICE}&refreshEnabled=true
 
   cloud:
     nacos:
+      # Nacos 地址
       server-addr: ${refinex.nacos.server-addr:127.0.0.1:8848}
+      # Nacos 用户名
       username: ${refinex.nacos.username:nacos}
+      # Nacos 密码
       password: ${refinex.nacos.password:nacos}
+      discovery:
+        # 服务发现命名空间
+        namespace: ${refinex.nacos.namespace:public}
+        # 服务发现分组
+        group: ${refinex.nacos.discovery-group:REFINEX_DISCOVERY}
+      config:
+        # 配置中心命名空间
+        namespace: ${refinex.nacos.namespace:public}
+        # 配置中心分组（服务级）
+        group: ${refinex.nacos.service-group:REFINEX_SERVICE}
+
+refinex:
+  nacos:
+    # 以下为“引导参数”，支持环境变量注入
+    server-addr: ${REFINEX_NACOS_SERVER_ADDR:127.0.0.1:8848}
+    username: ${REFINEX_NACOS_USERNAME:nacos}
+    password: ${REFINEX_NACOS_PASSWORD:nacos}
+    namespace: ${REFINEX_NACOS_NAMESPACE:public}
+    shared-group: ${REFINEX_NACOS_SHARED_GROUP:REFINEX_SHARED}
+    service-group: ${REFINEX_NACOS_SERVICE_GROUP:REFINEX_SERVICE}
+    discovery-group: ${REFINEX_NACOS_DISCOVERY_GROUP:REFINEX_DISCOVERY}

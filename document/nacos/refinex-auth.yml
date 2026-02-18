@@ -1,0 +1,81 @@
+# ============================================================
+# refinex-auth 服务配置
+# 发布到 Nacos: Group=REFINEX_SERVICE
+# ============================================================
+
+server:
+  # Auth 服务端口
+  port: 8081
+
+spring:
+  http:
+    clients:
+      # HTTP Service Client 全局连接超时
+      connect-timeout: 2s
+      # HTTP Service Client 全局读取超时
+      read-timeout: 5s
+    serviceclient:
+      refinex-user:
+        # 用户服务调用地址（内部服务建议 lb://）
+        base-url: lb://refinex-user
+        # 用户服务专属读取超时
+        read-timeout: 3s
+
+sa-token:
+  # Token 名称
+  token-name: Refinex-Token
+  # Token 绝对过期时间（秒）
+  timeout: ${refinex.auth.token-timeout-seconds:7200}
+  # Token 活跃过期时间（秒）
+  active-timeout: ${refinex.auth.active-timeout-seconds:1800}
+  # 是否允许多端并发登录
+  is-concurrent: true
+  # 同账号多端是否共享 Token
+  is-share: true
+  # Token 生成风格
+  token-style: uuid
+
+refinex:
+  auth:
+    # 短信验证码过期时间（秒）
+    sms-code-expire-seconds: 300
+    # 短信发送最小间隔（秒）
+    sms-code-interval-seconds: 60
+    # 短信验证码位数
+    sms-code-length: 6
+    # 登录失败阈值
+    login-fail-threshold: 5
+    # 锁定分钟数
+    lock-minutes: 30
+    # Token 过期时间（秒）
+    token-timeout-seconds: 7200
+    # Token 活跃超时时间（秒）
+    active-timeout-seconds: 1800
+    # 默认角色编码
+    default-role-code: TENANT_USER
+    # 默认系统编码
+    default-system-code: tenant
+    # 是否允许短信登录自动注册
+    auto-register-on-sms-login: false
+    # 是否默认创建企业
+    default-create-estab: false
+    # 短信发送 IP 限流阈值
+    sms-ip-limit: 20
+    # 短信发送手机号限流阈值
+    sms-phone-limit: 10
+    # 短信发送设备限流阈值
+    sms-device-limit: 20
+    # 短信限流窗口（秒）
+    sms-window-seconds: 3600
+    # 注册 IP 限流阈值
+    register-ip-limit: 10
+    # 注册标识限流阈值
+    register-identifier-limit: 5
+    # 注册限流窗口（秒）
+    register-window-seconds: 3600
+    # 登录 IP 限流阈值
+    login-ip-limit: 60
+    # 登录标识限流阈值
+    login-identifier-limit: 30
+    # 登录限流窗口（秒）
+    login-window-seconds: 60

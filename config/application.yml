@@ -1,0 +1,139 @@
+# ============================================================
+# Refinex 外部变量集中配置（本地/单机部署模板）
+# 作用：统一承接所有 ${REFINEX_XXX} 大写占位符
+# 说明：
+# 1) 生产环境建议改为环境变量或 K8s Secret 注入
+# 2) 敏感值（密码/密钥）请替换为真实值，不要提交到公共仓库
+# ============================================================
+
+# ---------------------------
+# Nacos 引导参数
+# ---------------------------
+# Nacos 服务地址
+REFINEX_NACOS_SERVER_ADDR: "127.0.0.1:8848"
+# Nacos 用户名
+REFINEX_NACOS_USERNAME: "nacos"
+# Nacos 密码
+REFINEX_NACOS_PASSWORD: "nacos"
+# Nacos 命名空间（按环境隔离）
+REFINEX_NACOS_NAMESPACE: "public"
+# Nacos 共享配置 Group
+REFINEX_NACOS_SHARED_GROUP: "REFINEX_SHARED"
+# Nacos 服务配置 Group
+REFINEX_NACOS_SERVICE_GROUP: "REFINEX_SERVICE"
+# Nacos 服务发现 Group
+REFINEX_NACOS_DISCOVERY_GROUP: "REFINEX_DISCOVERY"
+
+# ---------------------------
+# MySQL
+# ---------------------------
+# JDBC 地址
+REFINEX_MYSQL_URL: "jdbc:mysql://127.0.0.1:3306/refinex_platform?useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+# 数据库用户名
+REFINEX_MYSQL_USERNAME: "root"
+# 数据库密码
+REFINEX_MYSQL_PASSWORD: "123456"
+
+# ---------------------------
+# Redis
+# ---------------------------
+# Redis 主机
+REFINEX_REDIS_HOST: "127.0.0.1"
+# Redis 端口
+REFINEX_REDIS_PORT: 6379
+# Redis 密码（无密码可留空）
+REFINEX_REDIS_PASSWORD: ""
+
+# ---------------------------
+# MyBatis
+# ---------------------------
+# SQL 日志实现（开发环境可用 StdOut，生产建议调整）
+REFINEX_MYBATIS_LOG_IMPL: "org.apache.ibatis.logging.stdout.StdOutImpl"
+
+# ---------------------------
+# Elasticsearch
+# ---------------------------
+# 是否启用 ES
+REFINEX_ES_ENABLED: false
+# ES 地址（host:port，多个逗号分隔）
+REFINEX_ES_URL: "127.0.0.1:9200"
+# ES 用户名
+REFINEX_ES_USERNAME: ""
+# ES 密码
+REFINEX_ES_PASSWORD: ""
+# ES 索引前缀
+REFINEX_ES_INDEX_PREFIX: "refinex-"
+
+# ---------------------------
+# XXL-Job
+# ---------------------------
+# 是否启用 XXL-Job
+REFINEX_XXL_ENABLED: true
+# 调度中心地址
+REFINEX_XXL_ADMIN_ADDRESSES: "http://127.0.0.1:8080/xxl-job-admin"
+# 执行器名称（为空时可回落到服务名）
+REFINEX_XXL_APP_NAME: ""
+# 调度鉴权 token
+REFINEX_XXL_ACCESS_TOKEN: "default_token"
+
+# ---------------------------
+# Sentinel
+# ---------------------------
+# Sentinel Dashboard 地址
+REFINEX_SENTINEL_DASHBOARD: "127.0.0.1:8080"
+
+# ---------------------------
+# Stream / RocketMQ
+# ---------------------------
+# 是否启用消息流相关能力
+REFINEX_STREAM_ENABLED: false
+# RocketMQ NameServer
+REFINEX_STREAM_NAME_SERVER: "127.0.0.1:9876"
+
+# ---------------------------
+# Seata
+# ---------------------------
+# Seata 事务组
+REFINEX_SEATA_TX_GROUP: "default_tx_group"
+# Seata Server 应用名
+REFINEX_SEATA_SERVER_APP: "seata-server"
+# Seata 集群名
+REFINEX_SEATA_CLUSTER: "default"
+# Seata 配置 DataId
+REFINEX_SEATA_DATA_ID: "seataServer.properties"
+# Seata Nacos Group
+REFINEX_SEATA_GROUP: "SEATA_GROUP"
+# Seata Nacos Namespace（默认跟随 REFINEX_NACOS_NAMESPACE）
+REFINEX_SEATA_NAMESPACE: "public"
+
+# ---------------------------
+# OSS 文件存储
+# ---------------------------
+# 是否启用 OSS
+REFINEX_OSS_ENABLED: false
+# OSS Endpoint
+REFINEX_OSS_ENDPOINT: "https://oss-cn-hangzhou.aliyuncs.com"
+# OSS Bucket
+REFINEX_OSS_BUCKET: "refinex"
+# OSS AccessKey
+REFINEX_OSS_ACCESS_KEY: ""
+# OSS AccessSecret
+REFINEX_OSS_ACCESS_SECRET: ""
+# OSS 访问域名（可选）
+REFINEX_OSS_DOMAIN: ""
+
+# ---------------------------
+# 短信服务
+# ---------------------------
+# 是否启用真实短信
+REFINEX_SMS_ENABLED: false
+# 短信服务 host
+REFINEX_SMS_HOST: "https://gyytz.market.alicloudapi.com"
+# 短信服务 path
+REFINEX_SMS_PATH: "/sms/smsSend"
+# 短信 AppCode
+REFINEX_SMS_APPCODE: ""
+# 短信签名 ID
+REFINEX_SMS_SIGN_ID: ""
+# 短信模板 ID
+REFINEX_SMS_TEMPLATE_ID: ""

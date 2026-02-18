@@ -1,0 +1,63 @@
+# ============================================================
+# refinex-gateway 服务配置
+# 发布到 Nacos: Group=REFINEX_SERVICE
+# ============================================================
+
+server:
+  # Gateway 服务端口
+  port: 8080
+
+sa-token:
+  # 网关层透传 Token 名称
+  token-name: Refinex-Token
+
+spring:
+  cloud:
+    sentinel:
+      transport:
+        # Sentinel Dashboard 地址
+        dashboard: ${refinex.sentinel.dashboard}
+      datasource:
+        gateway-flow:
+          nacos:
+            # Nacos 地址
+            server-addr: ${refinex.nacos.server-addr}
+            # Nacos 命名空间
+            namespace: ${refinex.nacos.namespace:public}
+            # Nacos 用户名
+            username: ${refinex.nacos.username:nacos}
+            # Nacos 密码
+            password: ${refinex.nacos.password:nacos}
+            # 网关流控规则 DataId
+            data-id: refinex-gateway-flow-rules
+            # 规则分组
+            group-id: SENTINEL_GROUP
+            # 规则类型
+            rule-type: GW_FLOW
+
+    gateway:
+      server:
+        webflux:
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                # 允许请求头
+                allowedHeaders: '*'
+                # 允许请求方法
+                allowedMethods: '*'
+                # 允许来源
+                allowedOrigins: '*'
+                # 是否允许携带 Cookie
+                allowCredentials: true
+          default-filters:
+            # 去重 CORS 响应头
+            - DedupeResponseHeader=Access-Control-Allow-Origin, RETAIN_UNIQUE
+          routes:
+            - id: refinex-auth
+              uri: lb://refinex-auth
+              predicates:
+                - Path=/auth/**, /token/**
+            - id: refinex-user
+              uri: lb://refinex-user
+              predicates:
+                - Path=/user/**
