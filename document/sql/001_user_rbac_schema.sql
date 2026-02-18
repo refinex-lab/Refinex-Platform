@@ -6,6 +6,10 @@
 -- 3) 字符集/排序规则统一：utf8mb4 / utf8mb4_0900_ai_ci
 -- ============================================================================
 
+-- 如果数据库 refinex_platform 不存在则创建，编码 utf8mb4，排序规则 utf8mb4_0900_ai_ci
+CREATE DATABASE IF NOT EXISTS refinex_platform DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_0900_ai_ci;
+
+USE refinex_platform;
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
@@ -620,75 +624,5 @@ CREATE TABLE log_error (
   KEY idx_error_time (gmt_create),
   KEY idx_error_service (service_name, gmt_create)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='错误日志';
-
--- ============================
--- 初始化数据 (可明确给出)
--- ============================
-
--- 值集定义
-INSERT INTO app_valueset (set_code, set_name, status, sort, description)
-VALUES
-  ('gender', '性别', 1, 1, '用户性别枚举'),
-  ('user_status', '用户状态', 1, 2, '用户启用/停用/锁定'),
-  ('user_type', '用户类型', 1, 3, '平台/租户/合作方'),
-  ('login_type', '登录方式', 1, 4, '用户名密码/短信/邮箱/微信等'),
-  ('login_source', '登录来源', 1, 5, 'Web/App/小程序/API'),
-  ('role_type', '角色类型', 1, 6, '系统/租户/自定义'),
-  ('menu_type', '菜单类型', 1, 7, '目录/菜单/按钮'),
-  ('data_scope', '数据范围', 1, 8, '全部/本人/团队/自定义'),
-  ('estab_type', '组织类型', 1, 9, '平台/租户/合作方');
-
--- 值集明细
-INSERT INTO app_value (set_code, value_code, value_name, value_desc, status, is_default, sort)
-VALUES
-  ('gender', '0', '未知', '未指定', 1, 1, 1),
-  ('gender', '1', '男', NULL, 1, 0, 2),
-  ('gender', '2', '女', NULL, 1, 0, 3),
-  ('gender', '3', '其他', NULL, 1, 0, 4),
-
-  ('user_status', '1', '启用', NULL, 1, 1, 1),
-  ('user_status', '2', '停用', NULL, 1, 0, 2),
-  ('user_status', '3', '锁定', NULL, 1, 0, 3),
-
-  ('user_type', '0', '平台', NULL, 1, 0, 1),
-  ('user_type', '1', '租户', NULL, 1, 1, 2),
-  ('user_type', '2', '合作方', NULL, 1, 0, 3),
-
-  ('login_type', '1', '用户名密码', NULL, 1, 0, 1),
-  ('login_type', '2', '手机号短信', NULL, 1, 0, 2),
-  ('login_type', '3', '邮箱密码', NULL, 1, 0, 3),
-  ('login_type', '4', '邮箱验证码', NULL, 1, 0, 4),
-  ('login_type', '5', '微信扫码', NULL, 1, 0, 5),
-  ('login_type', '6', 'OAuth/OIDC', NULL, 1, 0, 6),
-  ('login_type', '7', 'SAML', NULL, 1, 0, 7),
-  ('login_type', '8', 'TOTP', NULL, 1, 0, 8),
-
-  ('login_source', '1', 'Web', NULL, 1, 1, 1),
-  ('login_source', '2', 'App', NULL, 1, 0, 2),
-  ('login_source', '3', '小程序', NULL, 1, 0, 3),
-  ('login_source', '4', 'API', NULL, 1, 0, 4),
-
-  ('role_type', '0', '系统内置', NULL, 1, 0, 1),
-  ('role_type', '1', '租户内置', NULL, 1, 0, 2),
-  ('role_type', '2', '自定义', NULL, 1, 1, 3),
-
-  ('menu_type', '0', '目录', NULL, 1, 0, 1),
-  ('menu_type', '1', '菜单', NULL, 1, 1, 2),
-  ('menu_type', '2', '按钮', NULL, 1, 0, 3),
-
-  ('data_scope', '0', '全部', NULL, 1, 1, 1),
-  ('data_scope', '1', '本人', NULL, 1, 0, 2),
-  ('data_scope', '2', '团队/部门', NULL, 1, 0, 3),
-  ('data_scope', '3', '自定义', NULL, 1, 0, 4),
-
-  ('estab_type', '0', '平台', NULL, 1, 0, 1),
-  ('estab_type', '1', '租户', NULL, 1, 1, 2),
-  ('estab_type', '2', '合作方', NULL, 1, 0, 3);
-
--- 系统定义(可明确给出)
-INSERT INTO scr_system (system_code, system_name, system_type, status, sort, remark)
-VALUES
-  ('platform', '平台管理系统', 0, 1, 1, '平台级后台'),
-  ('tenant', '租户业务系统', 1, 1, 2, '租户级业务');
 
 SET FOREIGN_KEY_CHECKS = 1;
