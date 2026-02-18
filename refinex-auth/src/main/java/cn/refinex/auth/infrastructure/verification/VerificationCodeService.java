@@ -16,8 +16,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
-import java.time.Year;
 import java.time.Duration;
+import java.time.Year;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -131,7 +131,7 @@ public class VerificationCodeService {
         }
 
         String code = generateCode(authProperties.getEmailCodeLength());
-        Map<String, Object> variables = new HashMap<>(8);
+        Map<String, Object> variables = HashMap.newHashMap(8);
         variables.put("brandName", authProperties.getMailBrandName());
         variables.put("sceneName", resolveSceneName(scene));
         variables.put("code", code);
@@ -144,6 +144,7 @@ public class VerificationCodeService {
                 authProperties.getEmailCodeTemplateName(),
                 variables
         );
+        
         if (response == null || !Boolean.TRUE.equals(response.getSuccess())) {
             throw new BizException(AuthErrorCode.SYSTEM_ERROR);
         }
@@ -158,7 +159,7 @@ public class VerificationCodeService {
      *
      * @param phone 手机号
      * @param scene 场景
-     * @param code 验证码
+     * @param code  验证码
      * @return 是否验证成功
      */
     public boolean verifySmsCode(String phone, String scene, String code) {
@@ -180,7 +181,7 @@ public class VerificationCodeService {
      *
      * @param email 邮箱
      * @param scene 场景
-     * @param code 验证码
+     * @param code  验证码
      * @return 是否验证成功
      */
     public boolean verifyEmailCode(String email, String scene, String code) {
@@ -228,10 +229,17 @@ public class VerificationCodeService {
         return "登录";
     }
 
+    /**
+     * 规范化邮箱
+     *
+     * @param email 邮箱
+     * @return 规范化后的邮箱
+     */
     private String normalizeEmail(String email) {
         if (email == null) {
             return "";
         }
+
         return email.trim().toLowerCase();
     }
 }

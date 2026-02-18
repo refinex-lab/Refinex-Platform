@@ -36,6 +36,17 @@ sa-token:
   token-style: uuid
 
 refinex:
+  web:
+    # TokenFilter 生效路径（auth 服务保持全量拦截，再按 exclude-urls 放行公开接口）
+    auth-urls:
+      - /**
+    # TokenFilter 免鉴权路径（支持 Ant 风格）
+    exclude-urls:
+      - /auth/login
+      - /auth/register
+      - /auth/sms/send
+      - /auth/email/send
+
   auth:
     # 短信验证码过期时间（秒）
     sms-code-expire-seconds: 300

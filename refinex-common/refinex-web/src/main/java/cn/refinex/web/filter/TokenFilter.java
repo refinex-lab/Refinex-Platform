@@ -1,5 +1,6 @@
 package cn.refinex.web.filter;
 
+import cn.refinex.web.autoconfigure.RefinexWebProperties;
 import cn.refinex.web.context.UserContext;
 import cn.refinex.web.utils.TokenUtils;
 import jakarta.servlet.*;
@@ -8,15 +9,18 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.redisson.api.RScript;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.RedisException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -55,9 +59,19 @@ public class TokenFilter implements Filter {
     private static final String INVALID_VALUE_UNDEFINED = "undefined";
 
     /**
+     * 路径匹配器（支持 Ant 风格通配）
+     */
+    private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
+
+    /**
      * Redisson 客户端
      */
     private final RedissonClient redissonClient;
+
+    /**
+     * Web 配置
+     */
+    private final RefinexWebProperties webProperties;
 
     /**
      * 压测模式开关
@@ -71,8 +85,9 @@ public class TokenFilter implements Filter {
      *
      * @param redissonClient Redisson 客户端
      */
-    public TokenFilter(RedissonClient redissonClient) {
+    public TokenFilter(RedissonClient redissonClient, RefinexWebProperties webProperties) {
         this.redissonClient = redissonClient;
+        this.webProperties = webProperties;
     }
 
     /**
@@ -90,6 +105,12 @@ public class TokenFilter implements Filter {
         HttpServletResponse httpResponse = (HttpServletResponse) servletResponse;
 
         try {
+            // 0. 白名单路径直接放行（例如登录、验证码发送）
+            if (isExcludedPath(httpRequest)) {
+                filterChain.doFilter(servletRequest, servletResponse);
+                return;
+            }
+
             // 1. 获取请求头
             String token = httpRequest.getHeader(HEADER_AUTH);
             // 仅在配置开启时，才允许读取压测 Header
@@ -188,6 +209,35 @@ public class TokenFilter implements Filter {
         return StringUtils.isBlank(token)
                 || INVALID_VALUE_NULL.equalsIgnoreCase(token)
                 || INVALID_VALUE_UNDEFINED.equalsIgnoreCase(token);
+    }
+
+    /**
+     * 是否命中免鉴权路径
+     *
+     * @param request 请求
+     * @return true 表示跳过 Token 校验
+     */
+    private boolean isExcludedPath(HttpServletRequest request) {
+        List<String> excludeUrls = webProperties.getExcludeUrls();
+        if (excludeUrls == null || excludeUrls.isEmpty()) {
+            return false;
+        }
+
+        String path = request.getRequestURI();
+        String contextPath = request.getContextPath();
+        if (StringUtils.isNotBlank(contextPath) && Strings.CI.startsWith(path, contextPath)) {
+            path = StringUtils.substring(path, contextPath.length());
+        }
+
+        for (String pattern : excludeUrls) {
+            if (StringUtils.isBlank(pattern)) {
+                continue;
+            }
+            if (PATH_MATCHER.match(pattern.trim(), path)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

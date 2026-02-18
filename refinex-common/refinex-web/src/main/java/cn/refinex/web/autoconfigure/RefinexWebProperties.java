@@ -27,6 +27,16 @@ public class RefinexWebProperties {
     private List<String> authUrls = new ArrayList<>();
 
     /**
+     * 免鉴权 URL 路径列表（支持 Ant 风格通配）
+     * <p>
+     * 示例：
+     * - /auth/login
+     * - /auth/sms/send
+     * - /auth/email/send
+     */
+    private List<String> excludeUrls = new ArrayList<>();
+
+    /**
      * Token 过滤器的优先级 (默认 10)
      */
     private int filterOrder = 10;
