@@ -19,6 +19,15 @@ spring:
       username: ${refinex.nacos.username:nacos}
       password: ${refinex.nacos.password:nacos}
 
+  http:
+    clients:
+      connect-timeout: 2s
+      read-timeout: 5s
+    serviceclient:
+      refinex-user:
+        base-url: lb://refinex-user
+        read-timeout: 3s
+
 sa-token:
   # Token 名称 (默认：satoken)
   token-name: Refinex-Token

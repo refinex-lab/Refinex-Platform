@@ -14,6 +14,14 @@ import java.util.List;
 @Mapper
 public interface AuthRbacMapper {
 
+    /**
+     * 查询用户角色
+     *
+     * @param userId   用户ID
+     * @param estabId  机构ID
+     * @param systemId 系统ID
+     * @return 角色集合
+     */
     @Select({
             "<script>",
             "SELECT DISTINCT r.role_code",
@@ -32,6 +40,14 @@ public interface AuthRbacMapper {
                                @Param("estabId") Long estabId,
                                @Param("systemId") Long systemId);
 
+    /**
+     * 查询用户权限
+     *
+     * @param userId   用户ID
+     * @param estabId  机构ID
+     * @param systemId 系统ID
+     * @return 权限集合
+     */
     @Select({
             "<script>",
             "SELECT DISTINCT m.permission_key",

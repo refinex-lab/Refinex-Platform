@@ -1,0 +1,20 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: refinex-user
+
+  config:
+    import:
+      - nacos:${spring.application.name}.yml?refreshEnabled=true&group=${refinex.nacos.group:DEFAULT_GROUP}
+      - classpath:refinex-base.yml
+      - classpath:refinex-cache.yml
+      - classpath:refinex-config.yml
+      - classpath:refinex-datasource.yml
+
+  cloud:
+    nacos:
+      server-addr: ${refinex.nacos.server-addr:127.0.0.1:8848}
+      username: ${refinex.nacos.username:nacos}
+      password: ${refinex.nacos.password:nacos}

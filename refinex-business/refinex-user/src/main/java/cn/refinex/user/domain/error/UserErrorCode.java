@@ -1,0 +1,28 @@
+package cn.refinex.user.domain.error;
+
+import cn.refinex.base.exception.code.ErrorCode;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
+/**
+ * 用户服务错误码
+ *
+ * @author refinex
+ */
+@Getter
+@AllArgsConstructor
+public enum UserErrorCode implements ErrorCode {
+
+    INVALID_PARAM("USER_400", "参数错误"),
+    USER_NOT_FOUND("USER_404", "用户不存在"),
+    IDENTITY_NOT_FOUND("USER_404_ID", "登录身份不存在"),
+    IDENTITY_DISABLED("USER_403_ID", "登录身份不可用"),
+    USER_DISABLED("USER_403", "用户已停用"),
+    USER_LOCKED("USER_423", "账号已锁定"),
+    DUPLICATE_IDENTITY("USER_409_ID", "账号已存在"),
+    REGISTER_TYPE_NOT_SUPPORTED("USER_422_REG", "注册方式暂不支持"),
+    ESTAB_NOT_FOUND("USER_404_ESTAB", "组织不存在");
+
+    private final String code;
+    private final String message;
+}

@@ -16,7 +16,33 @@
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
         </dependency>
 
         <dependency>
@@ -26,27 +52,11 @@
 
         <dependency>
             <groupId>cn.refinex</groupId>
-            <artifactId>refinex-limiter</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>cn.refinex</groupId>
-            <artifactId>refinex-config</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>cn.refinex</groupId>
-            <artifactId>refinex-file</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>cn.refinex</groupId>
-            <artifactId>refinex-lock</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>cn.refinex</groupId>
             <artifactId>refinex-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>cn.refinex</groupId>
+            <artifactId>refinex-web</artifactId>
         </dependency>
 
         <dependency>
@@ -56,12 +66,12 @@
 
         <dependency>
             <groupId>cn.refinex</groupId>
-            <artifactId>refinex-skywalking</artifactId>
+            <artifactId>refinex-cache</artifactId>
         </dependency>
 
         <dependency>
             <groupId>cn.refinex</groupId>
-            <artifactId>refinex-web</artifactId>
+            <artifactId>refinex-config</artifactId>
         </dependency>
 
         <dependency>
@@ -75,15 +85,44 @@
             <artifactId>junit</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
     </dependencies>
 
     <build>
         <plugins>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.mapstruct</groupId>
+                            <artifactId>mapstruct-processor</artifactId>
+                            <version>${mapstruct.version}</version>
+                        </path>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok-mapstruct-binding</artifactId>
+                            <version>0.2.0</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+            <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <skip>true</skip>
+                    <mainClass>cn.refinex.user.RefinexUserApplication</mainClass>
                 </configuration>
             </plugin>
         </plugins>

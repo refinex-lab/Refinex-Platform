@@ -46,6 +46,10 @@
         </dependency>
         <dependency>
             <groupId>cn.refinex</groupId>
+            <artifactId>refinex-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>cn.refinex</groupId>
             <artifactId>refinex-datasource</artifactId>
         </dependency>
         <dependency>

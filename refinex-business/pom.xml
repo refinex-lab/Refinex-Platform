@@ -12,6 +12,7 @@
 
     <name>${project.artifactId}</name>
     <description>Refinex Business (业务服务)</description>
+
     <modules>
         <module>refinex-user</module>
     </modules>
