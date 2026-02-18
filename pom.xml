@@ -352,6 +352,12 @@
                 <artifactId>refinex-skywalking</artifactId>
                 <version>${revision}</version>
             </dependency>
+            <!-- Refinex Mail 模块 -->
+            <dependency>
+                <groupId>cn.refinex</groupId>
+                <artifactId>refinex-mail</artifactId>
+                <version>${revision}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 

@@ -25,7 +25,6 @@ spring:
           connectTimeout: 10000
           timeout: 3000
           retryAttempts: 3
-          retryInterval: 1500
           password: ${refinex.redis.password}
           subscriptionsPerConnection: 5
           clientName: null

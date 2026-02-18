@@ -23,6 +23,11 @@ public class AuthSaTokenListener extends SaTokenListenerForSimple {
 
     /**
      * 登录时触发
+     *
+     * @param loginType      账号类别
+     * @param loginId        账号id
+     * @param tokenValue     本次登录产生的 token 值
+     * @param loginParameter 登录参数
      */
     @Override
     public void doLogin(String loginType, Object loginId, String tokenValue, SaLoginParameter loginParameter) {

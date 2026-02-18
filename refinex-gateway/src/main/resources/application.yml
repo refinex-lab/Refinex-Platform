@@ -15,13 +15,13 @@ spring:
   config:
     import:
       # 共享基础参数
-      - optional:nacos:refinex-base.yml?group=${refinex.nacos.shared-group:REFINEX_SHARED}&refreshEnabled=true
+      - optional:nacos:refinex-base.yml?group=${REFINEX_NACOS_SHARED_GROUP:REFINEX_SHARED}&refreshEnabled=true
       # Nacos 客户端通用配置
-      - optional:nacos:refinex-config.yml?group=${refinex.nacos.shared-group:REFINEX_SHARED}&refreshEnabled=true
+      - optional:nacos:refinex-config.yml?group=${REFINEX_NACOS_SHARED_GROUP:REFINEX_SHARED}&refreshEnabled=true
       # 缓存与 Redis 配置
-      - optional:nacos:refinex-cache.yml?group=${refinex.nacos.shared-group:REFINEX_SHARED}&refreshEnabled=true
+      - optional:nacos:refinex-cache.yml?group=${REFINEX_NACOS_SHARED_GROUP:REFINEX_SHARED}&refreshEnabled=true
       # 当前服务专属配置（refinex-gateway.yml）
-      - optional:nacos:${spring.application.name}.yml?group=${refinex.nacos.service-group:REFINEX_SERVICE}&refreshEnabled=true
+      - optional:nacos:${spring.application.name}.yml?group=${REFINEX_NACOS_SERVICE_GROUP:REFINEX_SERVICE}&refreshEnabled=true
 
   cloud:
     nacos:
@@ -40,7 +40,7 @@ spring:
         # 配置中心命名空间
         namespace: ${refinex.nacos.namespace:public}
         # 配置中心分组（服务级）
-        group: ${refinex.nacos.service-group:REFINEX_SERVICE}
+        group: ${REFINEX_NACOS_SERVICE_GROUP:REFINEX_SERVICE}
 
 refinex:
   nacos:

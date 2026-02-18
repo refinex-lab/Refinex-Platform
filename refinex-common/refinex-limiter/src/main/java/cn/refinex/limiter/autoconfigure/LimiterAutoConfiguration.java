@@ -1,9 +1,9 @@
 package cn.refinex.limiter.autoconfigure;
 
+import cn.refinex.limiter.api.RateLimiter;
 import cn.refinex.limiter.support.SlidingWindowRateLimiter;
 import org.redisson.api.RedissonClient;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 
@@ -12,7 +12,10 @@ import org.springframework.context.annotation.Bean;
  *
  * @author refinex
  */
-@AutoConfiguration
+@AutoConfiguration(afterName = {
+        "org.redisson.spring.starter.RedissonAutoConfigurationV4",
+        "org.redisson.spring.starter.RedissonAutoConfigurationV2"
+})
 public class LimiterAutoConfiguration {
 
     /**
@@ -22,9 +25,8 @@ public class LimiterAutoConfiguration {
      * @return 滑动窗口限流器
      */
     @Bean
-    @ConditionalOnBean(RedissonClient.class)
-    @ConditionalOnMissingBean
-    public SlidingWindowRateLimiter slidingWindowRateLimiter(RedissonClient redissonClient) {
+    @ConditionalOnMissingBean(RateLimiter.class)
+    public RateLimiter slidingWindowRateLimiter(RedissonClient redissonClient) {
         return new SlidingWindowRateLimiter(redissonClient);
     }
 }

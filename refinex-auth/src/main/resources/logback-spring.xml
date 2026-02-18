@@ -17,10 +17,10 @@
 
     <!-- 定义敏感信息转换器(基于 Sensitive Logback) -->
     <conversionRule conversionWord="sensitive"
-                    converterClass="com.github.houbb.sensitive.logback.converter.SensitiveLogbackConverter"/>
+                    class="com.github.houbb.sensitive.logback.converter.SensitiveLogbackConverter"/>
     <!-- 定义线程ID转换器(SkyWalking 的 TraceId 转换器) -->
     <conversionRule conversionWord="tid"
-                    converterClass="org.apache.skywalking.apm.toolkit.log.logback.v1.x.LogbackPatternConverter"/>
+                    class="org.apache.skywalking.apm.toolkit.log.logback.v1.x.LogbackPatternConverter"/>
 
     <!-- 定义控制台日志格式 -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
@@ -141,6 +141,16 @@
             <!-- 输出到 INFO 文件 -->
             <appender-ref ref="ASYNC_INFO"/>
             <!-- 输出到 ERROR 文件 -->
+            <appender-ref ref="ASYNC_ERROR"/>
+        </root>
+    </springProfile>
+
+    <!-- 未显式激活 Profile 时的兜底日志配置 -->
+    <springProfile name="default">
+        <logger name="cn.refinex" level="INFO"/>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_INFO"/>
             <appender-ref ref="ASYNC_ERROR"/>
         </root>
     </springProfile>

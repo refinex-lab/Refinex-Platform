@@ -36,6 +36,7 @@ public class TokenController {
         if (!StpUtil.isLogin()) {
             throw new BizException(AuthErrorCode.USER_NOT_FOUND);
         }
+
         TokenInfo info = new TokenInfo();
         info.setTokenName(StpUtil.getTokenName());
         info.setTokenValue(StpUtil.getTokenValue());
@@ -55,6 +56,7 @@ public class TokenController {
         if (!StpUtil.isLogin()) {
             throw new BizException(AuthErrorCode.USER_NOT_FOUND);
         }
+
         return SingleResponse.of(LoginUserHelper.getLoginUser());
     }
 
@@ -68,10 +70,12 @@ public class TokenController {
         if (!StpUtil.isLogin()) {
             throw new BizException(AuthErrorCode.USER_NOT_FOUND);
         }
+
         LoginUser loginUser = LoginUserHelper.getLoginUser();
         if (loginUser == null || loginUser.getUserId() == null) {
             throw new BizException(AuthErrorCode.USER_NOT_FOUND);
         }
+
         UserInfo userInfo = userRemoteGateway.queryUserInfo(loginUser.getUserId(), loginUser.getEstabId());
         return SingleResponse.of(userInfo);
     }
