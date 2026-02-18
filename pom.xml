@@ -30,7 +30,6 @@
         <spring-cloud.version>2025.1.1</spring-cloud.version>
         <spring-cloud-alibaba.version>2025.1.0.0</spring-cloud-alibaba.version>
 
-        <mybatis-plus.version>3.5.9</mybatis-plus.version>
         <druid.version>1.2.27</druid.version>
         <hutool.version>5.8.32</hutool.version>
         <lombok.version>1.18.34</lombok.version>
@@ -333,6 +332,24 @@
             <dependency>
                 <groupId>cn.refinex</groupId>
                 <artifactId>refinex-sms</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <!-- Refinex Config 模块 -->
+            <dependency>
+                <groupId>cn.refinex</groupId>
+                <artifactId>refinex-config</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <!-- Refinex File 模块 -->
+            <dependency>
+                <groupId>cn.refinex</groupId>
+                <artifactId>refinex-file</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <!-- Refinex SkyWalking 模块 -->
+            <dependency>
+                <groupId>cn.refinex</groupId>
+                <artifactId>refinex-skywalking</artifactId>
                 <version>${revision}</version>
             </dependency>
         </dependencies>

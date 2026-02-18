@@ -3,6 +3,8 @@
   <component name="Encoding" defaultCharsetForPropertiesFiles="UTF-8">
     <file url="file://$PROJECT_DIR$/refinex-auth/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/refinex-auth/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/refinex-business/refinex-user/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/refinex-business/refinex-user/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/refinex-business/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/refinex-business/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/refinex-common/refinex-api/src/main/java" charset="UTF-8" />
