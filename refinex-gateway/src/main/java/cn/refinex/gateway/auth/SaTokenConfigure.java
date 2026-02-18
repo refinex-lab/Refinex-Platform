@@ -9,9 +9,12 @@ import cn.dev33.satoken.stp.StpUtil;
 import cn.dev33.satoken.util.SaResult;
 import cn.refinex.api.user.enums.UserPermission;
 import cn.refinex.api.user.enums.UserRole;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.util.CollectionUtils;
 
 /**
  * Sa-Token 全局过滤器配置 (WebFlux 版)
@@ -20,13 +23,21 @@ import org.springframework.context.annotation.Configuration;
  */
 @Slf4j
 @Configuration
+@RequiredArgsConstructor
+@EnableConfigurationProperties(GatewayAuthProperties.class)
 public class SaTokenConfigure {
+
+    private final GatewayAuthProperties gatewayAuthProperties;
 
     /**
      * 配置 Sa-Token 全局过滤器
      */
     @Bean
     public SaReactorFilter getSaReactorFilter() {
+        String[] authExcludePaths = CollectionUtils.isEmpty(gatewayAuthProperties.getExcludePaths())
+                ? new String[0]
+                : gatewayAuthProperties.getExcludePaths().toArray(String[]::new);
+
         return new SaReactorFilter()
                 // 1. 拦截所有请求
                 .addInclude("/**")
@@ -38,15 +49,8 @@ public class SaTokenConfigure {
                     SaRouter
                             // 拦截所有
                             .match("/**")
-                            // 排除白名单
-                            .notMatch(
-                                    // 放行登陆接口
-                                    "/auth/login",
-                                    // 放行注册接口
-                                    "/auth/register",
-                                    // 放行支付回调接口
-                                    "/wxPay/notify"
-                            )
+                            // 排除白名单（由 refinex-gateway.yml 配置）
+                            .notMatch(authExcludePaths)
                             // 其他请求都需要登录校验
                             .check(r -> StpUtil.checkLogin());
 

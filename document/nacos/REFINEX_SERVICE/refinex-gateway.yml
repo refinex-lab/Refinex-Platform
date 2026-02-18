@@ -11,6 +11,17 @@ sa-token:
   # 网关层透传 Token 名称
   token-name: Refinex-Token
 
+refinex:
+  gateway:
+    auth:
+      # 网关登录校验白名单（无需 Token）
+      exclude-paths:
+        - /auth/login
+        - /auth/sms/send
+        - /auth/email/send
+        - /auth/register
+        - /wxPay/notify
+
 spring:
   cloud:
     sentinel:
