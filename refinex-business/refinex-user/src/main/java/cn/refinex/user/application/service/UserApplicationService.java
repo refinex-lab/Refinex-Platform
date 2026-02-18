@@ -6,6 +6,7 @@ import cn.refinex.user.application.assembler.UserDomainAssembler;
 import cn.refinex.user.application.command.QueryAuthSubjectCommand;
 import cn.refinex.user.application.command.QueryUserInfoCommand;
 import cn.refinex.user.application.command.RegisterUserCommand;
+import cn.refinex.user.application.command.ResetPasswordCommand;
 import cn.refinex.user.application.command.ResolveEstabCommand;
 import cn.refinex.user.application.command.UpdateLoginFailureCommand;
 import cn.refinex.user.application.command.UpdateLoginSuccessCommand;
@@ -144,6 +145,78 @@ public class UserApplicationService {
     }
 
     /**
+     * 重置密码（手机号验证码 / 邮箱验证码）
+     *
+     * @param command 重置密码命令
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void resetPassword(ResetPasswordCommand command) {
+        if (command.getVerifyIdentityType() == null || command.getIdentifier() == null || command.getIdentifier().isBlank()
+                || command.getNewPassword() == null || command.getNewPassword().isBlank()) {
+            throw new BizException(UserErrorCode.INVALID_PARAM);
+        }
+
+        IdentityType verifyIdentityType = IdentityType.of(command.getVerifyIdentityType());
+        if (verifyIdentityType != IdentityType.PHONE_SMS && verifyIdentityType != IdentityType.EMAIL_PASSWORD) {
+            throw new BizException(UserErrorCode.INVALID_PARAM);
+        }
+
+        String normalizedIdentifier = verifyIdentityType == IdentityType.EMAIL_PASSWORD
+                ? command.getIdentifier().trim().toLowerCase()
+                : command.getIdentifier().trim();
+
+        UserIdentityEntity verifyIdentity = userRepository.findIdentityByTypeAndIdentifier(verifyIdentityType.getCode(), normalizedIdentifier);
+        if (verifyIdentity == null) {
+            throw new BizException(UserErrorCode.IDENTITY_NOT_FOUND);
+        }
+
+        if (command.getEstabId() != null && !userRepository.hasActiveEstabMembership(verifyIdentity.getUserId(), command.getEstabId())) {
+            throw new BizException(UserErrorCode.USER_NOT_FOUND);
+        }
+
+        UserIdentityEntity passwordIdentity = resolvePasswordIdentity(verifyIdentity.getUserId(), verifyIdentityType);
+        if (passwordIdentity == null) {
+            throw new BizException(UserErrorCode.PASSWORD_RESET_NOT_SUPPORTED);
+        }
+
+        userRepository.updateIdentityCredential(
+                passwordIdentity.getId(),
+                passwordEncoder.encode(command.getNewPassword()),
+                "bcrypt",
+                1,
+                LocalDateTime.now()
+        );
+        userRepository.resetLoginFailCount(verifyIdentity.getUserId());
+    }
+
+    /**
+     * 解析需要更新的密码身份
+     *
+     * @param userId              用户ID
+     * @param verifyIdentityType  本次校验使用的身份类型
+     * @return 密码身份
+     */
+    private UserIdentityEntity resolvePasswordIdentity(Long userId, IdentityType verifyIdentityType) {
+        if (userId == null) {
+            return null;
+        }
+
+        if (verifyIdentityType == IdentityType.EMAIL_PASSWORD) {
+            UserIdentityEntity emailIdentity = userRepository.findIdentityByUserIdAndType(userId, IdentityType.EMAIL_PASSWORD.getCode());
+            if (emailIdentity != null) {
+                return emailIdentity;
+            }
+        }
+
+        UserIdentityEntity usernameIdentity = userRepository.findIdentityByUserIdAndType(userId, IdentityType.USERNAME_PASSWORD.getCode());
+        if (usernameIdentity != null) {
+            return usernameIdentity;
+        }
+
+        return userRepository.findIdentityByUserIdAndType(userId, IdentityType.EMAIL_PASSWORD.getCode());
+    }
+
+    /**
      * 查询用户信息
      *
      * @param command 查询命令
@@ -244,7 +317,7 @@ public class UserApplicationService {
             user.setPhoneVerified(1);
         } else if (registerType == RegisterType.EMAIL) {
             user.setPrimaryEmail(command.getIdentifier());
-            user.setEmailVerified(0);
+            user.setEmailVerified(1);
         }
         return user;
     }
@@ -267,13 +340,16 @@ public class UserApplicationService {
         identity.setStatus(1);
         identity.setIsPrimary(1);
         LocalDateTime now = LocalDateTime.now();
-        identity.setVerified(registerType == RegisterType.PHONE ? 1 : 0);
-        identity.setVerifiedAt(registerType == RegisterType.PHONE ? now : null);
+        identity.setVerified(registerType == RegisterType.PHONE || registerType == RegisterType.EMAIL ? 1 : 0);
+        identity.setVerifiedAt(registerType == RegisterType.PHONE || registerType == RegisterType.EMAIL ? now : null);
         identity.setBindTime(now);
-        if (registerType == RegisterType.USERNAME || registerType == RegisterType.EMAIL) {
+        if (registerType == RegisterType.USERNAME) {
             if (command.getPassword() == null || command.getPassword().isBlank()) {
                 throw new BizException(UserErrorCode.INVALID_PARAM);
             }
+            identity.setCredential(passwordEncoder.encode(command.getPassword()));
+            identity.setCredentialAlg("bcrypt");
+        } else if (registerType == RegisterType.EMAIL && command.getPassword() != null && !command.getPassword().isBlank()) {
             identity.setCredential(passwordEncoder.encode(command.getPassword()));
             identity.setCredentialAlg("bcrypt");
         }

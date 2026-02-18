@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { Menu, X } from 'lucide-react'
+import { appConfig } from '@/config/app-config'
 import { cn } from '@/lib/utils'
 import {
   SidebarMenu,
@@ -25,8 +26,8 @@ export function AppTitle() {
               onClick={() => setOpenMobile(false)}
               className='grid flex-1 text-start text-sm leading-tight'
             >
-              <span className='truncate font-bold'>Refinex-Admin</span>
-              <span className='truncate text-xs'>Vite + ShadcnUI</span>
+              <span className='truncate font-bold'>{appConfig.app.name}</span>
+              <span className='truncate text-xs'>{appConfig.app.subtitle}</span>
             </Link>
             <ToggleSidebar />
           </div>

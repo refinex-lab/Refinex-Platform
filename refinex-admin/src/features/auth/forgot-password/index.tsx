@@ -1,44 +1,23 @@
 import { Link } from '@tanstack/react-router'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import { AuthLayout } from '../auth-layout'
 import { ForgotPasswordForm } from './components/forgot-password-form'
 
 export function ForgotPassword() {
   return (
     <AuthLayout>
-      <Card className='gap-4'>
-        <CardHeader>
-          <CardTitle className='text-lg tracking-tight'>
-            忘记密码
-          </CardTitle>
-          <CardDescription>
-            请输入你注册时使用的邮箱<br />
-            我们将向你发送重置密码的链接。
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ForgotPasswordForm />
-        </CardContent>
-        <CardFooter>
-          <p className='mx-auto px-8 text-center text-sm text-balance text-muted-foreground'>
-            还没有账号？{' '}
-            <Link
-              to='/sign-up'
-              className='underline underline-offset-4 hover:text-primary'
-            >
-              去注册
-            </Link>
-            .
-          </p>
-        </CardFooter>
-      </Card>
+      <div className='space-y-2'>
+        <h2 className='text-2xl font-semibold tracking-tight'>重置密码</h2>
+        <p className='text-sm text-muted-foreground'>
+          支持手机号短信验证码、邮箱验证码重置密码，完成验证后可直接设置新密码。
+        </p>
+      </div>
+      <ForgotPasswordForm />
+      <p className='text-center text-sm text-muted-foreground'>
+        还没有账号？
+        <Link to='/sign-up' className='ms-1 underline underline-offset-4 hover:text-primary'>
+          去注册
+        </Link>
+      </p>
     </AuthLayout>
   )
 }

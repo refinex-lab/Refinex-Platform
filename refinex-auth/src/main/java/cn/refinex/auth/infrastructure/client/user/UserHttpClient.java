@@ -8,6 +8,7 @@ import cn.refinex.api.user.model.dto.UserLoginFailureCommand;
 import cn.refinex.api.user.model.dto.UserLoginSuccessCommand;
 import cn.refinex.api.user.model.dto.UserRegisterCommand;
 import cn.refinex.api.user.model.dto.UserRegisterResult;
+import cn.refinex.api.user.model.dto.UserResetPasswordCommand;
 import cn.refinex.api.user.model.vo.UserInfo;
 import cn.refinex.base.response.SingleResponse;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -66,6 +67,15 @@ public interface UserHttpClient {
      */
     @PostExchange("/auth/login/failure")
     SingleResponse<Void> loginFailure(@RequestBody UserLoginFailureCommand command);
+
+    /**
+     * 重置密码
+     *
+     * @param command 重置密码命令
+     * @return 操作结果
+     */
+    @PostExchange("/auth/password/reset")
+    SingleResponse<Void> resetPassword(@RequestBody UserResetPasswordCommand command);
 
     /**
      * 获取用户信息

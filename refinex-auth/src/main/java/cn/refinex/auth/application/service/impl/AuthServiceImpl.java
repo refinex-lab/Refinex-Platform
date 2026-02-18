@@ -11,6 +11,7 @@ import cn.refinex.api.user.model.dto.UserRegisterResult;
 import cn.refinex.auth.api.dto.EmailSendRequest;
 import cn.refinex.auth.api.dto.LoginRequest;
 import cn.refinex.auth.api.dto.RegisterRequest;
+import cn.refinex.auth.api.dto.ResetPasswordRequest;
 import cn.refinex.auth.api.dto.SmsSendRequest;
 import cn.refinex.auth.api.vo.LoginResponse;
 import cn.refinex.auth.api.vo.TokenInfo;
@@ -114,6 +115,37 @@ public class AuthServiceImpl implements AuthService {
     }
 
     /**
+     * 重置密码
+     *
+     * @param request 重置密码请求
+     * @param context 登录上下文
+     */
+    @Override
+    public void resetPassword(ResetPasswordRequest request, LoginContext context) {
+        authSecurityService.checkLogin(request.getIdentifier(), context);
+
+        RegisterType resetType = requireRegisterType(request.getResetType());
+        if (resetType != RegisterType.PHONE && resetType != RegisterType.EMAIL) {
+            throw new BizException(AuthErrorCode.INVALID_PARAM);
+        }
+
+        String identifier = request.getIdentifier() == null ? "" : request.getIdentifier().trim();
+        if (identifier.isBlank() || request.getNewPassword() == null || request.getNewPassword().isBlank()) {
+            throw new BizException(AuthErrorCode.INVALID_PARAM);
+        }
+
+        boolean ok = resetType == RegisterType.PHONE
+                ? verificationCodeService.verifySmsCode(identifier, "reset", request.getCode())
+                : verificationCodeService.verifyEmailCode(identifier, "reset", request.getCode());
+        if (!ok) {
+            throw new BizException(AuthErrorCode.CODE_ERROR);
+        }
+
+        String normalizedIdentifier = resetType == RegisterType.EMAIL ? identifier.toLowerCase() : identifier;
+        userRemoteGateway.resetPassword(resetType.getCode(), normalizedIdentifier, request.getNewPassword(), request.getEstabId());
+    }
+
+    /**
      * 注册
      *
      * @param request  注册请求
@@ -206,7 +238,7 @@ public class AuthServiceImpl implements AuthService {
      * @param request       注册请求
      */
     private void validateRegisterCredential(RegisterType registerType, RegisterRequest request) {
-        if ((registerType == RegisterType.USERNAME || registerType == RegisterType.EMAIL) && (request.getPassword() == null || request.getPassword().isBlank())) {
+        if (registerType == RegisterType.USERNAME && (request.getPassword() == null || request.getPassword().isBlank())) {
             throw new BizException(AuthErrorCode.INVALID_PARAM);
         }
 

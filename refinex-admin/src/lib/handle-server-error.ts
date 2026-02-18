@@ -1,11 +1,16 @@
 import { AxiosError } from 'axios'
 import { toast } from 'sonner'
+import { ApiBusinessError } from '@/lib/http'
 
 export function handleServerError(error: unknown) {
   // eslint-disable-next-line no-console
   console.log(error)
 
   let errMsg = '发生错误！'
+
+  if (error instanceof ApiBusinessError) {
+    errMsg = error.message
+  }
 
   if (
     error &&
@@ -17,7 +22,17 @@ export function handleServerError(error: unknown) {
   }
 
   if (error instanceof AxiosError) {
-    errMsg = error.response?.data.title
+    const responseData = error.response?.data
+    if (responseData && typeof responseData === 'object') {
+      const payload = responseData as Record<string, unknown>
+      errMsg =
+        (typeof payload.msg === 'string' && payload.msg) ||
+        (typeof payload.responseMessage === 'string' && payload.responseMessage) ||
+        (typeof payload.title === 'string' && payload.title) ||
+        error.message
+    } else {
+      errMsg = error.message
+    }
   }
 
   toast.error(errMsg)

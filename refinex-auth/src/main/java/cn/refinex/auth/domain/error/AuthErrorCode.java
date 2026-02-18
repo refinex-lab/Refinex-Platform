@@ -28,6 +28,7 @@ public enum AuthErrorCode implements ErrorCode {
     LOGIN_TOO_FREQUENT("AUTH_429_LOGIN", "登录请求过于频繁"),
     LOGIN_TYPE_NOT_SUPPORTED("AUTH_422", "登录方式暂不支持"),
     REGISTER_TYPE_NOT_SUPPORTED("AUTH_422_REG", "注册方式暂不支持"),
+    PASSWORD_RESET_NOT_SUPPORTED("AUTH_422_PWD_RESET", "该账号暂不支持密码重置"),
     ESTAB_NOT_FOUND("AUTH_404_ESTAB", "组织不存在"),
     ESTAB_LOGIN_FORBIDDEN("AUTH_403_ESTAB", "组织禁止该登录方式"),
     SYSTEM_ERROR("AUTH_500", "系统错误");

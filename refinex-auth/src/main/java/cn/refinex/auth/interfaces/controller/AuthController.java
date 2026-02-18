@@ -3,6 +3,7 @@ package cn.refinex.auth.interfaces.controller;
 import cn.refinex.auth.api.dto.EmailSendRequest;
 import cn.refinex.auth.api.dto.LoginRequest;
 import cn.refinex.auth.api.dto.RegisterRequest;
+import cn.refinex.auth.api.dto.ResetPasswordRequest;
 import cn.refinex.auth.api.dto.SmsSendRequest;
 import cn.refinex.auth.api.vo.LoginResponse;
 import cn.refinex.auth.domain.enums.LoginSource;
@@ -64,6 +65,19 @@ public class AuthController {
     public SingleResponse<Long> register(@Valid @RequestBody RegisterRequest request, HttpServletRequest httpRequest) {
         Long userId = authService.register(request, buildContext(null, httpRequest));
         return SingleResponse.of(userId);
+    }
+
+    /**
+     * 重置密码
+     *
+     * @param request 重置密码请求
+     * @param httpRequest HTTP请求
+     * @return 单一结果
+     */
+    @PostMapping("/password/reset")
+    public SingleResponse<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request, HttpServletRequest httpRequest) {
+        authService.resetPassword(request, buildContext(null, httpRequest));
+        return SingleResponse.of(null);
     }
 
     /**

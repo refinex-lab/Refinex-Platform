@@ -46,6 +46,7 @@ refinex:
       - /auth/register
       - /auth/sms/send
       - /auth/email/send
+      - /auth/password/reset
 
   auth:
     # 短信验证码过期时间（秒）

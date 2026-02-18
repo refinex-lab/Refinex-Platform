@@ -27,7 +27,7 @@ public class RegisterRequest {
     private String identifier;
 
     /**
-     * 密码（用户名/邮箱注册必填）
+     * 密码（用户名注册必填，邮箱注册可选）
      */
     @Size(max = 128)
     private String password;

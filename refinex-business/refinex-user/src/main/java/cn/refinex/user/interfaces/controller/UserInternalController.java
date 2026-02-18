@@ -8,6 +8,7 @@ import cn.refinex.api.user.model.dto.UserLoginFailureCommand;
 import cn.refinex.api.user.model.dto.UserLoginSuccessCommand;
 import cn.refinex.api.user.model.dto.UserRegisterCommand;
 import cn.refinex.api.user.model.dto.UserRegisterResult;
+import cn.refinex.api.user.model.dto.UserResetPasswordCommand;
 import cn.refinex.api.user.model.vo.UserInfo;
 import cn.refinex.base.response.SingleResponse;
 import cn.refinex.user.application.dto.AuthSubjectDTO;
@@ -92,6 +93,18 @@ public class UserInternalController {
     @PostMapping("/auth/login/failure")
     public SingleResponse<Void> loginFailure(@Valid @RequestBody UserLoginFailureCommand command) {
         userApplicationService.markLoginFailure(userApiAssembler.toUpdateLoginFailureCommand(command));
+        return SingleResponse.of(null);
+    }
+
+    /**
+     * 重置密码
+     *
+     * @param command 重置密码命令
+     * @return 操作结果
+     */
+    @PostMapping("/auth/password/reset")
+    public SingleResponse<Void> resetPassword(@Valid @RequestBody UserResetPasswordCommand command) {
+        userApplicationService.resetPassword(userApiAssembler.toResetPasswordCommand(command));
         return SingleResponse.of(null);
     }
 

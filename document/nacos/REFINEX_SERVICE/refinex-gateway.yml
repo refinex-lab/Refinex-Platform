@@ -20,6 +20,7 @@ refinex:
         - /auth/sms/send
         - /auth/email/send
         - /auth/register
+        - /auth/password/reset
         - /wxPay/notify
 
 spring:

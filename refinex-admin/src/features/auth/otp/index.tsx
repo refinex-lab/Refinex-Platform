@@ -1,44 +1,20 @@
 import { Link } from '@tanstack/react-router'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import { AuthLayout } from '../auth-layout'
-import { OtpForm } from './components/otp-form'
 
 export function Otp() {
   return (
     <AuthLayout>
-      <Card className='gap-4'>
-        <CardHeader>
-          <CardTitle className='text-base tracking-tight'>
-            双重身份验证
-          </CardTitle>
-          <CardDescription>
-            请输入验证码。<br />
-            我们已将验证码发送至你的邮箱。
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <OtpForm />
-        </CardContent>
-        <CardFooter>
-          <p className='px-8 text-center text-sm text-muted-foreground'>
-            没收到验证码？{' '}
-            <Link
-              to='/sign-in'
-              className='underline underline-offset-4 hover:text-primary'
-            >
-              重新发送
-            </Link>
-            .
-          </p>
-        </CardFooter>
-      </Card>
+      <div className='space-y-2'>
+        <h2 className='text-2xl font-semibold tracking-tight'>高级认证</h2>
+        <p className='text-sm text-muted-foreground'>
+          TOTP / OAuth / OIDC / SAML / 微信扫码能力正在建设中，目前请使用用户名、手机号或邮箱方式登录。
+        </p>
+      </div>
+      <div className='pt-1 text-sm text-muted-foreground'>
+        <Link to='/sign-in' className='underline underline-offset-4 hover:text-primary'>
+          返回登录
+        </Link>
+      </div>
     </AuthLayout>
   )
 }

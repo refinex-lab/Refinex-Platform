@@ -1,7 +1,21 @@
-import { type SVGProps } from 'react'
+import { appConfig } from '@/config/app-config'
 import { cn } from '@/lib/utils'
 
-export function Logo({ className, ...props }: SVGProps<SVGSVGElement>) {
+type LogoProps = {
+  className?: string
+}
+
+export function Logo({ className }: LogoProps) {
+  if (appConfig.app.logoUrl) {
+    return (
+      <img
+        src={appConfig.app.logoUrl}
+        alt={appConfig.app.name}
+        className={cn('size-6 object-contain', className)}
+      />
+    )
+  }
+
   return (
     <svg
       id='shadcn-admin-logo'
@@ -15,7 +29,6 @@ export function Logo({ className, ...props }: SVGProps<SVGSVGElement>) {
       strokeLinecap='round'
       strokeLinejoin='round'
       className={cn('size-6', className)}
-      {...props}
     >
       <title>Refinex 管理后台</title>
       <path d='M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3' />

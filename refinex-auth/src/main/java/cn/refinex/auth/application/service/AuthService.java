@@ -3,6 +3,7 @@ package cn.refinex.auth.application.service;
 import cn.refinex.auth.api.dto.EmailSendRequest;
 import cn.refinex.auth.api.dto.LoginRequest;
 import cn.refinex.auth.api.dto.RegisterRequest;
+import cn.refinex.auth.api.dto.ResetPasswordRequest;
 import cn.refinex.auth.api.dto.SmsSendRequest;
 import cn.refinex.auth.api.vo.LoginResponse;
 import cn.refinex.auth.domain.model.LoginContext;
@@ -29,6 +30,14 @@ public interface AuthService {
      * @param context 登录上下文
      */
     void sendEmailCode(EmailSendRequest request, LoginContext context);
+
+    /**
+     * 重置密码
+     *
+     * @param request 重置密码请求
+     * @param context 登录上下文
+     */
+    void resetPassword(ResetPasswordRequest request, LoginContext context);
 
     /**
      * 注册

@@ -23,12 +23,13 @@ import {
   GalleryVerticalEnd,
 } from 'lucide-react'
 import { ClerkLogo } from '@/assets/clerk-logo'
+import { appConfig } from '@/config/app-config'
 import { type SidebarData } from '../types'
 
 export const sidebarData: SidebarData = {
   user: {
-    name: 'Refinex',
-    email: 'refinex@163.com',
+    name: appConfig.app.name,
+    email: appConfig.app.subtitle,
     avatar: '/avatars/avatar.jpg',
   },
   teams: [

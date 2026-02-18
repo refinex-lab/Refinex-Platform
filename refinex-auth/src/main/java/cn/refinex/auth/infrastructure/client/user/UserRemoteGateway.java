@@ -1,13 +1,6 @@
 package cn.refinex.auth.infrastructure.client.user;
 
-import cn.refinex.api.user.model.dto.EstabResolveRequest;
-import cn.refinex.api.user.model.dto.UserAuthSubjectDTO;
-import cn.refinex.api.user.model.dto.UserAuthSubjectQuery;
-import cn.refinex.api.user.model.dto.UserInfoQuery;
-import cn.refinex.api.user.model.dto.UserLoginFailureCommand;
-import cn.refinex.api.user.model.dto.UserLoginSuccessCommand;
-import cn.refinex.api.user.model.dto.UserRegisterCommand;
-import cn.refinex.api.user.model.dto.UserRegisterResult;
+import cn.refinex.api.user.model.dto.*;
 import cn.refinex.api.user.model.vo.UserInfo;
 import cn.refinex.auth.domain.error.AuthErrorCode;
 import cn.refinex.base.exception.BizException;
@@ -41,8 +34,8 @@ public class UserRemoteGateway {
     /**
      * 解析机构ID
      *
-     * @param estabId     机构ID
-     * @param estabCode   机构编号
+     * @param estabId   机构ID
+     * @param estabCode 机构编号
      * @return 机构ID
      */
     public Long resolveEstabId(Long estabId, String estabCode) {
@@ -55,9 +48,9 @@ public class UserRemoteGateway {
     /**
      * 查询认证主体
      *
-     * @param identityType  认证主体类型
-     * @param identifier    认证主体标识
-     * @param estabId       机构ID
+     * @param identityType 认证主体类型
+     * @param identifier   认证主体标识
+     * @param estabId      机构ID
      * @return 认证主体
      */
     public UserAuthSubjectDTO queryAuthSubject(Integer identityType, String identifier, Long estabId) {
@@ -71,9 +64,9 @@ public class UserRemoteGateway {
     /**
      * 标记登录成功
      *
-     * @param userId    用户ID
-     * @param identityId    认证主体ID
-     * @param ip      登录IP
+     * @param userId     用户ID
+     * @param identityId 认证主体ID
+     * @param ip         登录IP
      */
     public void markLoginSuccess(Long userId, Long identityId, String ip) {
         UserLoginSuccessCommand command = new UserLoginSuccessCommand();
@@ -113,10 +106,27 @@ public class UserRemoteGateway {
     }
 
     /**
+     * 按校验标识重置密码
+     *
+     * @param verifyIdentityType 校验身份类型（2手机号 3邮箱）
+     * @param identifier         校验标识（手机号/邮箱）
+     * @param newPassword        新密码
+     * @param estabId            组织ID（可选）
+     */
+    public void resetPassword(Integer verifyIdentityType, String identifier, String newPassword, Long estabId) {
+        UserResetPasswordCommand command = new UserResetPasswordCommand();
+        command.setVerifyIdentityType(verifyIdentityType);
+        command.setIdentifier(identifier);
+        command.setNewPassword(newPassword);
+        command.setEstabId(estabId);
+        invoke(() -> userHttpClient.resetPassword(command));
+    }
+
+    /**
      * 调用用户服务
      *
-     * @param supplier  调用方法
-     * @param <T>       返回结果类型
+     * @param supplier 调用方法
+     * @param <T>      返回结果类型
      * @return 调用结果
      */
     private <T> T invoke(Supplier<SingleResponse<T>> supplier) {
@@ -132,8 +142,8 @@ public class UserRemoteGateway {
     /**
      * 解包响应
      *
-     * @param response  响应
-     * @param <T>       返回结果类型
+     * @param response 响应
+     * @param <T>      返回结果类型
      * @return 返回结果
      */
     private <T> T unwrap(SingleResponse<T> response) {
@@ -177,6 +187,9 @@ public class UserRemoteGateway {
         }
         if ("USER_422_REG".equals(code)) {
             return new BizException(message, AuthErrorCode.REGISTER_TYPE_NOT_SUPPORTED);
+        }
+        if ("USER_422_PWD_RESET".equals(code)) {
+            return new BizException(message, AuthErrorCode.PASSWORD_RESET_NOT_SUPPORTED);
         }
         if ("USER_404_ESTAB".equals(code)) {
             return new BizException(message, AuthErrorCode.ESTAB_NOT_FOUND);

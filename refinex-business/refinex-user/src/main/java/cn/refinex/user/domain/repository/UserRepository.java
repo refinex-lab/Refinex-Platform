@@ -158,4 +158,15 @@ public interface UserRepository {
      * @param userId 用户ID
      */
     void resetLoginFailCount(Long userId);
+
+    /**
+     * 更新身份凭证
+     *
+     * @param identityId    身份ID
+     * @param credential    新凭证（加密后）
+     * @param credentialAlg 凭证算法
+     * @param verified      是否已验证
+     * @param verifiedAt    验证时间
+     */
+    void updateIdentityCredential(Long identityId, String credential, String credentialAlg, Integer verified, LocalDateTime verifiedAt);
 }

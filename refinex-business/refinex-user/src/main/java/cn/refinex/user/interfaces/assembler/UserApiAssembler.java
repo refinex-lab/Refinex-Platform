@@ -73,6 +73,14 @@ public interface UserApiAssembler {
     UpdateLoginFailureCommand toUpdateLoginFailureCommand(UserLoginFailureCommand command);
 
     /**
+     * 重置密码参数转换
+     *
+     * @param command 重置密码参数
+     * @return 重置密码命令
+     */
+    ResetPasswordCommand toResetPasswordCommand(UserResetPasswordCommand command);
+
+    /**
      * 查询用户信息参数转换
      *
      * @param query 查询用户信息参数
