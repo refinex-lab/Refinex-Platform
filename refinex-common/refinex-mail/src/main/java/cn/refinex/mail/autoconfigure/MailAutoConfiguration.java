@@ -10,6 +10,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.mail.autoconfigure.MailSenderAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.thymeleaf.TemplateEngine;
@@ -21,7 +22,7 @@ import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver;
  *
  * @author refinex
  */
-@AutoConfiguration
+@AutoConfiguration(after = MailSenderAutoConfiguration.class)
 @EnableConfigurationProperties(MailProperties.class)
 public class MailAutoConfiguration {
 
@@ -41,7 +42,6 @@ public class MailAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean(MailService.class)
-    @ConditionalOnProperty(prefix = "refinex.mail", name = "enabled", havingValue = "false", matchIfMissing = true)
     public MailService mockMailService() {
         return new MockMailService();
     }

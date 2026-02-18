@@ -21,6 +21,15 @@ public class ThymeleafMailTemplateService implements MailTemplateService {
     private final MailService mailService;
     private final TemplateEngine templateEngine;
 
+    /**
+     * 按模板发送邮件
+     *
+     * @param to           收件人邮箱
+     * @param subject      邮件主题
+     * @param templateName 模板名（不含前后缀）
+     * @param variables    模板变量
+     * @return 发送结果
+     */
     @Override
     public MailSendResponse sendTemplate(String to, String subject, String templateName, Map<String, Object> variables) {
         Context context = new Context(Locale.SIMPLIFIED_CHINESE);

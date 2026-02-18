@@ -4,14 +4,14 @@ import cn.refinex.base.response.code.ResponseCode;
 import cn.refinex.mail.api.MailService;
 import cn.refinex.mail.autoconfigure.MailProperties;
 import cn.refinex.mail.response.MailSendResponse;
+import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 
-import jakarta.mail.internet.InternetAddress;
-import jakarta.mail.internet.MimeMessage;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -26,6 +26,14 @@ public class SmtpMailService implements MailService {
     private final JavaMailSender mailSender;
     private final MailProperties properties;
 
+    /**
+     * 发送 HTML 邮件
+     *
+     * @param to          收件人邮箱
+     * @param subject     邮件主题
+     * @param htmlContent HTML 正文
+     * @return 发送结果
+     */
     @Override
     public MailSendResponse sendHtml(String to, String subject, String htmlContent) {
         if (StringUtils.isBlank(to) || StringUtils.isBlank(subject) || StringUtils.isBlank(htmlContent)) {
@@ -50,6 +58,12 @@ public class SmtpMailService implements MailService {
         }
     }
 
+    /**
+     * 构建发件人地址
+     *
+     * @return 发件人地址
+     * @throws Exception 如果发件人地址为空
+     */
     private InternetAddress buildFromAddress() throws Exception {
         String fromAddress = properties.getFromAddress();
         String fromName = properties.getFromName();

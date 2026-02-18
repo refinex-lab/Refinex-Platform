@@ -12,6 +12,14 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class MockMailService implements MailService {
 
+    /**
+     * 发送 HTML 邮件
+     *
+     * @param to          收件人邮箱
+     * @param subject     邮件主题
+     * @param htmlContent HTML 正文
+     * @return 发送结果
+     */
     @Override
     public MailSendResponse sendHtml(String to, String subject, String htmlContent) {
         log.info("[Mock Mail] to={}, subject={}", to, subject);
