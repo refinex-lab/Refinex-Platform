@@ -534,6 +534,99 @@ CREATE TABLE scr_role_drs_interface (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='角色-数据资源接口授权';
 
 -- ============================
+-- 通知与验证码
+-- ============================
+DROP TABLE IF EXISTS app_notify_template;
+CREATE TABLE app_notify_template (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+  template_code VARCHAR(64) NOT NULL COMMENT '模板编码',
+  template_name VARCHAR(128) NOT NULL COMMENT '模板名称',
+  channel_type TINYINT NOT NULL COMMENT '通知通道 1短信 2邮件 3站内信',
+  scene_code VARCHAR(32) NOT NULL COMMENT '业务场景编码(login/register/reset等)',
+  locale VARCHAR(16) NOT NULL DEFAULT 'zh-CN' COMMENT '语言区域(如 zh-CN/en-US)',
+  subject_template VARCHAR(255) DEFAULT NULL COMMENT '主题模板（邮件/站内信）',
+  content_template MEDIUMTEXT NOT NULL COMMENT '正文模板(支持HTML)',
+  content_type TINYINT NOT NULL DEFAULT 1 COMMENT '内容类型 1HTML 2TEXT',
+  status TINYINT NOT NULL DEFAULT 1 COMMENT '状态 1启用 0停用',
+  sort INT NOT NULL DEFAULT 0 COMMENT '排序(升序)',
+  remark VARCHAR(255) DEFAULT NULL COMMENT '备注',
+  ext_json JSON DEFAULT NULL COMMENT '扩展信息',
+  create_by BIGINT DEFAULT NULL COMMENT '创建人用户ID',
+  update_by BIGINT DEFAULT NULL COMMENT '更新人用户ID',
+  delete_by BIGINT DEFAULT NULL COMMENT '删除人用户ID',
+  deleted TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除 0未删 1已删',
+  lock_version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
+  gmt_create DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+  gmt_modified DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '修改时间',
+  UNIQUE KEY uk_notify_tpl (template_code, channel_type, locale),
+  KEY idx_notify_tpl_scene (scene_code, channel_type, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='通知模板定义';
+
+DROP TABLE IF EXISTS auth_verify_code;
+CREATE TABLE auth_verify_code (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+  channel_type TINYINT NOT NULL COMMENT '验证码通道 1短信 2邮件',
+  scene_code VARCHAR(32) NOT NULL COMMENT '业务场景编码(login/register/reset等)',
+  receiver VARCHAR(191) NOT NULL COMMENT '接收目标（手机号/邮箱）',
+  code_hash CHAR(64) NOT NULL COMMENT '验证码哈希（建议SHA-256）',
+  code_salt VARCHAR(32) DEFAULT NULL COMMENT '验证码盐值',
+  expire_at DATETIME(3) NOT NULL COMMENT '过期时间',
+  send_status TINYINT NOT NULL DEFAULT 1 COMMENT '发送状态 1成功 0失败',
+  verify_status TINYINT NOT NULL DEFAULT 0 COMMENT '核验状态 0待核验 1已核验 2已过期 3已作废',
+  verify_fail_count INT NOT NULL DEFAULT 0 COMMENT '核验失败次数',
+  verified_time DATETIME(3) DEFAULT NULL COMMENT '核验通过时间',
+  provider VARCHAR(64) DEFAULT NULL COMMENT '服务提供商标识',
+  template_code VARCHAR(64) DEFAULT NULL COMMENT '模板编码',
+  biz_id VARCHAR(128) DEFAULT NULL COMMENT '三方回执ID',
+  request_id VARCHAR(64) DEFAULT NULL COMMENT '请求ID',
+  ip VARCHAR(64) DEFAULT NULL COMMENT '请求IP',
+  user_agent VARCHAR(512) DEFAULT NULL COMMENT 'UserAgent',
+  device_id VARCHAR(128) DEFAULT NULL COMMENT '设备ID',
+  client_id VARCHAR(64) DEFAULT NULL COMMENT '客户端ID',
+  ext_json JSON DEFAULT NULL COMMENT '扩展信息',
+  create_by BIGINT DEFAULT NULL COMMENT '创建人用户ID',
+  update_by BIGINT DEFAULT NULL COMMENT '更新人用户ID',
+  delete_by BIGINT DEFAULT NULL COMMENT '删除人用户ID',
+  deleted TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除 0未删 1已删',
+  lock_version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
+  gmt_create DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+  gmt_modified DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '修改时间',
+  KEY idx_verify_lookup (channel_type, scene_code, receiver, verify_status, expire_at),
+  KEY idx_verify_time (gmt_create)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='验证码发放与核验记录';
+
+DROP TABLE IF EXISTS log_notify;
+CREATE TABLE log_notify (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+  channel_type TINYINT NOT NULL COMMENT '通知通道 1短信 2邮件 3站内信',
+  scene_code VARCHAR(32) NOT NULL COMMENT '业务场景编码(login/register/reset等)',
+  receiver VARCHAR(191) NOT NULL COMMENT '接收目标（手机号/邮箱/用户ID）',
+  subject VARCHAR(255) DEFAULT NULL COMMENT '通知主题（邮件/站内信）',
+  content_digest VARCHAR(255) DEFAULT NULL COMMENT '内容摘要（脱敏）',
+  provider VARCHAR(64) DEFAULT NULL COMMENT '服务提供商标识',
+  template_code VARCHAR(64) DEFAULT NULL COMMENT '模板编码',
+  biz_id VARCHAR(128) DEFAULT NULL COMMENT '三方回执ID',
+  send_status TINYINT NOT NULL DEFAULT 1 COMMENT '发送状态 1成功 0失败',
+  error_message VARCHAR(255) DEFAULT NULL COMMENT '失败原因',
+  request_id VARCHAR(64) DEFAULT NULL COMMENT '请求ID',
+  ip VARCHAR(64) DEFAULT NULL COMMENT '请求IP',
+  user_agent VARCHAR(512) DEFAULT NULL COMMENT 'UserAgent',
+  user_id BIGINT DEFAULT NULL COMMENT '用户ID',
+  estab_id BIGINT DEFAULT NULL COMMENT '组织ID',
+  ext_json JSON DEFAULT NULL COMMENT '扩展信息',
+  create_by BIGINT DEFAULT NULL COMMENT '创建人用户ID',
+  update_by BIGINT DEFAULT NULL COMMENT '更新人用户ID',
+  delete_by BIGINT DEFAULT NULL COMMENT '删除人用户ID',
+  deleted TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除 0未删 1已删',
+  lock_version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
+  gmt_create DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+  gmt_modified DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '修改时间',
+  KEY idx_notify_channel_time (channel_type, gmt_create),
+  KEY idx_notify_receiver_time (receiver, gmt_create),
+  KEY idx_notify_status_time (send_status, gmt_create)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='统一通知发送日志';
+
+-- ============================
 -- 日志
 -- ============================
 DROP TABLE IF EXISTS log_login;

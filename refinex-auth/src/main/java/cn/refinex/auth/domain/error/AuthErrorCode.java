@@ -22,6 +22,7 @@ public enum AuthErrorCode implements ErrorCode {
     USER_LOCKED("AUTH_423", "账号已锁定，请稍后再试"),
     IDENTITY_DISABLED("AUTH_403_ID", "登录身份不可用"),
     DUPLICATE_IDENTITY("AUTH_409", "账号已存在"),
+    CODE_SEND_TOO_FREQUENT("AUTH_429_CODE", "验证码发送过于频繁"),
     SMS_SEND_TOO_FREQUENT("AUTH_429_SMS", "验证码发送过于频繁"),
     REGISTER_TOO_FREQUENT("AUTH_429_REG", "注册过于频繁"),
     LOGIN_TOO_FREQUENT("AUTH_429_LOGIN", "登录请求过于频繁"),

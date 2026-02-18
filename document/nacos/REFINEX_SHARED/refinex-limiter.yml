@@ -17,9 +17,9 @@ spring:
             # Nacos 命名空间
             namespace: ${refinex.nacos.namespace:public}
             # Nacos 用户名
-            username: ${refinex.nacos.username:nacos}
+            username: ${refinex.nacos.username:}
             # Nacos 密码
-            password: ${refinex.nacos.password:nacos}
+            password: ${refinex.nacos.password:}
             # 流控规则 DataId
             data-id: business-flow-rules
             # 规则分组
@@ -33,9 +33,9 @@ spring:
             # Nacos 命名空间
             namespace: ${refinex.nacos.namespace:public}
             # Nacos 用户名
-            username: ${refinex.nacos.username:nacos}
+            username: ${refinex.nacos.username:}
             # Nacos 密码
-            password: ${refinex.nacos.password:nacos}
+            password: ${refinex.nacos.password:}
             # 热点规则 DataId
             data-id: business-param-flow-rules
             # 规则分组

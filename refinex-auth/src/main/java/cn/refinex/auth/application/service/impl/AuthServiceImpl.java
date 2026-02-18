@@ -8,6 +8,7 @@ import cn.refinex.api.user.model.context.LoginUser;
 import cn.refinex.api.user.model.dto.UserAuthSubjectDTO;
 import cn.refinex.api.user.model.dto.UserRegisterCommand;
 import cn.refinex.api.user.model.dto.UserRegisterResult;
+import cn.refinex.auth.api.dto.EmailSendRequest;
 import cn.refinex.auth.api.dto.LoginRequest;
 import cn.refinex.auth.api.dto.RegisterRequest;
 import cn.refinex.auth.api.dto.SmsSendRequest;
@@ -90,6 +91,26 @@ public class AuthServiceImpl implements AuthService {
         }
 
         verificationCodeService.sendSmsCode(request.getPhone(), request.getScene());
+    }
+
+    /**
+     * 发送邮箱验证码
+     *
+     * @param request  邮箱验证码发送请求
+     * @param context  登录上下文
+     */
+    @Override
+    public void sendEmailCode(EmailSendRequest request, LoginContext context) {
+        authSecurityService.checkEmailSend(request.getEmail(), context);
+
+        if (request.getEstabId() != null) {
+            AuthPolicy policy = resolveAuthPolicy(request.getEstabId());
+            if (isForbidden(policy.emailLoginEnabled)) {
+                throw new BizException(AuthErrorCode.ESTAB_LOGIN_FORBIDDEN);
+            }
+        }
+
+        verificationCodeService.sendEmailCode(request.getEmail(), request.getScene());
     }
 
     /**
@@ -194,6 +215,11 @@ public class AuthServiceImpl implements AuthService {
             if (!ok) {
                 throw new BizException(AuthErrorCode.CODE_ERROR);
             }
+        } else if (registerType == RegisterType.EMAIL) {
+            boolean ok = verificationCodeService.verifyEmailCode(request.getIdentifier(), "register", request.getCode());
+            if (!ok) {
+                throw new BizException(AuthErrorCode.CODE_ERROR);
+            }
         }
     }
 
@@ -233,6 +259,9 @@ public class AuthServiceImpl implements AuthService {
     private UserAuthSubjectDTO resolveLoginSubject(LoginType loginType, LoginRequest request, Long estabId, LoginContext context) {
         Integer identityType = loginType.getIdentityType().getCode();
         UserAuthSubjectDTO subject = userRemoteGateway.queryAuthSubject(identityType, request.getIdentifier(), estabId);
+        if (subject == null && loginType == LoginType.EMAIL_CODE) {
+            subject = userRemoteGateway.queryAuthSubject(LoginType.EMAIL_PASSWORD.getIdentityType().getCode(), request.getIdentifier(), estabId);
+        }
         if (subject == null && loginType == LoginType.PHONE_SMS && authProperties.isAutoRegisterOnSmsLogin()) {
             subject = autoRegisterAndLoadSubject(request, estabId);
         }
@@ -326,6 +355,13 @@ public class AuthServiceImpl implements AuthService {
             }
             case PHONE_SMS -> {
                 boolean ok = verificationCodeService.verifySmsCode(request.getIdentifier(), "login", request.getCode());
+                if (!ok) {
+                    throw new BizException(AuthErrorCode.CODE_ERROR);
+                }
+                return true;
+            }
+            case EMAIL_CODE -> {
+                boolean ok = verificationCodeService.verifyEmailCode(request.getIdentifier(), "login", request.getCode());
                 if (!ok) {
                     throw new BizException(AuthErrorCode.CODE_ERROR);
                 }

@@ -7,14 +7,14 @@ seata:
   # Seata 应用标识（默认跟随服务名）
   application-id: ${spring.application.name}
   # Seata 事务组
-  tx-service-group: ${REFINEX_SEATA_TX_GROUP:default_tx_group}
+  tx-service-group: default_tx_group
 
   registry:
     # 注册中心类型
     type: nacos
     nacos:
       # Seata Server 应用名
-      application: ${REFINEX_SEATA_SERVER_APP:seata-server}
+      application: seata-server
       # Nacos 地址
       server-addr: ${refinex.nacos.server-addr}
       # Nacos 分组
@@ -22,7 +22,7 @@ seata:
       # Nacos 命名空间
       namespace: ${refinex.seata.nacos.namespace}
       # 集群名
-      cluster: ${REFINEX_SEATA_CLUSTER:default}
+      cluster: default
 
   config:
     # 配置中心类型

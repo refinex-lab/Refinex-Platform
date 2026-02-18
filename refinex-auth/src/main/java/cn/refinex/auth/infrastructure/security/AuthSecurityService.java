@@ -29,14 +29,35 @@ public class AuthSecurityService {
     public void checkSmsSend(String phone, LoginContext context) {
         String ip = normalize(context == null ? null : context.getIp());
         if (!rateLimiter.tryAcquire("auth:sms:ip:" + ip, authProperties.getSmsIpLimit(), authProperties.getSmsWindowSeconds())) {
-            throw new BizException(AuthErrorCode.SMS_SEND_TOO_FREQUENT);
+            throw new BizException(AuthErrorCode.CODE_SEND_TOO_FREQUENT);
         }
         if (phone != null && !rateLimiter.tryAcquire("auth:sms:phone:" + phone, authProperties.getSmsPhoneLimit(), authProperties.getSmsWindowSeconds())) {
-            throw new BizException(AuthErrorCode.SMS_SEND_TOO_FREQUENT);
+            throw new BizException(AuthErrorCode.CODE_SEND_TOO_FREQUENT);
         }
         String deviceId = normalize(context == null ? null : context.getDeviceId());
         if (!rateLimiter.tryAcquire("auth:sms:device:" + deviceId, authProperties.getSmsDeviceLimit(), authProperties.getSmsWindowSeconds())) {
-            throw new BizException(AuthErrorCode.SMS_SEND_TOO_FREQUENT);
+            throw new BizException(AuthErrorCode.CODE_SEND_TOO_FREQUENT);
+        }
+    }
+
+    /**
+     * 检查发送邮箱验证码的频率
+     *
+     * @param email 邮箱
+     * @param context 登录上下文
+     */
+    public void checkEmailSend(String email, LoginContext context) {
+        String normalizedEmail = normalize(email).toLowerCase();
+        String ip = normalize(context == null ? null : context.getIp());
+        if (!rateLimiter.tryAcquire("auth:email:ip:" + ip, authProperties.getEmailIpLimit(), authProperties.getEmailWindowSeconds())) {
+            throw new BizException(AuthErrorCode.CODE_SEND_TOO_FREQUENT);
+        }
+        if (email != null && !rateLimiter.tryAcquire("auth:email:addr:" + normalizedEmail, authProperties.getEmailAddressLimit(), authProperties.getEmailWindowSeconds())) {
+            throw new BizException(AuthErrorCode.CODE_SEND_TOO_FREQUENT);
+        }
+        String deviceId = normalize(context == null ? null : context.getDeviceId());
+        if (!rateLimiter.tryAcquire("auth:email:device:" + deviceId, authProperties.getEmailDeviceLimit(), authProperties.getEmailWindowSeconds())) {
+            throw new BizException(AuthErrorCode.CODE_SEND_TOO_FREQUENT);
         }
     }
 

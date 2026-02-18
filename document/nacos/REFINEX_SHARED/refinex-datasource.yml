@@ -55,7 +55,7 @@ mybatis-plus:
     # 二级缓存
     cache-enabled: false
     # SQL 日志实现（生产建议按环境覆盖）
-    log-impl: ${REFINEX_MYBATIS_LOG_IMPL:org.apache.ibatis.logging.stdout.StdOutImpl}
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   # Mapper XML 扫描路径
   mapper-locations: classpath*:mapper/*.xml
   # 实体别名包

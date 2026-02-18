@@ -1,0 +1,167 @@
+# ============================================================
+# Refinex 共享基础配置
+# 发布到 Nacos: Group=REFINEX_SHARED
+# 用途：定义跨服务的基础参数（数据库/缓存/中间件/第三方）
+# 规范：服务地址与敏感参数外置；其余非敏感参数保留在 Nacos
+# ============================================================
+
+refinex:
+  nacos:
+    # Nacos 地址
+    server-addr: ${REFINEX_NACOS_SERVER_ADDR:}
+    # Nacos 用户名（敏感）
+    username: ${REFINEX_NACOS_USERNAME:}
+    # Nacos 密码（敏感）
+    password: ${REFINEX_NACOS_PASSWORD:}
+    # Nacos 命名空间（按环境隔离：dev/test/prod）
+    namespace: dev
+    # 共享配置组：放公共 DataId（refinex-base/refinex-cache/...）
+    shared-group: REFINEX_SHARED
+    # 服务配置组：放服务专属 DataId（refinex-auth/refinex-user/refinex-gateway）
+    service-group: REFINEX_SERVICE
+    # 服务发现组：Nacos 注册与发现分组
+    discovery-group: REFINEX_DISCOVERY
+
+  mysql:
+    # MySQL JDBC 地址
+    url: ${REFINEX_MYSQL_URL:}
+    # MySQL 用户名（敏感）
+    username: ${REFINEX_MYSQL_USERNAME:}
+    # MySQL 密码（敏感）
+    password: ${REFINEX_MYSQL_PASSWORD:}
+
+  redis:
+    # Redis 主机地址
+    url: ${REFINEX_REDIS_HOST:}
+    # Redis 端口
+    port: ${REFINEX_REDIS_PORT:}
+    # Redis 密码（敏感，可为空）
+    password: ${REFINEX_REDIS_PASSWORD:}
+
+  elasticsearch:
+    # 是否启用 ES 能力
+    enabled: false
+    # ES 地址（host:port，多个逗号分隔）
+    url: ${REFINEX_ES_URL:}
+    # ES 用户名（敏感）
+    username: ${REFINEX_ES_USERNAME:}
+    # ES 密码（敏感）
+    password: ${REFINEX_ES_PASSWORD:}
+    # ES 索引前缀
+    index-prefix: refinex-
+
+  xxl-job:
+    # XXL-Job 调度中心地址
+    admin-addresses: ${REFINEX_XXL_ADMIN_ADDRESSES:}
+    # 执行器名称（默认使用 spring.application.name）
+    app-name: ${spring.application.name}
+    # 调度鉴权 Token（敏感）
+    access-token: ${REFINEX_XXL_ACCESS_TOKEN:}
+
+  sentinel:
+    # Sentinel Dashboard 地址
+    dashboard: ${REFINEX_SENTINEL_DASHBOARD:}
+
+  stream:
+    # 是否启用消息流相关能力
+    enabled: false
+    # RocketMQ NameServer 地址
+    name-server: ${REFINEX_STREAM_NAME_SERVER:}
+
+  rocketmq:
+    # 历史兼容字段：映射到 refinex.stream.name-server
+    name-server: ${refinex.stream.name-server}
+
+  seata:
+    nacos:
+      # Seata 配置中心 DataId
+      data-id: seataServer.properties
+      # Seata 配置分组
+      group: SEATA_GROUP
+      # Seata 命名空间（默认跟随 refinex.nacos.namespace）
+      namespace: ${refinex.nacos.namespace}
+
+  file:
+    oss:
+      # 是否启用 OSS 文件服务
+      enable: false
+      # OSS Endpoint
+      endpoint: https://oss-cn-hangzhou.aliyuncs.com
+      # OSS Bucket
+      bucket: refinex
+      # OSS AccessKey（敏感）
+      access-key: ${REFINEX_OSS_ACCESS_KEY:}
+      # OSS SecretKey（敏感）
+      access-secret: ${REFINEX_OSS_ACCESS_SECRET:}
+      # OSS 访问域名（CDN 域名，可选）
+      domain:
+
+  sms:
+    # 是否启用真实短信（false 时走 MockSmsService）
+    enabled: false
+    # 短信服务主机地址
+    host: https://gyytz.market.alicloudapi.com
+    # 短信服务路径
+    path: /sms/smsSend
+    # 短信 AppCode（敏感）
+    appcode: ${REFINEX_SMS_APPCODE:}
+    # 短信签名 ID
+    sms-sign-id: ""
+    # 短信模板 ID
+    template-id: ""
+
+  mail:
+    # 是否启用真实邮件发送（false 时走 MockMailService）
+    enabled: true
+    # SMTP 主机
+    # QQ: smtp.qq.com
+    # 163: smtp.163.com
+    # Gmail: smtp.gmail.com
+    host: smtp.163.com
+    # SMTP 端口（SSL 常用 465，TLS 常用 587）
+    port: 465
+    # SMTP 用户名（敏感，通常为发件邮箱）
+    username: ${REFINEX_MAIL_USERNAME:}
+    # SMTP 密码/授权码（敏感）
+    password: ${REFINEX_MAIL_PASSWORD:}
+    # 协议（smtp/smtps）
+    protocol: smtp
+    # 发件人邮箱地址（默认跟随 username）
+    from-address: ${refinex.mail.username}
+    # 发件人名称
+    from-name: Refinex
+    # 模板前缀（classpath 路径）
+    template-prefix: mail/templates/
+    # 模板后缀
+    template-suffix: .html
+    # 是否缓存模板
+    template-cache: true
+    # SMTP 鉴权
+    smtp-auth: true
+    # 是否启用 STARTTLS
+    starttls-enable: false
+    # 是否启用 SSL
+    ssl-enable: true
+    # SMTP 连接超时（毫秒）
+    connection-timeout: 5000
+    # SMTP 读取超时（毫秒）
+    timeout: 5000
+    # SMTP 写入超时（毫秒）
+    write-timeout: 5000
+
+spring:
+  mail:
+    # 以下映射为 Spring Mail 标准配置，供 JavaMailSender 自动配置读取
+    host: ${refinex.mail.host}
+    port: ${refinex.mail.port}
+    username: ${refinex.mail.username}
+    password: ${refinex.mail.password}
+    protocol: ${refinex.mail.protocol}
+    default-encoding: UTF-8
+    properties:
+      mail.smtp.auth: ${refinex.mail.smtp-auth}
+      mail.smtp.starttls.enable: ${refinex.mail.starttls-enable}
+      mail.smtp.ssl.enable: ${refinex.mail.ssl-enable}
+      mail.smtp.connectiontimeout: ${refinex.mail.connection-timeout}
+      mail.smtp.timeout: ${refinex.mail.timeout}
+      mail.smtp.writetimeout: ${refinex.mail.write-timeout}

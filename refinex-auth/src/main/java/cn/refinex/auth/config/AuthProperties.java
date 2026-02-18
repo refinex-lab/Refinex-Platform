@@ -28,6 +28,36 @@ public class AuthProperties {
     private int smsCodeLength = 6;
 
     /**
+     * 邮箱验证码有效期（秒）
+     */
+    private int emailCodeExpireSeconds = 300;
+
+    /**
+     * 邮箱验证码发送间隔（秒）
+     */
+    private int emailCodeIntervalSeconds = 60;
+
+    /**
+     * 邮箱验证码长度
+     */
+    private int emailCodeLength = 6;
+
+    /**
+     * 邮箱验证码模板名称（不含后缀）
+     */
+    private String emailCodeTemplateName = "auth-login-code";
+
+    /**
+     * 邮箱验证码主题
+     */
+    private String emailCodeSubject = "Refinex 登录验证码";
+
+    /**
+     * 邮件品牌名称
+     */
+    private String mailBrandName = "Refinex";
+
+    /**
      * 登录失败阈值
      */
     private int loginFailThreshold = 5;
@@ -86,6 +116,26 @@ public class AuthProperties {
      * 短信发送限流窗口（秒）
      */
     private int smsWindowSeconds = 3600;
+
+    /**
+     * 邮箱发送限流：IP 维度
+     */
+    private int emailIpLimit = 20;
+
+    /**
+     * 邮箱发送限流：邮箱地址维度
+     */
+    private int emailAddressLimit = 10;
+
+    /**
+     * 邮箱发送限流：设备维度
+     */
+    private int emailDeviceLimit = 20;
+
+    /**
+     * 邮箱发送限流窗口（秒）
+     */
+    private int emailWindowSeconds = 3600;
 
     /**
      * 注册限流：IP 维度

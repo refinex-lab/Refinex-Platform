@@ -1,5 +1,6 @@
 package cn.refinex.auth.application.service;
 
+import cn.refinex.auth.api.dto.EmailSendRequest;
 import cn.refinex.auth.api.dto.LoginRequest;
 import cn.refinex.auth.api.dto.RegisterRequest;
 import cn.refinex.auth.api.dto.SmsSendRequest;
@@ -20,6 +21,14 @@ public interface AuthService {
      * @param context 登录上下文
      */
     void sendSmsCode(SmsSendRequest request, LoginContext context);
+
+    /**
+     * 发送邮箱验证码
+     *
+     * @param request  发送请求
+     * @param context 登录上下文
+     */
+    void sendEmailCode(EmailSendRequest request, LoginContext context);
 
     /**
      * 注册

@@ -43,6 +43,18 @@ refinex:
     sms-code-interval-seconds: 60
     # 短信验证码位数
     sms-code-length: 6
+    # 邮箱验证码过期时间（秒）
+    email-code-expire-seconds: 300
+    # 邮箱发送最小间隔（秒）
+    email-code-interval-seconds: 60
+    # 邮箱验证码位数
+    email-code-length: 6
+    # 邮箱验证码模板名称（refinex-mail 模板名，不含后缀）
+    email-code-template-name: auth-login-code
+    # 邮箱验证码主题
+    email-code-subject: Refinex 登录验证码
+    # 邮件品牌名（用于模板展示）
+    mail-brand-name: Refinex
     # 登录失败阈值
     login-fail-threshold: 5
     # 锁定分钟数
@@ -67,6 +79,14 @@ refinex:
     sms-device-limit: 20
     # 短信限流窗口（秒）
     sms-window-seconds: 3600
+    # 邮箱发送 IP 限流阈值
+    email-ip-limit: 20
+    # 邮箱发送地址限流阈值
+    email-address-limit: 10
+    # 邮箱发送设备限流阈值
+    email-device-limit: 20
+    # 邮箱限流窗口（秒）
+    email-window-seconds: 3600
     # 注册 IP 限流阈值
     register-ip-limit: 10
     # 注册标识限流阈值

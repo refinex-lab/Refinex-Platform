@@ -25,9 +25,9 @@ spring:
             # Nacos 命名空间
             namespace: ${refinex.nacos.namespace:public}
             # Nacos 用户名
-            username: ${refinex.nacos.username:nacos}
+            username: ${refinex.nacos.username:}
             # Nacos 密码
-            password: ${refinex.nacos.password:nacos}
+            password: ${refinex.nacos.password:}
             # 网关流控规则 DataId
             data-id: refinex-gateway-flow-rules
             # 规则分组

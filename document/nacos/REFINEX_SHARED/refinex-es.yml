@@ -8,7 +8,7 @@ spring:
     # 是否启用 Spring Elasticsearch
     enabled: ${refinex.elasticsearch.enabled:false}
     # ES 地址列表
-    uris: ${refinex.elasticsearch.url:127.0.0.1:9200}
+    uris: ${refinex.elasticsearch.url:}
     # ES 用户名
     username: ${refinex.elasticsearch.username:}
     # ES 密码
@@ -18,7 +18,7 @@ easy-es:
   # 是否启用 Easy-ES
   enable: ${refinex.elasticsearch.enabled:false}
   # ES 地址
-  address: ${refinex.elasticsearch.url:127.0.0.1:9200}
+  address: ${refinex.elasticsearch.url:}
   # ES 用户名
   username: ${refinex.elasticsearch.username:}
   # ES 密码

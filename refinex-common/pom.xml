@@ -28,7 +28,6 @@
         <module>refinex-seata</module>
         <module>refinex-file</module>
         <module>refinex-elasticsearch</module>
-        <module>refinex-config</module>
         <module>refinex-sms</module>
         <module>refinex-mail</module>
     </modules>

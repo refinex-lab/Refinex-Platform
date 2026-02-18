@@ -1,5 +1,6 @@
 package cn.refinex.auth.interfaces.controller;
 
+import cn.refinex.auth.api.dto.EmailSendRequest;
 import cn.refinex.auth.api.dto.LoginRequest;
 import cn.refinex.auth.api.dto.RegisterRequest;
 import cn.refinex.auth.api.dto.SmsSendRequest;
@@ -36,6 +37,19 @@ public class AuthController {
     @PostMapping("/sms/send")
     public SingleResponse<Void> sendSms(@Valid @RequestBody SmsSendRequest request, HttpServletRequest httpRequest) {
         authService.sendSmsCode(request, buildContext(null, httpRequest));
+        return SingleResponse.of(null);
+    }
+
+    /**
+     * 发送邮箱验证码
+     *
+     * @param request 邮箱验证码请求
+     * @param httpRequest HTTP请求
+     * @return 单一结果
+     */
+    @PostMapping("/email/send")
+    public SingleResponse<Void> sendEmail(@Valid @RequestBody EmailSendRequest request, HttpServletRequest httpRequest) {
+        authService.sendEmailCode(request, buildContext(null, httpRequest));
         return SingleResponse.of(null);
     }
 

@@ -3,10 +3,6 @@
 # 仅负责连接 Nacos 并导入远程配置，不承载业务参数
 # ============================================================
 
-server:
-  # Auth 服务本地监听端口（可被远程配置覆盖）
-  port: 8081
-
 spring:
   application:
     # 服务名，对应 Nacos 服务注册名与服务配置 DataId 前缀
@@ -16,8 +12,6 @@ spring:
     import:
       # 共享基础参数
       - optional:nacos:refinex-base.yml?group=${REFINEX_NACOS_SHARED_GROUP:REFINEX_SHARED}&refreshEnabled=true
-      # Nacos 客户端通用配置
-      - optional:nacos:refinex-config.yml?group=${REFINEX_NACOS_SHARED_GROUP:REFINEX_SHARED}&refreshEnabled=true
       # 缓存与 Redis 配置
       - optional:nacos:refinex-cache.yml?group=${REFINEX_NACOS_SHARED_GROUP:REFINEX_SHARED}&refreshEnabled=true
       # 数据源配置
@@ -28,29 +22,24 @@ spring:
   cloud:
     nacos:
       # Nacos 地址
-      server-addr: ${refinex.nacos.server-addr:127.0.0.1:8848}
+      server-addr: ${REFINEX_NACOS_SERVER_ADDR:}
       # Nacos 用户名
-      username: ${refinex.nacos.username:nacos}
+      username: ${REFINEX_NACOS_USERNAME:}
       # Nacos 密码
-      password: ${refinex.nacos.password:nacos}
+      password: ${REFINEX_NACOS_PASSWORD:}
       discovery:
         # 服务发现命名空间
-        namespace: ${refinex.nacos.namespace:public}
+        namespace: ${REFINEX_NACOS_NAMESPACE:public}
         # 服务发现分组
-        group: ${refinex.nacos.discovery-group:REFINEX_DISCOVERY}
+        group: ${REFINEX_NACOS_DISCOVERY_GROUP:REFINEX_DISCOVERY}
+        # 是否注册本服务到 Nacos
+        register-enabled: true
       config:
         # 配置中心命名空间
-        namespace: ${refinex.nacos.namespace:public}
+        namespace: ${REFINEX_NACOS_NAMESPACE:public}
         # 配置中心分组（服务级）
         group: ${REFINEX_NACOS_SERVICE_GROUP:REFINEX_SERVICE}
-
-refinex:
-  nacos:
-    # 以下为“引导参数”，支持环境变量注入
-    server-addr: ${REFINEX_NACOS_SERVER_ADDR:127.0.0.1:8848}
-    username: ${REFINEX_NACOS_USERNAME:nacos}
-    password: ${REFINEX_NACOS_PASSWORD:nacos}
-    namespace: ${REFINEX_NACOS_NAMESPACE:public}
-    shared-group: ${REFINEX_NACOS_SHARED_GROUP:REFINEX_SHARED}
-    service-group: ${REFINEX_NACOS_SERVICE_GROUP:REFINEX_SERVICE}
-    discovery-group: ${REFINEX_NACOS_DISCOVERY_GROUP:REFINEX_DISCOVERY}
+        # 配置文件后缀（DataId 统一使用 .yml）
+        file-extension: yml
+        # 是否允许动态刷新
+        refresh-enabled: true

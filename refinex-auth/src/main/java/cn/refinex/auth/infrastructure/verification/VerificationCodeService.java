@@ -3,6 +3,8 @@ package cn.refinex.auth.infrastructure.verification;
 import cn.refinex.auth.config.AuthProperties;
 import cn.refinex.auth.domain.error.AuthErrorCode;
 import cn.refinex.base.exception.BizException;
+import cn.refinex.mail.api.MailTemplateService;
+import cn.refinex.mail.response.MailSendResponse;
 import cn.refinex.sms.api.SmsService;
 import cn.refinex.sms.response.SmsSendResponse;
 import com.alicp.jetcache.Cache;
@@ -14,7 +16,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
+import java.time.Year;
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -30,6 +35,7 @@ public class VerificationCodeService {
 
     private final AuthProperties authProperties;
     private final SmsService smsService;
+    private final MailTemplateService mailTemplateService;
     private final CacheManager cacheManager;
 
     /**
@@ -41,6 +47,16 @@ public class VerificationCodeService {
      * 短信冷却缓存
      */
     private Cache<String, String> smsCooldownCache;
+
+    /**
+     * 邮箱验证码缓存
+     */
+    private Cache<String, String> emailCodeCache;
+
+    /**
+     * 邮箱冷却缓存
+     */
+    private Cache<String, String> emailCooldownCache;
 
     /**
      * 初始化缓存
@@ -61,6 +77,21 @@ public class VerificationCodeService {
                         .expire(Duration.ofSeconds(authProperties.getSmsCodeIntervalSeconds()))
                         .build()
         );
+
+        // 创建邮箱验证码缓存
+        this.emailCodeCache = cacheManager.getOrCreateCache(
+                QuickConfig.newBuilder("auth:email:code:")
+                        .cacheType(CacheType.BOTH)
+                        .expire(Duration.ofSeconds(authProperties.getEmailCodeExpireSeconds()))
+                        .build()
+        );
+        // 创建邮箱冷却缓存
+        this.emailCooldownCache = cacheManager.getOrCreateCache(
+                QuickConfig.newBuilder("auth:email:cooldown:")
+                        .cacheType(CacheType.BOTH)
+                        .expire(Duration.ofSeconds(authProperties.getEmailCodeIntervalSeconds()))
+                        .build()
+        );
     }
 
     /**
@@ -72,7 +103,7 @@ public class VerificationCodeService {
     public void sendSmsCode(String phone, String scene) {
         String cooldownKey = scene + ":" + phone;
         if (smsCooldownCache.get(cooldownKey) != null) {
-            throw new BizException(AuthErrorCode.SMS_SEND_TOO_FREQUENT);
+            throw new BizException(AuthErrorCode.CODE_SEND_TOO_FREQUENT);
         }
 
         String code = generateCode(authProperties.getSmsCodeLength());
@@ -84,6 +115,42 @@ public class VerificationCodeService {
         String codeKey = scene + ":" + phone;
         smsCodeCache.put(codeKey, code, authProperties.getSmsCodeExpireSeconds(), TimeUnit.SECONDS);
         smsCooldownCache.put(cooldownKey, "1", authProperties.getSmsCodeIntervalSeconds(), TimeUnit.SECONDS);
+    }
+
+    /**
+     * 发送邮箱验证码
+     *
+     * @param email 邮箱
+     * @param scene 场景
+     */
+    public void sendEmailCode(String email, String scene) {
+        String normalizedEmail = normalizeEmail(email);
+        String cooldownKey = scene + ":" + normalizedEmail;
+        if (emailCooldownCache.get(cooldownKey) != null) {
+            throw new BizException(AuthErrorCode.CODE_SEND_TOO_FREQUENT);
+        }
+
+        String code = generateCode(authProperties.getEmailCodeLength());
+        Map<String, Object> variables = new HashMap<>(8);
+        variables.put("brandName", authProperties.getMailBrandName());
+        variables.put("sceneName", resolveSceneName(scene));
+        variables.put("code", code);
+        variables.put("expireMinutes", Math.max(1, authProperties.getEmailCodeExpireSeconds() / 60));
+        variables.put("year", Year.now().getValue());
+
+        MailSendResponse response = mailTemplateService.sendTemplate(
+                normalizedEmail,
+                authProperties.getEmailCodeSubject(),
+                authProperties.getEmailCodeTemplateName(),
+                variables
+        );
+        if (response == null || !Boolean.TRUE.equals(response.getSuccess())) {
+            throw new BizException(AuthErrorCode.SYSTEM_ERROR);
+        }
+
+        String codeKey = scene + ":" + normalizedEmail;
+        emailCodeCache.put(codeKey, code, authProperties.getEmailCodeExpireSeconds(), TimeUnit.SECONDS);
+        emailCooldownCache.put(cooldownKey, "1", authProperties.getEmailCodeIntervalSeconds(), TimeUnit.SECONDS);
     }
 
     /**
@@ -109,6 +176,28 @@ public class VerificationCodeService {
     }
 
     /**
+     * 验证邮箱验证码
+     *
+     * @param email 邮箱
+     * @param scene 场景
+     * @param code 验证码
+     * @return 是否验证成功
+     */
+    public boolean verifyEmailCode(String email, String scene, String code) {
+        if (code == null || code.isBlank()) {
+            return false;
+        }
+
+        String codeKey = scene + ":" + normalizeEmail(email);
+        String cached = emailCodeCache.get(codeKey);
+        if (cached != null && cached.equalsIgnoreCase(code)) {
+            emailCodeCache.remove(codeKey);
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * 生成指定长度的随机验证码
      *
      * @param length 验证码长度
@@ -121,5 +210,28 @@ public class VerificationCodeService {
             sb.append(RANDOM.nextInt(10));
         }
         return sb.toString();
+    }
+
+    /**
+     * 场景名
+     *
+     * @param scene 场景编码
+     * @return 场景名称
+     */
+    private String resolveSceneName(String scene) {
+        if ("register".equalsIgnoreCase(scene)) {
+            return "注册";
+        }
+        if ("reset".equalsIgnoreCase(scene)) {
+            return "重置密码";
+        }
+        return "登录";
+    }
+
+    private String normalizeEmail(String email) {
+        if (email == null) {
+            return "";
+        }
+        return email.trim().toLowerCase();
     }
 }
