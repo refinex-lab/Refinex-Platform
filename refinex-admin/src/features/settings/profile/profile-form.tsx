@@ -30,6 +30,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
+const GENDER_OPTIONS = ['0', '1', '2', '3'] as const
+
 const profileFormSchema = z.object({
   displayName: z
     .string()
@@ -48,7 +50,16 @@ const profileFormSchema = z.object({
     .max(255, '头像地址长度不能超过 255 个字符。')
     .optional()
     .or(z.literal('')),
-  gender: z.enum(['0', '1', '2', '3']),
+  gender: z.preprocess(
+    (value) => {
+      if (value == null || value === '') return '0'
+      const normalized = String(value)
+      return (GENDER_OPTIONS as readonly string[]).includes(normalized)
+        ? normalized
+        : '0'
+    },
+    z.enum(GENDER_OPTIONS)
+  ),
   birthday: z.string().optional(),
 })
 
@@ -70,11 +81,17 @@ function formatDateTime(value?: string): string {
 }
 
 function toFormValues(profile: ReturnType<typeof useUserStore.getState>['profile']): ProfileFormValues {
+  const rawGender = profile?.gender
+  const normalizedGender = String(rawGender ?? '0')
+  const gender = (GENDER_OPTIONS as readonly string[]).includes(normalizedGender)
+    ? (normalizedGender as ProfileFormValues['gender'])
+    : '0'
+
   return {
     displayName: profile?.displayName ?? '',
     nickname: profile?.nickname ?? '',
     avatarUrl: profile?.avatarUrl ?? '',
-    gender: String(profile?.gender ?? 0) as ProfileFormValues['gender'],
+    gender,
     birthday: profile?.birthday ?? '',
   }
 }
@@ -206,6 +223,7 @@ export function ProfileForm() {
                 <FormControl>
                   <Input placeholder='请输入昵称（可选）' disabled={disabled} {...field} />
                 </FormControl>
+                <FormDescription>用于个人资料与互动场景展示（可选）。</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -220,8 +238,8 @@ export function ProfileForm() {
               <FormItem>
                 <FormLabel>性别</FormLabel>
                 <Select
-                  onValueChange={field.onChange}
-                  value={field.value}
+                  onValueChange={(value) => field.onChange(value || '0')}
+                  value={field.value || '0'}
                   disabled={disabled}
                 >
                   <FormControl>
@@ -236,6 +254,7 @@ export function ProfileForm() {
                     <SelectItem value='3'>其他</SelectItem>
                   </SelectContent>
                 </Select>
+                <FormDescription>系统将按该字段展示用户标签。</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -249,6 +268,7 @@ export function ProfileForm() {
                 <FormControl>
                   <Input type='date' disabled={disabled} {...field} />
                 </FormControl>
+                <FormDescription>用于个性化服务与统计分析（可选）。</FormDescription>
                 <FormMessage />
               </FormItem>
             )}

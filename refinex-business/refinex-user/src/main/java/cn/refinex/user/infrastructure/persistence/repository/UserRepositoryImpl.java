@@ -315,14 +315,16 @@ public class UserRepositoryImpl implements UserRepository {
      */
     @Override
     public void updateUserProfile(Long userId, String displayName, String nickname, String avatarUrl, Integer gender, LocalDate birthday) {
-        DefUserDo update = new DefUserDo();
-        update.setId(userId);
-        update.setDisplayName(displayName);
-        update.setNickname(nickname);
-        update.setAvatarUrl(avatarUrl);
-        update.setGender(gender);
-        update.setBirthday(birthday);
-        defUserMapper.updateById(update);
+        defUserMapper.update(
+                null,
+                Wrappers.lambdaUpdate(DefUserDo.class)
+                        .eq(DefUserDo::getId, userId)
+                        .set(DefUserDo::getDisplayName, displayName)
+                        .set(DefUserDo::getNickname, nickname)
+                        .set(DefUserDo::getAvatarUrl, avatarUrl)
+                        .set(gender != null, DefUserDo::getGender, gender)
+                        .set(DefUserDo::getBirthday, birthday)
+        );
     }
 
     /**
