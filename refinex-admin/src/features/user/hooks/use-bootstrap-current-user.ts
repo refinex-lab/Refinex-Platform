@@ -4,6 +4,9 @@ import { handleServerError } from '@/lib/handle-server-error'
 import { useAuthStore } from '@/stores/auth-store'
 import { useUserStore } from '@/stores/user-store'
 
+let bootstrappingToken: string | null = null
+let loadedToken: string | null = null
+
 export function useBootstrapCurrentUser() {
   const accessToken = useAuthStore((state) => state.auth.accessToken)
   const setAuthUser = useAuthStore((state) => state.auth.setUser)
@@ -15,10 +18,21 @@ export function useBootstrapCurrentUser() {
   useEffect(() => {
     if (!accessToken) {
       resetUserStore()
+      bootstrappingToken = null
+      loadedToken = null
       return
     }
 
-    let canceled = false
+    const userState = useUserStore.getState()
+    if (loadedToken === accessToken && userState.profile) {
+      return
+    }
+
+    if (bootstrappingToken === accessToken) {
+      return
+    }
+
+    bootstrappingToken = accessToken
 
     const loadCurrentUser = async () => {
       setLoading(true)
@@ -28,7 +42,9 @@ export function useBootstrapCurrentUser() {
           getCurrentUserEstabs(),
         ])
 
-        if (canceled) return
+        if (useAuthStore.getState().auth.accessToken !== accessToken) {
+          return
+        }
 
         setProfile(profile)
         setEstabs(estabs)
@@ -50,22 +66,18 @@ export function useBootstrapCurrentUser() {
               ? currentAuthUser?.estabAdmin
               : profile.estabAdmin,
         })
+        loadedToken = accessToken
       } catch (error) {
-        if (!canceled) {
-          handleServerError(error)
-        }
+        handleServerError(error)
       } finally {
-        if (!canceled) {
-          setLoading(false)
+        if (bootstrappingToken === accessToken) {
+          bootstrappingToken = null
         }
+        setLoading(false)
       }
     }
 
     loadCurrentUser()
-
-    return () => {
-      canceled = true
-    }
   }, [
     accessToken,
     resetUserStore,
