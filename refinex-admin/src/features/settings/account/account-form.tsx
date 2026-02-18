@@ -1,18 +1,24 @@
+import { useEffect, useMemo, useState } from 'react'
 import { z } from 'zod'
-import { useForm } from 'react-hook-form'
-import { CaretSortIcon, CheckIcon } from '@radix-ui/react-icons'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { showSubmittedData } from '@/lib/show-submitted-data'
-import { cn } from '@/lib/utils'
+import { useForm } from 'react-hook-form'
+import { Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
+import {
+  changeCurrentUserPassword,
+  getCurrentUserAccountInfo,
+  type UserAccountInfo,
+} from '@/features/user/api/user-api'
+import { handleServerError } from '@/lib/handle-server-error'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command'
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import {
   Form,
   FormControl,
@@ -23,150 +29,305 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
-import { DatePicker } from '@/components/date-picker'
 
-const languages = [
-  { label: '英语', value: 'en' },
-  { label: '法语', value: 'fr' },
-  { label: '德语', value: 'de' },
-  { label: '西班牙语', value: 'es' },
-  { label: '葡萄牙语', value: 'pt' },
-  { label: '俄语', value: 'ru' },
-  { label: '日语', value: 'ja' },
-  { label: '韩语', value: 'ko' },
-  { label: '中文', value: 'zh' },
-] as const
+const accountPasswordSchema = z
+  .object({
+    oldPassword: z
+      .string()
+      .trim()
+      .min(6, '旧密码至少需要 6 个字符。')
+      .max(128, '旧密码长度不能超过 128 个字符。'),
+    newPassword: z
+      .string()
+      .trim()
+      .min(6, '新密码至少需要 6 个字符。')
+      .max(128, '新密码长度不能超过 128 个字符。'),
+    confirmPassword: z
+      .string()
+      .trim()
+      .min(6, '确认密码至少需要 6 个字符。')
+      .max(128, '确认密码长度不能超过 128 个字符。'),
+  })
+  .refine((values) => values.newPassword === values.confirmPassword, {
+    message: '两次输入的新密码不一致。',
+    path: ['confirmPassword'],
+  })
+  .refine((values) => values.oldPassword !== values.newPassword, {
+    message: '新密码不能与旧密码相同。',
+    path: ['newPassword'],
+  })
 
-const accountFormSchema = z.object({
-  name: z
-    .string()
-    .min(1, '请输入姓名。')
-    .min(2, '姓名至少需要 2 个字符。')
-    .max(30, '姓名长度不能超过 30 个字符。'),
-  dob: z.date('请选择出生日期。'),
-  language: z.string('请选择语言。'),
-})
+type AccountPasswordFormValues = z.infer<typeof accountPasswordSchema>
 
-type AccountFormValues = z.infer<typeof accountFormSchema>
+const defaultValues: AccountPasswordFormValues = {
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: '',
+}
 
-// This can come from your database or API.
-const defaultValues: Partial<AccountFormValues> = {
-  name: '',
+const STATUS_LABEL: Record<string, string> = {
+  ENABLED: '启用',
+  DISABLED: '停用',
+  LOCKED: '锁定',
+}
+
+const USER_TYPE_LABEL: Record<string, string> = {
+  PLATFORM: '平台用户',
+  TENANT: '租户用户',
+  PARTNER: '合作方用户',
+}
+
+function formatDateTime(value?: string): string {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '-'
+  return date.toLocaleString('zh-CN')
+}
+
+function formatStatus(value?: string): string {
+  if (!value) return '-'
+  return STATUS_LABEL[value] ?? value
+}
+
+function formatUserType(value?: string): string {
+  if (!value) return '-'
+  return USER_TYPE_LABEL[value] ?? value
+}
+
+function boolLabel(value?: boolean): string {
+  return value ? '已验证' : '未验证'
 }
 
 export function AccountForm() {
-  const form = useForm<AccountFormValues>({
-    resolver: zodResolver(accountFormSchema),
+  const [account, setAccount] = useState<UserAccountInfo | null>(null)
+  const [fetching, setFetching] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  const form = useForm<AccountPasswordFormValues>({
+    resolver: zodResolver(accountPasswordSchema),
     defaultValues,
+    mode: 'onChange',
   })
 
-  function onSubmit(data: AccountFormValues) {
-    showSubmittedData(data)
+  useEffect(() => {
+    let canceled = false
+    setFetching(true)
+    ;(async () => {
+      try {
+        const data = await getCurrentUserAccountInfo()
+        if (!canceled) {
+          setAccount(data)
+        }
+      } catch (error) {
+        if (!canceled) {
+          handleServerError(error)
+        }
+      } finally {
+        if (!canceled) {
+          setFetching(false)
+        }
+      }
+    })()
+
+    return () => {
+      canceled = true
+    }
+  }, [])
+
+  const accountMeta = useMemo(
+    () => ({
+      userCode: account?.userCode || '-',
+      username: account?.username || '-',
+      primaryPhone: account?.primaryPhone || '-',
+      primaryEmail: account?.primaryEmail || '-',
+      status: formatStatus(account?.status),
+      userType: formatUserType(account?.userType),
+      registerTime: formatDateTime(account?.registerTime),
+      lastLoginTime: formatDateTime(account?.lastLoginTime),
+      lastLoginIp: account?.lastLoginIp || '-',
+    }),
+    [account]
+  )
+
+  const canChangePassword = Boolean(
+    account?.usernamePasswordEnabled || account?.emailPasswordEnabled
+  )
+  const formDisabled = fetching || saving || !account || !canChangePassword
+
+  if (fetching && !account) {
+    return (
+      <div className='flex items-center gap-2 text-sm text-muted-foreground'>
+        <Loader2 className='h-4 w-4 animate-spin' />
+        正在加载账号信息...
+      </div>
+    )
+  }
+
+  async function onSubmit(values: AccountPasswordFormValues) {
+    setSaving(true)
+    try {
+      await changeCurrentUserPassword({
+        oldPassword: values.oldPassword.trim(),
+        newPassword: values.newPassword.trim(),
+      })
+      form.reset(defaultValues)
+      toast.success('密码修改成功，请使用新密码重新登录。')
+    } catch (error) {
+      handleServerError(error)
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-8'>
-        <FormField
-          control={form.control}
-          name='name'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>姓名</FormLabel>
-              <FormControl>
-                <Input placeholder='请输入姓名' {...field} />
-              </FormControl>
-              <FormDescription>
-                该姓名将显示在个人资料与邮件中。
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name='dob'
-          render={({ field }) => (
-            <FormItem className='flex flex-col'>
-              <FormLabel>出生日期</FormLabel>
-              <DatePicker selected={field.value} onSelect={field.onChange} />
-              <FormDescription>
-                出生日期用于计算年龄。
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name='language'
-          render={({ field }) => (
-            <FormItem className='flex flex-col'>
-              <FormLabel>语言</FormLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button
-                      variant='outline'
-                      role='combobox'
-                      className={cn(
-                        'w-[200px] justify-between',
-                        !field.value && 'text-muted-foreground'
-                      )}
-                    >
-                      {field.value
-                        ? languages.find(
-                            (language) => language.value === field.value
-                          )?.label
-                        : '选择语言'}
-                      <CaretSortIcon className='ms-2 h-4 w-4 shrink-0 opacity-50' />
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className='w-[200px] p-0'>
-                  <Command>
-                    <CommandInput placeholder='搜索语言...' />
-                    <CommandEmpty>未找到语言。</CommandEmpty>
-                    <CommandGroup>
-                      <CommandList>
-                        {languages.map((language) => (
-                          <CommandItem
-                            value={language.label}
-                            key={language.value}
-                            onSelect={() => {
-                              form.setValue('language', language.value)
-                            }}
-                          >
-                            <CheckIcon
-                              className={cn(
-                                'size-4',
-                                language.value === field.value
-                                  ? 'opacity-100'
-                                  : 'opacity-0'
-                              )}
-                            />
-                            {language.label}
-                          </CommandItem>
-                        ))}
-                      </CommandList>
-                    </CommandGroup>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-              <FormDescription>
-                该语言将用于仪表盘界面显示。
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <Button type='submit'>更新账号</Button>
-      </form>
-    </Form>
+    <div className='space-y-6'>
+      <Card>
+        <CardHeader>
+          <CardTitle>账号基础信息</CardTitle>
+          <CardDescription>以下字段由系统维护，部分字段需通过验证流程更新。</CardDescription>
+        </CardHeader>
+        <CardContent className='space-y-4'>
+          <div className='grid gap-4 md:grid-cols-2'>
+            <div className='space-y-2'>
+              <p className='text-sm font-medium'>用户编码</p>
+              <Input value={accountMeta.userCode} disabled />
+            </div>
+            <div className='space-y-2'>
+              <p className='text-sm font-medium'>用户名</p>
+              <Input value={accountMeta.username} disabled />
+            </div>
+          </div>
+
+          <div className='grid gap-4 md:grid-cols-2'>
+            <div className='space-y-2'>
+              <p className='text-sm font-medium'>主手机号</p>
+              <div className='flex items-center gap-2'>
+                <Input value={accountMeta.primaryPhone} disabled />
+                <Badge variant={account?.phoneVerified ? 'default' : 'outline'} className='shrink-0'>
+                  {boolLabel(account?.phoneVerified)}
+                </Badge>
+              </div>
+            </div>
+            <div className='space-y-2'>
+              <p className='text-sm font-medium'>主邮箱</p>
+              <div className='flex items-center gap-2'>
+                <Input value={accountMeta.primaryEmail} disabled />
+                <Badge variant={account?.emailVerified ? 'default' : 'outline'} className='shrink-0'>
+                  {boolLabel(account?.emailVerified)}
+                </Badge>
+              </div>
+            </div>
+          </div>
+
+          <div className='grid gap-4 md:grid-cols-2'>
+            <div className='space-y-2'>
+              <p className='text-sm font-medium'>账号状态</p>
+              <Input value={accountMeta.status} disabled />
+            </div>
+            <div className='space-y-2'>
+              <p className='text-sm font-medium'>账号类型</p>
+              <Input value={accountMeta.userType} disabled />
+            </div>
+          </div>
+
+          <div className='grid gap-4 text-sm text-muted-foreground md:grid-cols-3'>
+            <div>
+              <p className='font-medium text-foreground'>注册时间</p>
+              <p>{accountMeta.registerTime}</p>
+            </div>
+            <div>
+              <p className='font-medium text-foreground'>最近登录时间</p>
+              <p>{accountMeta.lastLoginTime}</p>
+            </div>
+            <div>
+              <p className='font-medium text-foreground'>最近登录 IP</p>
+              <p>{accountMeta.lastLoginIp}</p>
+            </div>
+          </div>
+
+          <div className='grid gap-3 md:grid-cols-2'>
+            <div className='flex items-center justify-between rounded-md border px-3 py-2 text-sm'>
+              <span>用户名密码</span>
+              <Badge variant={account?.usernamePasswordEnabled ? 'default' : 'outline'}>
+                {account?.usernamePasswordEnabled ? '已设置' : '未设置'}
+              </Badge>
+            </div>
+            <div className='flex items-center justify-between rounded-md border px-3 py-2 text-sm'>
+              <span>邮箱密码</span>
+              <Badge variant={account?.emailPasswordEnabled ? 'default' : 'outline'}>
+                {account?.emailPasswordEnabled ? '已设置' : '未设置'}
+              </Badge>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>修改密码</CardTitle>
+          <CardDescription>修改成功后，建议重新登录以刷新会话状态。</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
+              {account && !canChangePassword && (
+                <p className='rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground'>
+                  当前账号尚未设置密码，请先通过忘记密码流程设置初始密码。
+                </p>
+              )}
+              <FormField
+                control={form.control}
+                name='oldPassword'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>旧密码</FormLabel>
+                    <FormControl>
+                      <Input type='password' placeholder='请输入旧密码' disabled={formDisabled} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name='newPassword'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>新密码</FormLabel>
+                    <FormControl>
+                      <Input type='password' placeholder='请输入新密码' disabled={formDisabled} {...field} />
+                    </FormControl>
+                    <FormDescription>建议至少包含字母、数字与特殊字符组合。</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name='confirmPassword'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>确认新密码</FormLabel>
+                    <FormControl>
+                      <Input
+                        type='password'
+                        placeholder='请再次输入新密码'
+                        disabled={formDisabled}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type='submit' disabled={formDisabled}>
+                {(fetching || saving) && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
+                保存新密码
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+    </div>
   )
 }

@@ -328,6 +328,22 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     /**
+     * 更新用户头像
+     *
+     * @param userId 用户ID
+     * @param avatarUrl 头像地址
+     */
+    @Override
+    public void updateUserAvatar(Long userId, String avatarUrl) {
+        defUserMapper.update(
+                null,
+                Wrappers.lambdaUpdate(DefUserDo.class)
+                        .eq(DefUserDo::getId, userId)
+                        .set(DefUserDo::getAvatarUrl, avatarUrl)
+        );
+    }
+
+    /**
      * 标记登录成功
      *
      * @param userId    用户ID

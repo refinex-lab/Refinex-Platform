@@ -84,11 +84,11 @@ refinex:
   file:
     oss:
       # 是否启用 OSS 文件服务
-      enable: false
+      enable: true
       # OSS Endpoint
-      endpoint: https://oss-cn-hangzhou.aliyuncs.com
+      endpoint: https://oss-cn-shanghai.aliyuncs.com
       # OSS Bucket
-      bucket: refinex
+      bucket: refinex-platform
       # OSS AccessKey（敏感）
       access-key: ${REFINEX_OSS_ACCESS_KEY:}
       # OSS SecretKey（敏感）

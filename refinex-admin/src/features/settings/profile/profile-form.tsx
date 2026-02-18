@@ -1,16 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { Loader2 } from 'lucide-react'
+import { ImageUp, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   getCurrentUserInfo,
+  uploadCurrentUserAvatar,
   updateCurrentUserProfile,
 } from '@/features/user/api/user-api'
 import { handleServerError } from '@/lib/handle-server-error'
 import { useAuthStore } from '@/stores/auth-store'
 import { useUserStore } from '@/stores/user-store'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -31,6 +33,8 @@ import {
 } from '@/components/ui/select'
 
 const GENDER_OPTIONS = ['0', '1', '2', '3'] as const
+const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024
+const ACCEPTED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] as const
 
 const profileFormSchema = z.object({
   displayName: z
@@ -50,16 +54,7 @@ const profileFormSchema = z.object({
     .max(255, '头像地址长度不能超过 255 个字符。')
     .optional()
     .or(z.literal('')),
-  gender: z.preprocess(
-    (value) => {
-      if (value == null || value === '') return '0'
-      const normalized = String(value)
-      return (GENDER_OPTIONS as readonly string[]).includes(normalized)
-        ? normalized
-        : '0'
-    },
-    z.enum(GENDER_OPTIONS)
-  ),
+  gender: z.enum(GENDER_OPTIONS),
   birthday: z.string().optional(),
 })
 
@@ -71,13 +66,6 @@ const defaultValues: ProfileFormValues = {
   avatarUrl: '',
   gender: '0',
   birthday: '',
-}
-
-function formatDateTime(value?: string): string {
-  if (!value) return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '-'
-  return date.toLocaleString('zh-CN')
 }
 
 function toFormValues(profile: ReturnType<typeof useUserStore.getState>['profile']): ProfileFormValues {
@@ -98,11 +86,12 @@ function toFormValues(profile: ReturnType<typeof useUserStore.getState>['profile
 
 export function ProfileForm() {
   const { auth } = useAuthStore()
-  const profile = useUserStore((state) => state.profile)
   const setProfile = useUserStore((state) => state.setProfile)
   const loading = useUserStore((state) => state.loading)
   const [saving, setSaving] = useState(false)
   const [fetching, setFetching] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -111,11 +100,6 @@ export function ProfileForm() {
   })
 
   useEffect(() => {
-    if (profile) {
-      form.reset(toFormValues(profile))
-      return
-    }
-
     let canceled = false
     setFetching(true)
     ;(async () => {
@@ -126,6 +110,10 @@ export function ProfileForm() {
         form.reset(toFormValues(info))
       } catch (error) {
         if (!canceled) {
+          const cachedProfile = useUserStore.getState().profile
+          if (cachedProfile) {
+            form.reset(toFormValues(cachedProfile))
+          }
           handleServerError(error)
         }
       } finally {
@@ -138,21 +126,51 @@ export function ProfileForm() {
     return () => {
       canceled = true
     }
-  }, [form, profile, setProfile])
+  }, [form, setProfile])
 
-  const disabled = loading || fetching || saving
-  const profileMeta = useMemo(
-    () => ({
-      userCode: profile?.userCode || '-',
-      username: profile?.username || '-',
-      primaryPhone: profile?.primaryPhone || '-',
-      primaryEmail: profile?.primaryEmail || '-',
-      registerTime: formatDateTime(profile?.registerTime),
-      lastLoginTime: formatDateTime(profile?.lastLoginTime),
-      lastLoginIp: profile?.lastLoginIp || '-',
-    }),
-    [profile]
-  )
+  const avatarUrl = form.watch('avatarUrl')
+  const displayName = form.watch('displayName')
+  const avatarName =
+    displayName ||
+    auth.user?.displayName ||
+    auth.user?.nickname ||
+    auth.user?.username ||
+    '用户'
+  const avatarFallback = avatarName.slice(0, 1).toUpperCase()
+  const disabled = loading || fetching || saving || uploadingAvatar
+
+  async function handleAvatarFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) {
+      return
+    }
+
+    if (!ACCEPTED_AVATAR_TYPES.includes(file.type as (typeof ACCEPTED_AVATAR_TYPES)[number])) {
+      toast.error('头像仅支持 JPG/PNG/WEBP/GIF 格式')
+      return
+    }
+    if (file.size > MAX_AVATAR_SIZE_BYTES) {
+      toast.error('头像文件大小不能超过 5MB')
+      return
+    }
+
+    setUploadingAvatar(true)
+    try {
+      const updated = await uploadCurrentUserAvatar(file)
+      form.setValue('avatarUrl', updated.avatarUrl ?? '', { shouldDirty: true })
+      setProfile(updated)
+      auth.setUser({
+        ...auth.user,
+        avatarUrl: updated.avatarUrl ?? auth.user?.avatarUrl,
+      })
+      toast.success('头像上传成功')
+    } catch (error) {
+      handleServerError(error)
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
 
   async function onSubmit(values: ProfileFormValues) {
     setSaving(true)
@@ -184,20 +202,51 @@ export function ProfileForm() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-8'>
-        <div className='grid gap-4 md:grid-cols-2'>
-          <FormItem>
-            <FormLabel>用户编码</FormLabel>
-            <FormControl>
-              <Input value={profileMeta.userCode} disabled />
-            </FormControl>
-          </FormItem>
-          <FormItem>
-            <FormLabel>用户名</FormLabel>
-            <FormControl>
-              <Input value={profileMeta.username} disabled />
-            </FormControl>
-          </FormItem>
+        <div className='rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground'>
+          这里维护个人展示信息。账号安全、登录方式与密码请在“账号”页面管理。
         </div>
+
+        <FormField
+          control={form.control}
+          name='avatarUrl'
+          render={() => (
+            <FormItem>
+              <FormLabel>头像</FormLabel>
+              <div className='flex items-center gap-4 rounded-lg border p-4'>
+                <Avatar className='h-16 w-16 border'>
+                  <AvatarImage src={avatarUrl || undefined} alt={avatarName} />
+                  <AvatarFallback className='text-lg'>{avatarFallback}</AvatarFallback>
+                </Avatar>
+                <div className='space-y-2'>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    disabled={disabled}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {uploadingAvatar ? (
+                      <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                    ) : (
+                      <ImageUp className='mr-2 h-4 w-4' />
+                    )}
+                    上传头像
+                  </Button>
+                  <FormDescription>
+                    支持 JPG/PNG/WEBP/GIF，最大 5MB。
+                  </FormDescription>
+                  <input
+                    ref={fileInputRef}
+                    type='file'
+                    accept={ACCEPTED_AVATAR_TYPES.join(',')}
+                    className='hidden'
+                    onChange={handleAvatarFileChange}
+                  />
+                </div>
+              </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <div className='grid gap-4 md:grid-cols-2'>
           <FormField
@@ -273,55 +322,6 @@ export function ProfileForm() {
               </FormItem>
             )}
           />
-        </div>
-
-        <FormField
-          control={form.control}
-          name='avatarUrl'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>头像地址</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder='https://example.com/avatar.png'
-                  disabled={disabled}
-                  {...field}
-                />
-              </FormControl>
-              <FormDescription>支持填写公网可访问的头像 URL。</FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className='grid gap-4 md:grid-cols-2'>
-          <FormItem>
-            <FormLabel>主手机号</FormLabel>
-            <FormControl>
-              <Input value={profileMeta.primaryPhone} disabled />
-            </FormControl>
-          </FormItem>
-          <FormItem>
-            <FormLabel>主邮箱</FormLabel>
-            <FormControl>
-              <Input value={profileMeta.primaryEmail} disabled />
-            </FormControl>
-          </FormItem>
-        </div>
-
-        <div className='grid gap-4 text-sm text-muted-foreground md:grid-cols-3'>
-          <div>
-            <p className='font-medium text-foreground'>注册时间</p>
-            <p>{profileMeta.registerTime}</p>
-          </div>
-          <div>
-            <p className='font-medium text-foreground'>最近登录时间</p>
-            <p>{profileMeta.lastLoginTime}</p>
-          </div>
-          <div>
-            <p className='font-medium text-foreground'>最近登录 IP</p>
-            <p>{profileMeta.lastLoginIp}</p>
-          </div>
         </div>
 
         <Button type='submit' disabled={disabled}>

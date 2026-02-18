@@ -3,12 +3,10 @@ package cn.refinex.user.application.service;
 import cn.refinex.api.user.enums.UserStatus;
 import cn.refinex.api.user.enums.UserType;
 import cn.refinex.base.exception.BizException;
+import cn.refinex.file.api.FileService;
 import cn.refinex.user.application.assembler.UserDomainAssembler;
 import cn.refinex.user.application.command.*;
-import cn.refinex.user.application.dto.AuthSubjectDTO;
-import cn.refinex.user.application.dto.RegisterUserResultDTO;
-import cn.refinex.user.application.dto.UserEstabDTO;
-import cn.refinex.user.application.dto.UserInfoDTO;
+import cn.refinex.user.application.dto.*;
 import cn.refinex.user.domain.error.UserErrorCode;
 import cn.refinex.user.domain.model.entity.UserAuthSubject;
 import cn.refinex.user.domain.model.entity.UserEntity;
@@ -21,10 +19,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
+import java.io.InputStream;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 
 /**
  * 用户应用服务
@@ -37,10 +37,14 @@ public class UserApplicationService {
 
     private static final String DEFAULT_ESTAB_NAME = "默认组织";
     private static final String DEFAULT_PASSWORD_ENCODER = "bcrypt";
+    private static final DateTimeFormatter AVATAR_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMM");
+    private static final Set<String> ALLOWED_AVATAR_EXTENSIONS = Set.of("jpg", "jpeg", "png", "webp", "gif");
+    private static final long AVATAR_MAX_SIZE_BYTES = 5L * 1024 * 1024;
 
     private final UserRepository userRepository;
     private final UserDomainAssembler userDomainAssembler;
     private final PasswordEncoder passwordEncoder;
+    private final FileService fileService;
 
     /**
      * 注册用户
@@ -276,6 +280,136 @@ public class UserApplicationService {
     }
 
     /**
+     * 查询当前用户账号基础信息
+     *
+     * @param userId 用户ID
+     * @return 账号信息
+     */
+    public UserAccountDTO queryUserAccountInfo(Long userId) {
+        if (userId == null) {
+            throw new BizException(UserErrorCode.INVALID_PARAM);
+        }
+
+        UserEntity user = userRepository.findUserById(userId);
+        if (user == null || (user.getDeleted() != null && user.getDeleted() == 1)) {
+            throw new BizException(UserErrorCode.USER_NOT_FOUND);
+        }
+
+        UserIdentityEntity usernamePasswordIdentity = userRepository.findIdentityByUserIdAndType(userId, IdentityType.USERNAME_PASSWORD.getCode());
+        UserIdentityEntity emailPasswordIdentity = userRepository.findIdentityByUserIdAndType(userId, IdentityType.EMAIL_PASSWORD.getCode());
+
+        UserAccountDTO dto = new UserAccountDTO();
+        dto.setUserId(user.getId());
+        dto.setUserCode(user.getUserCode());
+        dto.setUsername(user.getUsername());
+        dto.setPrimaryPhone(user.getPrimaryPhone());
+        dto.setPhoneVerified(user.getPhoneVerified() != null && user.getPhoneVerified() == 1);
+        dto.setPrimaryEmail(user.getPrimaryEmail());
+        dto.setEmailVerified(user.getEmailVerified() != null && user.getEmailVerified() == 1);
+        dto.setStatus(UserStatus.of(user.getStatus()));
+        dto.setUserType(UserType.of(user.getUserType()));
+        dto.setRegisterTime(user.getGmtCreate());
+        dto.setLastLoginTime(user.getLastLoginTime());
+        dto.setLastLoginIp(user.getLastLoginIp());
+        dto.setUsernamePasswordEnabled(hasCredential(usernamePasswordIdentity));
+        dto.setEmailPasswordEnabled(hasCredential(emailPasswordIdentity));
+        return dto;
+    }
+
+    /**
+     * 当前用户修改密码
+     *
+     * @param command 修改密码命令
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void changePassword(ChangePasswordCommand command) {
+        if (command == null || command.getUserId() == null
+                || command.getOldPassword() == null || command.getOldPassword().isBlank()
+                || command.getNewPassword() == null || command.getNewPassword().isBlank()) {
+            throw new BizException(UserErrorCode.INVALID_PARAM);
+        }
+
+        UserEntity user = userRepository.findUserById(command.getUserId());
+        if (user == null || (user.getDeleted() != null && user.getDeleted() == 1)) {
+            throw new BizException(UserErrorCode.USER_NOT_FOUND);
+        }
+
+        UserIdentityEntity usernamePasswordIdentity = userRepository.findIdentityByUserIdAndType(command.getUserId(), IdentityType.USERNAME_PASSWORD.getCode());
+        UserIdentityEntity emailPasswordIdentity = userRepository.findIdentityByUserIdAndType(command.getUserId(), IdentityType.EMAIL_PASSWORD.getCode());
+
+        List<UserIdentityEntity> passwordIdentities = new ArrayList<>();
+        if (hasCredential(usernamePasswordIdentity)) {
+            passwordIdentities.add(usernamePasswordIdentity);
+        }
+        if (hasCredential(emailPasswordIdentity)) {
+            passwordIdentities.add(emailPasswordIdentity);
+        }
+        if (passwordIdentities.isEmpty()) {
+            throw new BizException(UserErrorCode.PASSWORD_RESET_NOT_SUPPORTED);
+        }
+
+        boolean oldPasswordMatched = false;
+        for (UserIdentityEntity identity : passwordIdentities) {
+            if (passwordEncoder.matches(command.getOldPassword(), identity.getCredential())) {
+                oldPasswordMatched = true;
+                break;
+            }
+        }
+        if (!oldPasswordMatched) {
+            throw new BizException(UserErrorCode.OLD_PASSWORD_INCORRECT);
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        String encodedPassword = passwordEncoder.encode(command.getNewPassword());
+        for (UserIdentityEntity identity : passwordIdentities) {
+            userRepository.updateIdentityCredential(
+                    identity.getId(),
+                    encodedPassword,
+                    DEFAULT_PASSWORD_ENCODER,
+                    identity.getVerified(),
+                    identity.getVerifiedAt() == null ? now : identity.getVerifiedAt()
+            );
+        }
+        userRepository.resetLoginFailCount(command.getUserId());
+    }
+
+    /**
+     * 上传用户头像
+     *
+     * @param command     上传头像命令
+     * @param inputStream 文件流
+     * @return 用户信息
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public UserInfoDTO uploadUserAvatar(UploadUserAvatarCommand command, InputStream inputStream) {
+        if (command == null || command.getUserId() == null || inputStream == null) {
+            throw new BizException(UserErrorCode.INVALID_PARAM);
+        }
+
+        if (command.getFileSize() == null || command.getFileSize() <= 0) {
+            throw new BizException("头像文件不能为空", UserErrorCode.INVALID_PARAM);
+        }
+        if (command.getFileSize() > AVATAR_MAX_SIZE_BYTES) {
+            throw new BizException("头像文件大小不能超过 5MB", UserErrorCode.INVALID_PARAM);
+        }
+
+        UserEntity user = userRepository.findUserById(command.getUserId());
+        if (user == null || (user.getDeleted() != null && user.getDeleted() == 1)) {
+            throw new BizException(UserErrorCode.USER_NOT_FOUND);
+        }
+
+        String extension = resolveAvatarExtension(command.getOriginalFilename(), command.getContentType());
+        String path = buildAvatarPath(command.getUserId(), extension);
+        String avatarUrl = fileService.upload(path, inputStream);
+        userRepository.updateUserAvatar(command.getUserId(), avatarUrl);
+
+        QueryUserInfoCommand query = new QueryUserInfoCommand();
+        query.setUserId(command.getUserId());
+        query.setEstabId(command.getEstabId());
+        return queryUserInfo(query);
+    }
+
+    /**
      * 更新用户资料
      *
      * @param command 更新命令
@@ -443,6 +577,68 @@ public class UserApplicationService {
         return "E" + System.currentTimeMillis();
     }
 
+    /**
+     * 解析头像扩展名
+     *
+     * @param originalFilename 原始文件名
+     * @param contentType      内容类型
+     * @return 扩展名
+     */
+    private String resolveAvatarExtension(String originalFilename, String contentType) {
+        String extension = StringUtils.getFilenameExtension(originalFilename);
+        if (StringUtils.hasText(extension)) {
+            String normalized = extension.toLowerCase(Locale.ROOT);
+            if (ALLOWED_AVATAR_EXTENSIONS.contains(normalized)) {
+                return normalized;
+            }
+        }
+
+        if (StringUtils.hasText(contentType)) {
+            return switch (contentType.toLowerCase(Locale.ROOT)) {
+                case "image/jpeg", "image/jpg" -> "jpg";
+                case "image/png" -> "png";
+                case "image/webp" -> "webp";
+                case "image/gif" -> "gif";
+                default -> throw new BizException("头像仅支持 JPG/PNG/WEBP/GIF 格式", UserErrorCode.INVALID_PARAM);
+            };
+        }
+
+        throw new BizException("头像仅支持 JPG/PNG/WEBP/GIF 格式", UserErrorCode.INVALID_PARAM);
+    }
+
+    /**
+     * 构建头像路径
+     *
+     * @param userId    用户ID
+     * @param extension 扩展名
+     * @return 路径
+     */
+    private String buildAvatarPath(Long userId, String extension) {
+        String folder = LocalDateTime.now().format(AVATAR_DATE_FORMATTER);
+        String fileName = "u_" + userId + "_" + UUID.randomUUID().toString().replace("-", "");
+        return "avatar/user/" + folder + "/" + fileName + "." + extension;
+    }
+
+    /**
+     * 是否有凭证
+     *
+     * @param identity 身份
+     * @return 是否有凭证
+     */
+    private boolean hasCredential(UserIdentityEntity identity) {
+        return identity != null
+                && identity.getStatus() != null
+                && identity.getStatus() == 1
+                && identity.getCredential() != null
+                && !identity.getCredential().isBlank();
+    }
+
+    /**
+     * 规范化可空文本
+     *
+     * @param value 值
+     * @return 规范化后的文本
+     */
     private String normalizeNullableText(String value) {
         if (value == null) {
             return null;

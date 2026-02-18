@@ -150,6 +150,14 @@ public interface UserRepository {
     void updateUserProfile(Long userId, String displayName, String nickname, String avatarUrl, Integer gender, LocalDate birthday);
 
     /**
+     * 更新用户头像
+     *
+     * @param userId 用户ID
+     * @param avatarUrl 头像地址
+     */
+    void updateUserAvatar(Long userId, String avatarUrl);
+
+    /**
      * 标记登录成功
      *
      * @param userId    用户ID

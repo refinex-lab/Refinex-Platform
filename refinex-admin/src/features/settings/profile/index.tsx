@@ -5,7 +5,7 @@ export function SettingsProfile() {
   return (
     <ContentSection
       title='个人资料'
-      desc='这将影响其他人在系统中看到的你的信息。'
+      desc='维护对外展示信息（显示名称、昵称、头像、性别、生日）。'
     >
       <ProfileForm />
     </ContentSection>

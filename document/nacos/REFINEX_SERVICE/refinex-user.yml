@@ -7,6 +7,14 @@ server:
   # User 服务端口
   port: 8082
 
+spring:
+  servlet:
+    multipart:
+      # 头像上传单文件大小限制
+      max-file-size: 5MB
+      # 请求总体大小限制
+      max-request-size: 10MB
+
 refinex:
   web:
     # 是否启用 TokenFilter, 默认关闭，避免与 Sa-Token 登录态鉴权混用

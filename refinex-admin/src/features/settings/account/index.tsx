@@ -5,7 +5,7 @@ export function SettingsAccount() {
   return (
     <ContentSection
       title='账号'
-      desc='更新你的账号设置，并设定偏好语言和时区。'
+      desc='管理账号安全信息（登录身份、验证状态、密码变更）。'
     >
       <AccountForm />
     </ContentSection>

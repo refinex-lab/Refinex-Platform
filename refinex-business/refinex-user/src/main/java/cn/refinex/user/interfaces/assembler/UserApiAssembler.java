@@ -5,8 +5,14 @@ import cn.refinex.api.user.model.vo.UserInfo;
 import cn.refinex.user.application.command.*;
 import cn.refinex.user.application.dto.AuthSubjectDTO;
 import cn.refinex.user.application.dto.RegisterUserResultDTO;
+import cn.refinex.user.application.dto.UserAccountDTO;
+import cn.refinex.user.application.dto.UserEstabDTO;
 import cn.refinex.user.application.dto.UserInfoDTO;
+import cn.refinex.user.interfaces.vo.UserAccountVO;
+import cn.refinex.user.interfaces.vo.UserEstabVO;
 import org.mapstruct.Mapper;
+
+import java.util.List;
 
 /**
  * 用户接口装配器
@@ -95,4 +101,20 @@ public interface UserApiAssembler {
      * @return 用户信息
      */
     UserInfo toUserInfo(UserInfoDTO userInfoDto);
+
+    /**
+     * 用户账号信息转换
+     *
+     * @param userAccountDto 用户账号信息DTO
+     * @return 用户账号信息VO
+     */
+    UserAccountVO toUserAccountVo(UserAccountDTO userAccountDto);
+
+    /**
+     * 用户企业信息转换
+     *
+     * @param userEstabDtos 用户企业信息DTO列表
+     * @return 用户企业信息VO列表
+     */
+    List<UserEstabVO> toUserEstabVoList(List<UserEstabDTO> userEstabDtos);
 }

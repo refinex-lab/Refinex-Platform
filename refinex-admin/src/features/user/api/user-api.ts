@@ -43,6 +43,28 @@ export interface UpdateProfileRequest {
   birthday?: string
 }
 
+export interface UserAccountInfo {
+  userId?: number
+  userCode?: string
+  username?: string
+  primaryPhone?: string
+  phoneVerified?: boolean
+  primaryEmail?: string
+  emailVerified?: boolean
+  status?: string
+  userType?: string
+  registerTime?: string
+  lastLoginTime?: string
+  lastLoginIp?: string
+  usernamePasswordEnabled?: boolean
+  emailPasswordEnabled?: boolean
+}
+
+export interface ChangePasswordRequest {
+  oldPassword: string
+  newPassword: string
+}
+
 export async function getCurrentUserInfo(): Promise<UserInfo> {
   const response = await http.get<UserInfo>(buildModulePath('user', '/users/me/info'))
   return response.data
@@ -55,5 +77,24 @@ export async function getCurrentUserEstabs(): Promise<UserEstab[]> {
 
 export async function updateCurrentUserProfile(payload: UpdateProfileRequest): Promise<UserInfo> {
   const response = await http.put<UserInfo>(buildModulePath('user', '/users/me/profile'), payload)
+  return response.data
+}
+
+export async function getCurrentUserAccountInfo(): Promise<UserAccountInfo> {
+  const response = await http.get<UserAccountInfo>(buildModulePath('user', '/users/me/account'))
+  return response.data
+}
+
+export async function changeCurrentUserPassword(payload: ChangePasswordRequest): Promise<void> {
+  await http.post<void>(buildModulePath('user', '/users/me/password/change'), payload)
+}
+
+export async function uploadCurrentUserAvatar(file: File): Promise<UserInfo> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const response = await http.post<UserInfo>(
+    buildModulePath('user', '/users/me/avatar'),
+    formData
+  )
   return response.data
 }

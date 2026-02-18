@@ -19,6 +19,7 @@ public enum UserErrorCode implements ErrorCode {
     IDENTITY_DISABLED("USER_403_ID", "登录身份不可用"),
     USER_DISABLED("USER_403", "用户已停用"),
     USER_LOCKED("USER_423", "账号已锁定"),
+    OLD_PASSWORD_INCORRECT("USER_401_PWD", "旧密码错误"),
     DUPLICATE_IDENTITY("USER_409_ID", "账号已存在"),
     REGISTER_TYPE_NOT_SUPPORTED("USER_422_REG", "注册方式暂不支持"),
     PASSWORD_RESET_NOT_SUPPORTED("USER_422_PWD_RESET", "该账号暂不支持密码重置"),
