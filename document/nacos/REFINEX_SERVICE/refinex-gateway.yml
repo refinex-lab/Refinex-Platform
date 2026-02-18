@@ -16,11 +16,11 @@ refinex:
     auth:
       # 网关登录校验白名单（无需 Token）
       exclude-paths:
-        - /auth/login
-        - /auth/sms/send
-        - /auth/email/send
-        - /auth/register
-        - /auth/password/reset
+        - /refinex-auth/auth/login
+        - /refinex-auth/auth/sms/send
+        - /refinex-auth/auth/email/send
+        - /refinex-auth/auth/register
+        - /refinex-auth/auth/password/reset
         - /wxPay/notify
 
 spring:
@@ -51,6 +51,8 @@ spring:
       server:
         webflux:
           globalcors:
+            # 让 OPTIONS 预检在 SimpleUrlHandlerMapping 层直接处理，避免进入鉴权链
+            add-to-simple-url-handler-mapping: true
             cors-configurations:
               '[/**]':
                 # 允许请求头
@@ -68,8 +70,12 @@ spring:
             - id: refinex-auth
               uri: lb://refinex-auth
               predicates:
-                - Path=/auth/**, /token/**
+                - Path=/refinex-auth/**
+              filters:
+                - StripPrefix=1
             - id: refinex-user
               uri: lb://refinex-user
               predicates:
-                - Path=/user/**
+                - Path=/refinex-user/**
+              filters:
+                - StripPrefix=1

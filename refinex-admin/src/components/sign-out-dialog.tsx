@@ -1,6 +1,7 @@
 import { useNavigate, useLocation } from '@tanstack/react-router'
 import { logout } from '@/features/auth/api/auth-api'
 import { useAuthStore } from '@/stores/auth-store'
+import { useUserStore } from '@/stores/user-store'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 
 interface SignOutDialogProps {
@@ -12,6 +13,7 @@ export function SignOutDialog({ open, onOpenChange }: SignOutDialogProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const { auth } = useAuthStore()
+  const resetUserStore = useUserStore((state) => state.reset)
 
   const handleSignOut = async () => {
     try {
@@ -20,6 +22,7 @@ export function SignOutDialog({ open, onOpenChange }: SignOutDialogProps) {
       // ignore logout API error and force local sign-out
     }
     auth.reset()
+    resetUserStore()
     // Preserve current location for redirect after sign-in
     const currentPath = location.href
     navigate({

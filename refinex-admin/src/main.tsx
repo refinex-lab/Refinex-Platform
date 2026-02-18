@@ -10,6 +10,7 @@ import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { appConfig } from '@/config/app-config'
 import { useAuthStore } from '@/stores/auth-store'
+import { useUserStore } from '@/stores/user-store'
 import { handleServerError } from '@/lib/handle-server-error'
 import { DirectionProvider } from './context/direction-provider'
 import { FontProvider } from './context/font-provider'
@@ -55,6 +56,7 @@ const queryClient = new QueryClient({
         if (error.response?.status === 401) {
           toast.error('登录状态已过期！')
           useAuthStore.getState().auth.reset()
+          useUserStore.getState().reset()
           const redirect = `${router.history.location.href}`
           router.navigate({ to: '/sign-in', search: { redirect } })
         }

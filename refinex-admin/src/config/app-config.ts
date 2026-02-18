@@ -31,9 +31,9 @@ export const appConfig = {
     gatewayBaseUrl,
     timeoutMs: parsePositiveInt(import.meta.env.VITE_API_TIMEOUT_MS, 12000),
     prefixes: {
-      auth: normalizePrefix(import.meta.env.VITE_API_PREFIX_AUTH, '/auth'),
-      user: normalizePrefix(import.meta.env.VITE_API_PREFIX_USER, '/user'),
-      token: normalizePrefix(import.meta.env.VITE_API_PREFIX_TOKEN, '/token'),
+      auth: normalizePrefix(import.meta.env.VITE_API_PREFIX_AUTH, '/refinex-auth'),
+      user: normalizePrefix(import.meta.env.VITE_API_PREFIX_USER, '/refinex-user'),
+      token: normalizePrefix(import.meta.env.VITE_API_PREFIX_TOKEN, '/refinex-auth'),
     },
   },
   auth: {

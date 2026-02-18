@@ -1,9 +1,12 @@
 package cn.refinex.user.domain.repository;
 
 import cn.refinex.user.domain.model.entity.UserEntity;
+import cn.refinex.user.domain.model.entity.UserEstabEntity;
 import cn.refinex.user.domain.model.entity.UserIdentityEntity;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 用户仓储
@@ -125,6 +128,26 @@ public interface UserRepository {
      * @return 用户是否是企业管理员
      */
     boolean isEstabAdmin(Long userId, Long estabId);
+
+    /**
+     * 查询用户所属有效企业列表
+     *
+     * @param userId 用户ID
+     * @return 企业列表
+     */
+    List<UserEstabEntity> listActiveUserEstabs(Long userId);
+
+    /**
+     * 更新用户资料
+     *
+     * @param userId      用户ID
+     * @param displayName 显示名称
+     * @param nickname    昵称
+     * @param avatarUrl   头像地址
+     * @param gender      性别
+     * @param birthday    生日
+     */
+    void updateUserProfile(Long userId, String displayName, String nickname, String avatarUrl, Integer gender, LocalDate birthday);
 
     /**
      * 标记登录成功

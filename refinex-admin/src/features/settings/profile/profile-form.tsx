@@ -1,9 +1,16 @@
+import { useEffect, useMemo, useState } from 'react'
 import { z } from 'zod'
-import { useFieldArray, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link } from '@tanstack/react-router'
-import { showSubmittedData } from '@/lib/show-submitted-data'
-import { cn } from '@/lib/utils'
+import { useForm } from 'react-hook-form'
+import { Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
+import {
+  getCurrentUserInfo,
+  updateCurrentUserProfile,
+} from '@/features/user/api/user-api'
+import { handleServerError } from '@/lib/handle-server-error'
+import { useAuthStore } from '@/stores/auth-store'
+import { useUserStore } from '@/stores/user-store'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -22,152 +29,285 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
 
 const profileFormSchema = z.object({
-  username: z
-    .string('请输入用户名。')
-    .min(2, '用户名至少需要 2 个字符。')
-    .max(30, '用户名长度不能超过 30 个字符。'),
-  email: z.email({
-    error: (iss) =>
-      iss.input === undefined
-        ? '请选择要展示的邮箱。'
-        : undefined,
-  }),
-  bio: z.string().max(160).min(4),
-  urls: z
-    .array(
-      z.object({
-        value: z.url('请输入有效的 URL。'),
-      })
-    )
-    .optional(),
+  displayName: z
+    .string()
+    .trim()
+    .min(2, '显示名称至少需要 2 个字符。')
+    .max(64, '显示名称长度不能超过 64 个字符。'),
+  nickname: z
+    .string()
+    .trim()
+    .max(64, '昵称长度不能超过 64 个字符。')
+    .optional()
+    .or(z.literal('')),
+  avatarUrl: z
+    .string()
+    .trim()
+    .max(255, '头像地址长度不能超过 255 个字符。')
+    .optional()
+    .or(z.literal('')),
+  gender: z.enum(['0', '1', '2', '3']),
+  birthday: z.string().optional(),
 })
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>
 
-// This can come from your database or API.
-const defaultValues: Partial<ProfileFormValues> = {
-  bio: '热爱技术与产品。',
-  urls: [
-    { value: 'https://shadcn.com' },
-    { value: 'http://twitter.com/shadcn' },
-  ],
+const defaultValues: ProfileFormValues = {
+  displayName: '',
+  nickname: '',
+  avatarUrl: '',
+  gender: '0',
+  birthday: '',
+}
+
+function formatDateTime(value?: string): string {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '-'
+  return date.toLocaleString('zh-CN')
+}
+
+function toFormValues(profile: ReturnType<typeof useUserStore.getState>['profile']): ProfileFormValues {
+  return {
+    displayName: profile?.displayName ?? '',
+    nickname: profile?.nickname ?? '',
+    avatarUrl: profile?.avatarUrl ?? '',
+    gender: String(profile?.gender ?? 0) as ProfileFormValues['gender'],
+    birthday: profile?.birthday ?? '',
+  }
 }
 
 export function ProfileForm() {
+  const { auth } = useAuthStore()
+  const profile = useUserStore((state) => state.profile)
+  const setProfile = useUserStore((state) => state.setProfile)
+  const loading = useUserStore((state) => state.loading)
+  const [saving, setSaving] = useState(false)
+  const [fetching, setFetching] = useState(false)
+
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues,
     mode: 'onChange',
   })
 
-  const { fields, append } = useFieldArray({
-    name: 'urls',
-    control: form.control,
-  })
+  useEffect(() => {
+    if (profile) {
+      form.reset(toFormValues(profile))
+      return
+    }
+
+    let canceled = false
+    setFetching(true)
+    ;(async () => {
+      try {
+        const info = await getCurrentUserInfo()
+        if (canceled) return
+        setProfile(info)
+        form.reset(toFormValues(info))
+      } catch (error) {
+        if (!canceled) {
+          handleServerError(error)
+        }
+      } finally {
+        if (!canceled) {
+          setFetching(false)
+        }
+      }
+    })()
+
+    return () => {
+      canceled = true
+    }
+  }, [form, profile, setProfile])
+
+  const disabled = loading || fetching || saving
+  const profileMeta = useMemo(
+    () => ({
+      userCode: profile?.userCode || '-',
+      username: profile?.username || '-',
+      primaryPhone: profile?.primaryPhone || '-',
+      primaryEmail: profile?.primaryEmail || '-',
+      registerTime: formatDateTime(profile?.registerTime),
+      lastLoginTime: formatDateTime(profile?.lastLoginTime),
+      lastLoginIp: profile?.lastLoginIp || '-',
+    }),
+    [profile]
+  )
+
+  async function onSubmit(values: ProfileFormValues) {
+    setSaving(true)
+    try {
+      const payload = {
+        displayName: values.displayName.trim(),
+        nickname: values.nickname?.trim() || undefined,
+        avatarUrl: values.avatarUrl?.trim() || undefined,
+        gender: Number(values.gender),
+        birthday: values.birthday || undefined,
+      }
+      const updated = await updateCurrentUserProfile(payload)
+      setProfile(updated)
+      auth.setUser({
+        ...auth.user,
+        displayName: updated.displayName ?? auth.user?.displayName,
+        nickname: updated.nickname ?? auth.user?.nickname,
+        avatarUrl: updated.avatarUrl ?? auth.user?.avatarUrl,
+      })
+      form.reset(toFormValues(updated))
+      toast.success('个人资料已更新')
+    } catch (error) {
+      handleServerError(error)
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit((data) => showSubmittedData(data))}
-        className='space-y-8'
-      >
-        <FormField
-          control={form.control}
-          name='username'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>用户名</FormLabel>
-              <FormControl>
-                <Input placeholder='shadcn' {...field} />
-              </FormControl>
-              <FormDescription>
-                这是你的公开展示名称，可以是真名或昵称。每 30 天只能修改一次。
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name='email'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>邮箱</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-8'>
+        <div className='grid gap-4 md:grid-cols-2'>
+          <FormItem>
+            <FormLabel>用户编码</FormLabel>
+            <FormControl>
+              <Input value={profileMeta.userCode} disabled />
+            </FormControl>
+          </FormItem>
+          <FormItem>
+            <FormLabel>用户名</FormLabel>
+            <FormControl>
+              <Input value={profileMeta.username} disabled />
+            </FormControl>
+          </FormItem>
+        </div>
+
+        <div className='grid gap-4 md:grid-cols-2'>
+          <FormField
+            control={form.control}
+            name='displayName'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>显示名称</FormLabel>
                 <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder='选择要展示的已验证邮箱' />
-                  </SelectTrigger>
+                  <Input placeholder='请输入显示名称' disabled={disabled} {...field} />
                 </FormControl>
-                <SelectContent>
-                  <SelectItem value='m@example.com'>m@example.com</SelectItem>
-                  <SelectItem value='m@google.com'>m@google.com</SelectItem>
-                  <SelectItem value='m@support.com'>m@support.com</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormDescription>
-                你可以在 <Link to='/'>邮箱设置</Link> 中管理已验证邮箱。
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                <FormDescription>显示在导航栏与用户菜单中的名称。</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name='nickname'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>昵称</FormLabel>
+                <FormControl>
+                  <Input placeholder='请输入昵称（可选）' disabled={disabled} {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className='grid gap-4 md:grid-cols-2'>
+          <FormField
+            control={form.control}
+            name='gender'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>性别</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value}
+                  disabled={disabled}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder='请选择性别' />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value='0'>未知</SelectItem>
+                    <SelectItem value='1'>男</SelectItem>
+                    <SelectItem value='2'>女</SelectItem>
+                    <SelectItem value='3'>其他</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name='birthday'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>生日</FormLabel>
+                <FormControl>
+                  <Input type='date' disabled={disabled} {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
         <FormField
           control={form.control}
-          name='bio'
+          name='avatarUrl'
           render={({ field }) => (
             <FormItem>
-              <FormLabel>简介</FormLabel>
+              <FormLabel>头像地址</FormLabel>
               <FormControl>
-                <Textarea
-                  placeholder='简单介绍一下你自己'
-                  className='resize-none'
+                <Input
+                  placeholder='https://example.com/avatar.png'
+                  disabled={disabled}
                   {...field}
                 />
               </FormControl>
-              <FormDescription>
-                你可以使用 <span>@mention</span> 提及其他用户或组织以建立链接。
-              </FormDescription>
+              <FormDescription>支持填写公网可访问的头像 URL。</FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
-        <div>
-          {fields.map((field, index) => (
-            <FormField
-              control={form.control}
-              key={field.id}
-              name={`urls.${index}.value`}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className={cn(index !== 0 && 'sr-only')}>
-                    链接
-                  </FormLabel>
-                  <FormDescription className={cn(index !== 0 && 'sr-only')}>
-                    添加你的网站、博客或社交媒体链接。
-                  </FormDescription>
-                  <FormControl className={cn(index !== 0 && 'mt-1.5')}>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          ))}
-          <Button
-            type='button'
-            variant='outline'
-            size='sm'
-            className='mt-2'
-            onClick={() => append({ value: '' })}
-          >
-            添加链接
-          </Button>
+
+        <div className='grid gap-4 md:grid-cols-2'>
+          <FormItem>
+            <FormLabel>主手机号</FormLabel>
+            <FormControl>
+              <Input value={profileMeta.primaryPhone} disabled />
+            </FormControl>
+          </FormItem>
+          <FormItem>
+            <FormLabel>主邮箱</FormLabel>
+            <FormControl>
+              <Input value={profileMeta.primaryEmail} disabled />
+            </FormControl>
+          </FormItem>
         </div>
-        <Button type='submit'>更新资料</Button>
+
+        <div className='grid gap-4 text-sm text-muted-foreground md:grid-cols-3'>
+          <div>
+            <p className='font-medium text-foreground'>注册时间</p>
+            <p>{profileMeta.registerTime}</p>
+          </div>
+          <div>
+            <p className='font-medium text-foreground'>最近登录时间</p>
+            <p>{profileMeta.lastLoginTime}</p>
+          </div>
+          <div>
+            <p className='font-medium text-foreground'>最近登录 IP</p>
+            <p>{profileMeta.lastLoginIp}</p>
+          </div>
+        </div>
+
+        <Button type='submit' disabled={disabled}>
+          {(saving || fetching) && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
+          保存资料
+        </Button>
       </form>
     </Form>
   )

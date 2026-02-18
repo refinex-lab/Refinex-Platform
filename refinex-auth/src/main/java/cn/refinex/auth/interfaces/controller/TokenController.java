@@ -3,16 +3,28 @@ package cn.refinex.auth.interfaces.controller;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.refinex.api.user.model.context.LoginUser;
 import cn.refinex.api.user.model.vo.UserInfo;
+import cn.refinex.auth.api.dto.SwitchEstabRequest;
+import cn.refinex.auth.config.AuthProperties;
 import cn.refinex.auth.api.vo.TokenInfo;
+import cn.refinex.auth.domain.entity.ScrSystem;
 import cn.refinex.auth.domain.error.AuthErrorCode;
 import cn.refinex.auth.infrastructure.client.user.UserRemoteGateway;
+import cn.refinex.auth.infrastructure.mapper.AuthRbacMapper;
+import cn.refinex.auth.infrastructure.mapper.ScrSystemMapper;
 import cn.refinex.base.exception.BizException;
 import cn.refinex.base.response.SingleResponse;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import jakarta.validation.Valid;
 import cn.refinex.satoken.helper.LoginUserHelper;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Token 接口
@@ -25,6 +37,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class TokenController {
 
     private final UserRemoteGateway userRemoteGateway;
+    private final AuthRbacMapper authRbacMapper;
+    private final ScrSystemMapper scrSystemMapper;
+    private final AuthProperties authProperties;
 
     /**
      * 获取当前登录的token信息
@@ -61,12 +76,13 @@ public class TokenController {
     }
 
     /**
-     * 获取当前登录用户的详细信息（来自用户服务）
+     * 切换当前企业上下文
      *
-     * @return 单一结果
+     * @param request 切换请求
+     * @return 更新后的登录用户
      */
-    @GetMapping("/user-info")
-    public SingleResponse<UserInfo> currentUserInfo() {
+    @PostMapping("/switch-estab")
+    public SingleResponse<LoginUser> switchEstab(@Valid @RequestBody SwitchEstabRequest request) {
         if (!StpUtil.isLogin()) {
             throw new BizException(AuthErrorCode.USER_NOT_FOUND);
         }
@@ -76,7 +92,45 @@ public class TokenController {
             throw new BizException(AuthErrorCode.USER_NOT_FOUND);
         }
 
-        UserInfo userInfo = userRemoteGateway.queryUserInfo(loginUser.getUserId(), loginUser.getEstabId());
-        return SingleResponse.of(userInfo);
+        UserInfo userInfo = userRemoteGateway.queryUserInfo(loginUser.getUserId(), request.getEstabId());
+
+        Long systemId = resolveSystemId(authProperties.getDefaultSystemCode());
+        List<String> roleCodes = authRbacMapper.findRoleCodes(loginUser.getUserId(), request.getEstabId(), systemId);
+        List<String> permissionCodes = authRbacMapper.findPermissionKeys(loginUser.getUserId(), request.getEstabId(), systemId);
+
+        loginUser.setUserCode(userInfo.getUserCode());
+        loginUser.setUsername(userInfo.getUsername());
+        loginUser.setDisplayName(userInfo.getDisplayName());
+        loginUser.setNickname(userInfo.getNickname());
+        loginUser.setAvatarUrl(userInfo.getAvatarUrl());
+        if (userInfo.getUserType() != null) {
+            loginUser.setUserType(userInfo.getUserType());
+        }
+        if (userInfo.getStatus() != null) {
+            loginUser.setStatus(userInfo.getStatus());
+        }
+        loginUser.setPrimaryEstabId(userInfo.getPrimaryEstabId());
+        loginUser.setEstabId(request.getEstabId());
+        loginUser.setTeamId(userInfo.getPrimaryTeamId());
+        loginUser.setEstabAdmin(Boolean.TRUE.equals(userInfo.getEstabAdmin()));
+        loginUser.setRoleCodes(roleCodes == null ? Collections.emptyList() : roleCodes);
+        loginUser.setPermissionCodes(permissionCodes == null ? Collections.emptyList() : permissionCodes);
+
+        LoginUserHelper.setLoginUser(loginUser);
+        return SingleResponse.of(loginUser);
+    }
+
+    private Long resolveSystemId(String systemCode) {
+        if (systemCode == null || systemCode.isBlank()) {
+            return null;
+        }
+
+        ScrSystem system = scrSystemMapper.selectOne(
+                Wrappers.lambdaQuery(ScrSystem.class)
+                        .eq(ScrSystem::getSystemCode, systemCode)
+                        .eq(ScrSystem::getDeleted, 0)
+                        .last("LIMIT 1")
+        );
+        return system == null ? null : system.getId();
     }
 }

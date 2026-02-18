@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import useDialogState from '@/hooks/use-dialog-state'
 import { useAuthStore } from '@/stores/auth-store'
+import { useUserStore } from '@/stores/user-store'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
@@ -18,10 +19,16 @@ import { SignOutDialog } from '@/components/sign-out-dialog'
 export function ProfileDropdown() {
   const [open, setOpen] = useDialogState()
   const { auth } = useAuthStore()
+  const profile = useUserStore((state) => state.profile)
   const displayName =
-    auth.user?.displayName || auth.user?.nickname || auth.user?.username || '用户'
-  const email = auth.user?.username || '-'
-  const avatarUrl = auth.user?.avatarUrl || '/avatars/01.png'
+    profile?.displayName ||
+    profile?.nickname ||
+    auth.user?.displayName ||
+    auth.user?.nickname ||
+    auth.user?.username ||
+    '用户'
+  const email = profile?.primaryEmail || profile?.primaryPhone || auth.user?.username || '-'
+  const avatarUrl = profile?.avatarUrl || auth.user?.avatarUrl || '/avatars/01.png'
   const fallbackText = displayName.slice(0, 1).toUpperCase()
 
   return (
@@ -53,18 +60,17 @@ export function ProfileDropdown() {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link to='/settings'>
-                账单
-                <DropdownMenuShortcut>⌘B</DropdownMenuShortcut>
+              <Link to='/settings/account'>
+                账号安全
+                <DropdownMenuShortcut>⌘A</DropdownMenuShortcut>
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link to='/settings'>
-                设置
+              <Link to='/settings/notifications'>
+                通知设置
                 <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem>新建团队</DropdownMenuItem>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuItem variant='destructive' onClick={() => setOpen(true)}>

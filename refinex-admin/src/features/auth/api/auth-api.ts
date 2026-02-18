@@ -94,28 +94,46 @@ export interface ResetPasswordRequest {
   estabId?: number
 }
 
+export interface SwitchEstabRequest {
+  estabId: number
+}
+
 export async function sendSmsCode(payload: SmsSendRequest): Promise<void> {
-  await http.post<void>(buildModulePath('auth', '/sms/send'), payload)
+  await http.post<void>(buildModulePath('auth', '/auth/sms/send'), payload)
 }
 
 export async function sendEmailCode(payload: EmailSendRequest): Promise<void> {
-  await http.post<void>(buildModulePath('auth', '/email/send'), payload)
+  await http.post<void>(buildModulePath('auth', '/auth/email/send'), payload)
 }
 
 export async function register(payload: RegisterRequest): Promise<number> {
-  const response = await http.post<number>(buildModulePath('auth', '/register'), payload)
+  const response = await http.post<number>(
+    buildModulePath('auth', '/auth/register'),
+    payload
+  )
   return response.data
 }
 
 export async function login(payload: LoginRequest): Promise<LoginResponse> {
-  const response = await http.post<LoginResponse>(buildModulePath('auth', '/login'), payload)
+  const response = await http.post<LoginResponse>(
+    buildModulePath('auth', '/auth/login'),
+    payload
+  )
   return response.data
 }
 
 export async function logout(): Promise<void> {
-  await http.post<void>(buildModulePath('auth', '/logout'))
+  await http.post<void>(buildModulePath('auth', '/auth/logout'))
 }
 
 export async function resetPassword(payload: ResetPasswordRequest): Promise<void> {
-  await http.post<void>(buildModulePath('auth', '/password/reset'), payload)
+  await http.post<void>(buildModulePath('auth', '/auth/password/reset'), payload)
+}
+
+export async function switchEstab(payload: SwitchEstabRequest): Promise<LoginUser> {
+  const response = await http.post<LoginUser>(
+    buildModulePath('token', '/token/switch-estab'),
+    payload
+  )
+  return response.data
 }

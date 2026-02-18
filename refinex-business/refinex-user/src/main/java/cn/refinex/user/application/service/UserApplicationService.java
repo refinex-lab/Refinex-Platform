@@ -2,31 +2,29 @@ package cn.refinex.user.application.service;
 
 import cn.refinex.api.user.enums.UserStatus;
 import cn.refinex.api.user.enums.UserType;
+import cn.refinex.base.exception.BizException;
 import cn.refinex.user.application.assembler.UserDomainAssembler;
-import cn.refinex.user.application.command.QueryAuthSubjectCommand;
-import cn.refinex.user.application.command.QueryUserInfoCommand;
-import cn.refinex.user.application.command.RegisterUserCommand;
-import cn.refinex.user.application.command.ResetPasswordCommand;
-import cn.refinex.user.application.command.ResolveEstabCommand;
-import cn.refinex.user.application.command.UpdateLoginFailureCommand;
-import cn.refinex.user.application.command.UpdateLoginSuccessCommand;
+import cn.refinex.user.application.command.*;
 import cn.refinex.user.application.dto.AuthSubjectDTO;
 import cn.refinex.user.application.dto.RegisterUserResultDTO;
+import cn.refinex.user.application.dto.UserEstabDTO;
 import cn.refinex.user.application.dto.UserInfoDTO;
 import cn.refinex.user.domain.error.UserErrorCode;
 import cn.refinex.user.domain.model.entity.UserAuthSubject;
 import cn.refinex.user.domain.model.entity.UserEntity;
+import cn.refinex.user.domain.model.entity.UserEstabEntity;
 import cn.refinex.user.domain.model.entity.UserIdentityEntity;
 import cn.refinex.user.domain.model.enums.IdentityType;
 import cn.refinex.user.domain.model.enums.RegisterType;
 import cn.refinex.user.domain.repository.UserRepository;
-import cn.refinex.base.exception.BizException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 用户应用服务
@@ -38,6 +36,7 @@ import java.time.LocalDateTime;
 public class UserApplicationService {
 
     private static final String DEFAULT_ESTAB_NAME = "默认组织";
+    private static final String DEFAULT_PASSWORD_ENCODER = "bcrypt";
 
     private final UserRepository userRepository;
     private final UserDomainAssembler userDomainAssembler;
@@ -182,7 +181,7 @@ public class UserApplicationService {
         userRepository.updateIdentityCredential(
                 passwordIdentity.getId(),
                 passwordEncoder.encode(command.getNewPassword()),
-                "bcrypt",
+                DEFAULT_PASSWORD_ENCODER,
                 1,
                 LocalDateTime.now()
         );
@@ -192,8 +191,8 @@ public class UserApplicationService {
     /**
      * 解析需要更新的密码身份
      *
-     * @param userId              用户ID
-     * @param verifyIdentityType  本次校验使用的身份类型
+     * @param userId             用户ID
+     * @param verifyIdentityType 本次校验使用的身份类型
      * @return 密码身份
      */
     private UserIdentityEntity resolvePasswordIdentity(Long userId, IdentityType verifyIdentityType) {
@@ -234,8 +233,78 @@ public class UserApplicationService {
 
         Long teamId = userRepository.findFirstTeamId(user.getId());
         Long resolvedEstabId = command.getEstabId() != null ? command.getEstabId() : user.getPrimaryEstabId();
+        if (resolvedEstabId != null && !userRepository.hasActiveEstabMembership(user.getId(), resolvedEstabId)) {
+            throw new BizException(UserErrorCode.USER_NOT_FOUND);
+        }
         Boolean estabAdmin = userRepository.isEstabAdmin(user.getId(), resolvedEstabId);
         return userDomainAssembler.toUserInfoDto(user, teamId, estabAdmin);
+    }
+
+    /**
+     * 查询当前用户所属企业列表
+     *
+     * @param userId         用户ID
+     * @param currentEstabId 当前企业ID
+     * @return 企业列表
+     */
+    public List<UserEstabDTO> listUserEstabs(Long userId, Long currentEstabId) {
+        if (userId == null) {
+            throw new BizException(UserErrorCode.INVALID_PARAM);
+        }
+
+        UserEntity user = userRepository.findUserById(userId);
+        if (user == null || (user.getDeleted() != null && user.getDeleted() == 1)) {
+            throw new BizException(UserErrorCode.USER_NOT_FOUND);
+        }
+
+        Long effectiveCurrentEstabId = currentEstabId != null ? currentEstabId : user.getPrimaryEstabId();
+        List<UserEstabEntity> entities = userRepository.listActiveUserEstabs(userId);
+        List<UserEstabDTO> result = new ArrayList<>();
+        for (UserEstabEntity entity : entities) {
+            UserEstabDTO dto = new UserEstabDTO();
+            dto.setEstabId(entity.getEstabId());
+            dto.setEstabCode(entity.getEstabCode());
+            dto.setEstabName(entity.getEstabName());
+            dto.setEstabShortName(entity.getEstabShortName());
+            dto.setLogoUrl(entity.getLogoUrl());
+            dto.setEstabType(entity.getEstabType());
+            dto.setAdmin(entity.getIsAdmin() != null && entity.getIsAdmin() == 1);
+            dto.setCurrent(effectiveCurrentEstabId != null && effectiveCurrentEstabId.equals(entity.getEstabId()));
+            result.add(dto);
+        }
+        return result;
+    }
+
+    /**
+     * 更新用户资料
+     *
+     * @param command 更新命令
+     * @return 用户信息
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public UserInfoDTO updateUserProfile(UpdateUserProfileCommand command) {
+        if (command.getUserId() == null || command.getDisplayName() == null || command.getDisplayName().isBlank()) {
+            throw new BizException(UserErrorCode.INVALID_PARAM);
+        }
+
+        UserEntity user = userRepository.findUserById(command.getUserId());
+        if (user == null || (user.getDeleted() != null && user.getDeleted() == 1)) {
+            throw new BizException(UserErrorCode.USER_NOT_FOUND);
+        }
+
+        userRepository.updateUserProfile(
+                command.getUserId(),
+                command.getDisplayName().trim(),
+                normalizeNullableText(command.getNickname()),
+                normalizeNullableText(command.getAvatarUrl()),
+                command.getGender(),
+                command.getBirthday()
+        );
+
+        QueryUserInfoCommand query = new QueryUserInfoCommand();
+        query.setUserId(command.getUserId());
+        query.setEstabId(command.getEstabId());
+        return queryUserInfo(query);
     }
 
     /**
@@ -348,10 +417,10 @@ public class UserApplicationService {
                 throw new BizException(UserErrorCode.INVALID_PARAM);
             }
             identity.setCredential(passwordEncoder.encode(command.getPassword()));
-            identity.setCredentialAlg("bcrypt");
+            identity.setCredentialAlg(DEFAULT_PASSWORD_ENCODER);
         } else if (registerType == RegisterType.EMAIL && command.getPassword() != null && !command.getPassword().isBlank()) {
             identity.setCredential(passwordEncoder.encode(command.getPassword()));
-            identity.setCredentialAlg("bcrypt");
+            identity.setCredentialAlg(DEFAULT_PASSWORD_ENCODER);
         }
         return identity;
     }
@@ -372,5 +441,13 @@ public class UserApplicationService {
      */
     private String generateEstabCode() {
         return "E" + System.currentTimeMillis();
+    }
+
+    private String normalizeNullableText(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

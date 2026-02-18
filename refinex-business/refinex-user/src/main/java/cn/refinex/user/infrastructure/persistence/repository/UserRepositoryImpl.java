@@ -1,6 +1,7 @@
 package cn.refinex.user.infrastructure.persistence.repository;
 
 import cn.refinex.user.domain.model.entity.UserEntity;
+import cn.refinex.user.domain.model.entity.UserEstabEntity;
 import cn.refinex.user.domain.model.entity.UserIdentityEntity;
 import cn.refinex.user.domain.repository.UserRepository;
 import cn.refinex.user.infrastructure.converter.UserDoConverter;
@@ -9,6 +10,7 @@ import cn.refinex.user.infrastructure.persistence.dataobject.DefEstabDo;
 import cn.refinex.user.infrastructure.persistence.dataobject.DefEstabUserDo;
 import cn.refinex.user.infrastructure.persistence.dataobject.DefUserDo;
 import cn.refinex.user.infrastructure.persistence.dataobject.DefUserIdentityDo;
+import cn.refinex.user.infrastructure.persistence.dataobject.UserEstabJoinDo;
 import cn.refinex.user.infrastructure.persistence.mapper.DefEstabMapper;
 import cn.refinex.user.infrastructure.persistence.mapper.DefEstabUserMapper;
 import cn.refinex.user.infrastructure.persistence.mapper.DefTeamUserMapper;
@@ -19,6 +21,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 用户仓储实现
@@ -278,6 +284,48 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     /**
+     * 查询用户所属有效企业列表
+     *
+     * @param userId 用户ID
+     * @return 企业列表
+     */
+    @Override
+    public List<UserEstabEntity> listActiveUserEstabs(Long userId) {
+        if (userId == null) {
+            return Collections.emptyList();
+        }
+
+        List<UserEstabJoinDo> rows = defEstabUserMapper.selectActiveEstabs(userId);
+        if (rows == null || rows.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return rows.stream().map(this::toUserEstabEntity).collect(Collectors.toList());
+    }
+
+    /**
+     * 更新用户资料
+     *
+     * @param userId      用户ID
+     * @param displayName 显示名称
+     * @param nickname    昵称
+     * @param avatarUrl   头像地址
+     * @param gender      性别
+     * @param birthday    生日
+     */
+    @Override
+    public void updateUserProfile(Long userId, String displayName, String nickname, String avatarUrl, Integer gender, LocalDate birthday) {
+        DefUserDo update = new DefUserDo();
+        update.setId(userId);
+        update.setDisplayName(displayName);
+        update.setNickname(nickname);
+        update.setAvatarUrl(avatarUrl);
+        update.setGender(gender);
+        update.setBirthday(birthday);
+        defUserMapper.updateById(update);
+    }
+
+    /**
      * 标记登录成功
      *
      * @param userId    用户ID
@@ -371,5 +419,17 @@ public class UserRepositoryImpl implements UserRepository {
         update.setVerified(verified);
         update.setVerifiedAt(verifiedAt);
         defUserIdentityMapper.updateById(update);
+    }
+
+    private UserEstabEntity toUserEstabEntity(UserEstabJoinDo row) {
+        UserEstabEntity entity = new UserEstabEntity();
+        entity.setEstabId(row.getEstabId());
+        entity.setEstabCode(row.getEstabCode());
+        entity.setEstabName(row.getEstabName());
+        entity.setEstabShortName(row.getEstabShortName());
+        entity.setLogoUrl(row.getLogoUrl());
+        entity.setEstabType(row.getEstabType());
+        entity.setIsAdmin(row.getIsAdmin());
+        return entity;
     }
 }

@@ -4,6 +4,7 @@ import cn.dev33.satoken.exception.NotLoginException;
 import cn.dev33.satoken.exception.NotPermissionException;
 import cn.dev33.satoken.exception.NotRoleException;
 import cn.dev33.satoken.reactor.filter.SaReactorFilter;
+import cn.dev33.satoken.router.SaHttpMethod;
 import cn.dev33.satoken.router.SaRouter;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.dev33.satoken.util.SaResult;
@@ -49,6 +50,8 @@ public class SaTokenConfigure {
                     SaRouter
                             // 拦截所有
                             .match("/**")
+                            // CORS 预检请求直接放行
+                            .notMatch(SaHttpMethod.OPTIONS)
                             // 排除白名单（由 refinex-gateway.yml 配置）
                             .notMatch(authExcludePaths)
                             // 其他请求都需要登录校验
