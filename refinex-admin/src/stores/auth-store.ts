@@ -4,6 +4,7 @@ import type { LoginUser, LoginResponse } from '@/features/auth/api/auth-api'
 import { getCookie, removeCookie, setCookie } from '@/lib/cookies'
 
 const AUTH_COOKIE_KEY = 'refinex_admin_auth'
+const AUTH_STORAGE_KEY = 'refinex_admin_auth'
 
 type StoredSession = {
   accessToken: string
@@ -37,8 +38,52 @@ function readSessionFromCookie(): StoredSession {
   }
 }
 
+function readSessionFromStorage(): StoredSession {
+  if (typeof window === 'undefined') {
+    return {
+      accessToken: '',
+      tokenName: appConfig.auth.tokenHeaderName,
+      user: null,
+    }
+  }
+
+  const raw = window.localStorage.getItem(AUTH_STORAGE_KEY)
+  if (!raw) {
+    return {
+      accessToken: '',
+      tokenName: appConfig.auth.tokenHeaderName,
+      user: null,
+    }
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<StoredSession>
+    return {
+      accessToken: parsed.accessToken ?? '',
+      tokenName: parsed.tokenName || appConfig.auth.tokenHeaderName,
+      user: parsed.user ?? null,
+    }
+  } catch {
+    return {
+      accessToken: '',
+      tokenName: appConfig.auth.tokenHeaderName,
+      user: null,
+    }
+  }
+}
+
 function persistSession(session: StoredSession): void {
   setCookie(AUTH_COOKIE_KEY, JSON.stringify(session))
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session))
+  }
+}
+
+function clearPersistedSession(): void {
+  removeCookie(AUTH_COOKIE_KEY)
+  if (typeof window !== 'undefined') {
+    window.localStorage.removeItem(AUTH_STORAGE_KEY)
+  }
 }
 
 interface AuthState {
@@ -56,7 +101,12 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>()((set, get) => {
-  const initialSession = readSessionFromCookie()
+  const cookieSession = readSessionFromCookie()
+  const storageSession = readSessionFromStorage()
+  const initialSession =
+    cookieSession.accessToken || cookieSession.user
+      ? cookieSession
+      : storageSession
 
   return {
     auth: {
@@ -129,7 +179,7 @@ export const useAuthStore = create<AuthState>()((set, get) => {
         }),
       reset: () =>
         set((state) => {
-          removeCookie(AUTH_COOKIE_KEY)
+          clearPersistedSession()
           return {
             ...state,
             auth: {

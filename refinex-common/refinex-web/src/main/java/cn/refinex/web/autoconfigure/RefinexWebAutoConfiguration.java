@@ -45,7 +45,7 @@ public class RefinexWebAutoConfiguration implements WebMvcConfigurer {
      */
     @Bean
     @ConditionalOnMissingBean(name = "tokenFilterRegistration")
-    @ConditionalOnProperty(prefix = "refinex.web", name = "auth-urls") // 只有配置了拦截路径才注册过滤器
+    @ConditionalOnProperty(prefix = "refinex.web", name = "enabled", havingValue = "true") // 默认关闭，按需启用
     public FilterRegistrationBean<TokenFilter> tokenFilterRegistration(TokenFilter tokenFilter, RefinexWebProperties webProperties) {
         FilterRegistrationBean<TokenFilter> registrationBean = new FilterRegistrationBean<>();
 

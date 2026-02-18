@@ -9,9 +9,15 @@ server:
 
 refinex:
   web:
+    # 是否启用 TokenFilter, 默认关闭，避免与 Sa-Token 登录态鉴权混用
+    enabled: true
     # 用户服务默认走全量拦截，内部接口通过白名单放行
     auth-urls:
       - /**
     # 服务间内部调用接口（不走终端用户 Token）
     exclude-urls:
       - /internal/**
+
+sa-token:
+  # 与网关/认证服务统一 Token Header 名称
+  token-name: Refinex-Token

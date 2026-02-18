@@ -37,6 +37,8 @@ sa-token:
 
 refinex:
   web:
+    # 是否启用 TokenFilter, 默认关闭，避免与 Sa-Token 登录态鉴权混用
+    enabled: true
     # TokenFilter 生效路径（auth 服务保持全量拦截，再按 exclude-urls 放行公开接口）
     auth-urls:
       - /**

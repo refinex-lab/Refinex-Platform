@@ -18,6 +18,13 @@ import java.util.List;
 public class RefinexWebProperties {
 
     /**
+     * 是否启用 TokenFilter
+     * <p>
+     * 默认关闭，避免与 Sa-Token 登录态鉴权混用。
+     */
+    private boolean enabled = false;
+
+    /**
      * 需要进行 Token 校验的 URL 路径列表
      * <p>
      * 示例：
