@@ -1,5 +1,6 @@
 package cn.refinex.web.filter;
 
+import cn.dev33.satoken.stp.StpUtil;
 import cn.refinex.web.autoconfigure.RefinexWebProperties;
 import cn.refinex.web.context.UserContext;
 import cn.refinex.web.utils.TokenUtils;
@@ -15,7 +16,6 @@ import org.redisson.api.RedissonClient;
 import org.redisson.client.RedisException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
-import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
 
 import java.io.IOException;
@@ -34,7 +34,6 @@ import java.util.UUID;
  * @author refinex
  */
 @Slf4j
-@Component // 纳入 Spring 管理
 @Order(1)  // 保证优先级，通常越小越靠前
 public class TokenFilter implements Filter {
 
@@ -42,6 +41,11 @@ public class TokenFilter implements Filter {
      * HTTP 头：Authorization
      */
     private static final String HEADER_AUTH = "Authorization";
+
+    /**
+     * Bearer 前缀
+     */
+    private static final String BEARER_PREFIX = "Bearer ";
 
     /**
      * HTTP 头：isStress
@@ -81,6 +85,12 @@ public class TokenFilter implements Filter {
     private boolean stressModeEnabled;
 
     /**
+     * Sa-Token 请求头名称（默认 Refinex-Token）
+     */
+    @Value("${sa-token.token-name:Refinex-Token}")
+    private String saTokenHeaderName;
+
+    /**
      * 构造函数注入
      *
      * @param redissonClient Redisson 客户端
@@ -112,7 +122,7 @@ public class TokenFilter implements Filter {
             }
 
             // 1. 获取请求头
-            String token = httpRequest.getHeader(HEADER_AUTH);
+            String token = resolveToken(httpRequest);
             // 仅在配置开启时，才允许读取压测 Header
             boolean isStress = stressModeEnabled && BooleanUtils.toBoolean(httpRequest.getHeader(HEADER_STRESS));
 
@@ -159,16 +169,15 @@ public class TokenFilter implements Filter {
         }
 
         // B. 正常模式
-        // 1. 解析 Token 获取 Redis Key (即去除 UUID 后缀的部分)
-        // Token 格式为：AES( 业务Key:UUID )
+        // 1. 优先按防重放 Token 格式解析（Token = AES(业务Key:UUID)）
         String redisKey = TokenUtils.parseToken(token);
 
+        // 2. 若不是防重放 Token，则按 Sa-Token 登录态校验
         if (redisKey == null) {
-            log.warn("Token parse failed: {}", token);
-            return null;
+            return validateSaToken(token);
         }
 
-        // 2. 执行 Lua 脚本：比对并删除 (One-Time Token / Nonce 机制)
+        // 3. 执行 Lua 脚本：比对并删除 (One-Time Token / Nonce 机制)
         // 逻辑：获取 Key 对应的 Value，如果 Value 等于传入的 Token (或者原始值)，则删除 Key 并返回 Value
         // 注意：这里需要确保 TokenUtils 生成逻辑和 Redis 存储逻辑是否一致。
         // 假设 Redis 存的是 rawToken，传入的也是 encryptedToken，这里需要根据实际业务调整。
@@ -195,6 +204,62 @@ public class TokenFilter implements Filter {
             return (String) result;
         } catch (RedisException e) {
             log.error("Redis error during token validation", e);
+            return null;
+        }
+    }
+
+    /**
+     * 解析请求头中的 Token，优先 Authorization，其次 Sa-Token Header
+     *
+     * @param request 请求
+     * @return Token
+     */
+    private String resolveToken(HttpServletRequest request) {
+        String token = normalizeToken(request.getHeader(HEADER_AUTH));
+        if (StringUtils.isNotBlank(token)) {
+            return token;
+        }
+
+        if (StringUtils.isBlank(saTokenHeaderName) || HEADER_AUTH.equalsIgnoreCase(saTokenHeaderName)) {
+            return token;
+        }
+
+        return normalizeToken(request.getHeader(saTokenHeaderName));
+    }
+
+    /**
+     * 标准化 Token，兼容 Bearer 前缀
+     *
+     * @param token 原始 Token
+     * @return 标准化后的 Token
+     */
+    private String normalizeToken(String token) {
+        if (StringUtils.isBlank(token)) {
+            return token;
+        }
+        String normalized = token.trim();
+        if (Strings.CI.startsWith(normalized, BEARER_PREFIX)) {
+            return normalized.substring(BEARER_PREFIX.length()).trim();
+        }
+        return normalized;
+    }
+
+    /**
+     * 按 Sa-Token 登录态校验 Token
+     *
+     * @param token token
+     * @return 校验成功返回 token，否则返回 null
+     */
+    private String validateSaToken(String token) {
+        try {
+            Object loginId = StpUtil.getLoginIdByToken(token);
+            if (loginId == null) {
+                log.warn("Sa-Token validation failed: token not found");
+                return null;
+            }
+            return token;
+        } catch (Exception e) {
+            log.warn("Sa-Token validation failed: {}", token, e);
             return null;
         }
     }

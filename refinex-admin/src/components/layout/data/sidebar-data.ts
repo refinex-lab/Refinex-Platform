@@ -21,6 +21,7 @@ import {
   AudioWaveform,
   Command,
   GalleryVerticalEnd,
+  Database,
 } from 'lucide-react'
 import { ClerkLogo } from '@/assets/clerk-logo'
 import { appConfig } from '@/config/app-config'
@@ -192,6 +193,44 @@ export const sidebarData: SidebarData = {
               title: '显示',
               url: '/settings/display',
               icon: Monitor,
+            },
+          ],
+        },
+        {
+          title: '系统管理',
+          icon: Settings,
+          items: [
+            {
+              title: '系统定义',
+              url: '/system-management/systems',
+              icon: Settings,
+            },
+            {
+              title: '集合定义',
+              url: '/system-management/value-sets',
+              icon: Database,
+            },
+            {
+              title: '日志管理',
+              icon: Bug,
+              items: [
+                {
+                  title: '登录日志',
+                  url: '/system-management/logs/login',
+                },
+                {
+                  title: '操作日志',
+                  url: '/system-management/logs/operate',
+                },
+                {
+                  title: '错误日志',
+                  url: '/system-management/logs/error',
+                },
+                {
+                  title: '通知日志',
+                  url: '/system-management/logs/notify',
+                },
+              ],
             },
           ],
         },

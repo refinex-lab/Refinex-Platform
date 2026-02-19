@@ -10,6 +10,7 @@ interface ImportMetaEnv {
   readonly VITE_API_PREFIX_AUTH?: string
   readonly VITE_API_PREFIX_USER?: string
   readonly VITE_API_PREFIX_TOKEN?: string
+  readonly VITE_API_PREFIX_SYSTEM?: string
 
   readonly VITE_AUTH_TOKEN_HEADER?: string
 }

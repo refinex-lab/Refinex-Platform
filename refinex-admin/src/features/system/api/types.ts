@@ -1,0 +1,832 @@
+export interface SystemDefinition {
+  id?: number
+  systemCode?: string
+  systemName?: string
+  systemType?: number
+  baseUrl?: string
+  status?: number
+  sort?: number
+  remark?: string
+}
+
+export interface SystemListQuery {
+  status?: number
+  keyword?: string
+}
+
+export interface SystemCreateRequest {
+  systemCode: string
+  systemName: string
+  systemType?: number
+  baseUrl?: string
+  status?: number
+  sort?: number
+  remark?: string
+}
+
+export interface SystemUpdateRequest {
+  systemName: string
+  systemType?: number
+  baseUrl?: string
+  status?: number
+  sort?: number
+  remark?: string
+}
+
+export interface Role {
+  id?: number
+  systemId?: number
+  estabId?: number
+  roleCode?: string
+  roleName?: string
+  roleType?: number
+  dataScopeType?: number
+  parentRoleId?: number
+  isBuiltin?: number
+  status?: number
+  sort?: number
+  remark?: string
+}
+
+export interface RoleListQuery {
+  systemId?: number
+  estabId?: number
+  status?: number
+  keyword?: string
+}
+
+export interface RoleCreateRequest {
+  systemId?: number
+  estabId?: number
+  roleCode: string
+  roleName: string
+  roleType?: number
+  dataScopeType?: number
+  parentRoleId?: number
+  isBuiltin?: number
+  status?: number
+  sort?: number
+  remark?: string
+}
+
+export interface RoleUpdateRequest {
+  roleName: string
+  roleType?: number
+  dataScopeType?: number
+  parentRoleId?: number
+  isBuiltin?: number
+  status?: number
+  sort?: number
+  remark?: string
+}
+
+export interface RoleBinding {
+  userIds?: number[]
+  menuIds?: number[]
+  menuOpIds?: number[]
+}
+
+export interface AssignRoleUsersRequest {
+  userIds: number[]
+}
+
+export interface AssignRolePermissionsRequest {
+  menuIds?: number[]
+  menuOpIds?: number[]
+}
+
+export interface Menu {
+  id?: number
+  systemId?: number
+  parentId?: number
+  menuCode?: string
+  menuName?: string
+  menuType?: number
+  path?: string
+  component?: string
+  permissionKey?: string
+  icon?: string
+  visible?: number
+  isFrame?: number
+  isCache?: number
+  status?: number
+  sort?: number
+}
+
+export interface MenuOp {
+  id?: number
+  opCode?: string
+  opName?: string
+  httpMethod?: string
+  pathPattern?: string
+  permissionKey?: string
+  status?: number
+  sort?: number
+  assigned?: boolean
+}
+
+export interface MenuOpManage {
+  id?: number
+  menuId?: number
+  opCode?: string
+  opName?: string
+  httpMethod?: string
+  pathPattern?: string
+  permissionKey?: string
+  status?: number
+  sort?: number
+}
+
+export interface MenuTreeNode {
+  id?: number
+  parentId?: number
+  menuCode?: string
+  menuName?: string
+  menuType?: number
+  path?: string
+  component?: string
+  permissionKey?: string
+  icon?: string
+  visible?: number
+  isFrame?: number
+  isCache?: number
+  status?: number
+  sort?: number
+  assigned?: boolean
+  operations?: MenuOp[]
+  children?: MenuTreeNode[]
+}
+
+export interface MenuTreeQuery {
+  systemId: number
+  roleId?: number
+}
+
+export interface MenuCreateRequest {
+  systemId: number
+  parentId?: number
+  menuCode: string
+  menuName: string
+  menuType?: number
+  path?: string
+  component?: string
+  permissionKey?: string
+  icon?: string
+  visible?: number
+  isFrame?: number
+  isCache?: number
+  status?: number
+  sort?: number
+}
+
+export interface MenuUpdateRequest {
+  parentId?: number
+  menuCode: string
+  menuName: string
+  menuType?: number
+  path?: string
+  component?: string
+  permissionKey?: string
+  icon?: string
+  visible?: number
+  isFrame?: number
+  isCache?: number
+  status?: number
+  sort?: number
+}
+
+export interface MenuOpCreateRequest {
+  opCode: string
+  opName: string
+  httpMethod?: string
+  pathPattern?: string
+  permissionKey?: string
+  status?: number
+  sort?: number
+}
+
+export interface MenuOpUpdateRequest {
+  opCode: string
+  opName: string
+  httpMethod?: string
+  pathPattern?: string
+  permissionKey?: string
+  status?: number
+  sort?: number
+}
+
+export interface ValueSet {
+  id?: number
+  setCode?: string
+  setName?: string
+  status?: number
+  sort?: number
+  description?: string
+}
+
+export interface ValueSetListQuery {
+  status?: number
+  keyword?: string
+}
+
+export interface ValueSetCreateRequest {
+  setCode: string
+  setName: string
+  status?: number
+  sort?: number
+  description?: string
+}
+
+export interface ValueSetUpdateRequest {
+  setName: string
+  status?: number
+  sort?: number
+  description?: string
+}
+
+export interface ValueItem {
+  id?: number
+  setCode?: string
+  valueCode?: string
+  valueName?: string
+  valueDesc?: string
+  status?: number
+  isDefault?: number
+  sort?: number
+}
+
+export interface ValueListQuery {
+  setCode?: string
+  status?: number
+  keyword?: string
+}
+
+export interface ValueCreateRequest {
+  valueCode: string
+  valueName: string
+  valueDesc?: string
+  status?: number
+  isDefault?: number
+  sort?: number
+}
+
+export interface ValueUpdateRequest {
+  valueCode: string
+  valueName: string
+  valueDesc?: string
+  status?: number
+  isDefault?: number
+  sort?: number
+}
+
+export interface DataResource {
+  id?: number
+  systemId?: number
+  drsCode?: string
+  drsName?: string
+  drsType?: number
+  resourceUri?: string
+  ownerEstabId?: number
+  dataOwnerType?: number
+  status?: number
+  remark?: string
+}
+
+export interface DataResourceListQuery {
+  systemId?: number
+  status?: number
+  drsType?: number
+  ownerEstabId?: number
+  keyword?: string
+}
+
+export interface DataResourceCreateRequest {
+  systemId: number
+  drsCode: string
+  drsName: string
+  drsType?: number
+  resourceUri?: string
+  ownerEstabId?: number
+  dataOwnerType?: number
+  status?: number
+  remark?: string
+}
+
+export interface DataResourceUpdateRequest {
+  drsName: string
+  drsType?: number
+  resourceUri?: string
+  ownerEstabId?: number
+  dataOwnerType?: number
+  status?: number
+  remark?: string
+}
+
+export interface DataResourceInterface {
+  id?: number
+  drsId?: number
+  interfaceCode?: string
+  interfaceName?: string
+  httpMethod?: string
+  pathPattern?: string
+  permissionKey?: string
+  status?: number
+  sort?: number
+}
+
+export interface DataResourceInterfaceListQuery {
+  drsId?: number
+  status?: number
+  keyword?: string
+}
+
+export interface DataResourceInterfaceCreateRequest {
+  interfaceCode: string
+  interfaceName: string
+  httpMethod?: string
+  pathPattern?: string
+  permissionKey?: string
+  status?: number
+  sort?: number
+}
+
+export interface DataResourceInterfaceUpdateRequest {
+  interfaceCode: string
+  interfaceName: string
+  httpMethod?: string
+  pathPattern?: string
+  permissionKey?: string
+  status?: number
+  sort?: number
+}
+
+export interface LoginLog {
+  id?: number
+  userId?: number
+  estabId?: number
+  identityId?: number
+  loginType?: number
+  sourceType?: number
+  success?: number
+  failureReason?: string
+  ip?: string
+  userAgent?: string
+  deviceId?: string
+  clientId?: string
+  requestId?: string
+  gmtCreate?: string
+}
+
+export interface LoginLogListQuery {
+  userId?: number
+  estabId?: number
+  success?: number
+  loginType?: number
+  sourceType?: number
+  startTime?: string
+  endTime?: string
+  limit?: number
+}
+
+export interface OperateLog {
+  id?: number
+  userId?: number
+  estabId?: number
+  moduleCode?: string
+  operation?: string
+  targetType?: string
+  targetId?: string
+  success?: number
+  failReason?: string
+  requestMethod?: string
+  requestPath?: string
+  requestParams?: string
+  responseBody?: string
+  ip?: string
+  userAgent?: string
+  durationMs?: number
+  traceId?: string
+  spanId?: string
+  gmtCreate?: string
+}
+
+export interface OperateLogListQuery {
+  userId?: number
+  estabId?: number
+  success?: number
+  moduleCode?: string
+  requestPath?: string
+  startTime?: string
+  endTime?: string
+  limit?: number
+}
+
+export interface ErrorLog {
+  id?: number
+  serviceName?: string
+  errorCode?: string
+  errorType?: string
+  errorLevel?: number
+  message?: string
+  stackTrace?: string
+  requestId?: string
+  traceId?: string
+  requestMethod?: string
+  requestPath?: string
+  requestParams?: string
+  userId?: number
+  estabId?: number
+  gmtCreate?: string
+}
+
+export interface ErrorLogListQuery {
+  serviceName?: string
+  errorLevel?: number
+  requestPath?: string
+  startTime?: string
+  endTime?: string
+  limit?: number
+}
+
+export interface NotifyLog {
+  id?: number
+  channelType?: number
+  sceneCode?: string
+  receiver?: string
+  subject?: string
+  contentDigest?: string
+  provider?: string
+  templateCode?: string
+  bizId?: string
+  sendStatus?: number
+  errorMessage?: string
+  requestId?: string
+  ip?: string
+  userAgent?: string
+  userId?: number
+  estabId?: number
+  gmtCreate?: string
+}
+
+export interface NotifyLogListQuery {
+  channelType?: number
+  sceneCode?: string
+  receiver?: string
+  sendStatus?: number
+  startTime?: string
+  endTime?: string
+  limit?: number
+}
+
+export interface Estab {
+  id?: number
+  estabCode?: string
+  estabName?: string
+  estabShortName?: string
+  estabType?: number
+  status?: number
+  industryCode?: string
+  sizeRange?: string
+  ownerUserId?: number
+  contactName?: string
+  contactPhone?: string
+  contactEmail?: string
+  websiteUrl?: string
+  logoUrl?: string
+  remark?: string
+}
+
+export interface EstabListQuery {
+  status?: number
+  estabType?: number
+  keyword?: string
+}
+
+export interface EstabCreateRequest {
+  estabCode: string
+  estabName: string
+  estabShortName?: string
+  estabType?: number
+  status?: number
+  industryCode?: string
+  sizeRange?: string
+  ownerUserId?: number
+  contactName?: string
+  contactPhone?: string
+  contactEmail?: string
+  websiteUrl?: string
+  logoUrl?: string
+  remark?: string
+}
+
+export interface EstabUpdateRequest {
+  estabName: string
+  estabShortName?: string
+  estabType?: number
+  status?: number
+  industryCode?: string
+  sizeRange?: string
+  ownerUserId?: number
+  contactName?: string
+  contactPhone?: string
+  contactEmail?: string
+  websiteUrl?: string
+  logoUrl?: string
+  remark?: string
+}
+
+export interface EstabAddress {
+  id?: number
+  estabId?: number
+  addrType?: number
+  countryCode?: string
+  provinceCode?: string
+  cityCode?: string
+  districtCode?: string
+  provinceName?: string
+  cityName?: string
+  districtName?: string
+  addressLine1?: string
+  addressLine2?: string
+  postalCode?: string
+  latitude?: number
+  longitude?: number
+  isDefault?: number
+  remark?: string
+}
+
+export interface EstabAddressListQuery {
+  addrType?: number
+}
+
+export interface EstabAddressCreateRequest {
+  addrType?: number
+  countryCode?: string
+  provinceCode?: string
+  cityCode?: string
+  districtCode?: string
+  provinceName?: string
+  cityName?: string
+  districtName?: string
+  addressLine1?: string
+  addressLine2?: string
+  postalCode?: string
+  latitude?: number
+  longitude?: number
+  isDefault?: number
+  remark?: string
+}
+
+export interface EstabAddressUpdateRequest {
+  addrType?: number
+  countryCode?: string
+  provinceCode?: string
+  cityCode?: string
+  districtCode?: string
+  provinceName?: string
+  cityName?: string
+  districtName?: string
+  addressLine1?: string
+  addressLine2?: string
+  postalCode?: string
+  latitude?: number
+  longitude?: number
+  isDefault?: number
+  remark?: string
+}
+
+export interface EstabAuthPolicy {
+  id?: number
+  estabId?: number
+  passwordLoginEnabled?: number
+  smsLoginEnabled?: number
+  emailLoginEnabled?: number
+  wechatLoginEnabled?: number
+  mfaRequired?: number
+  mfaMethods?: string
+  passwordMinLen?: number
+  passwordStrength?: number
+  passwordExpireDays?: number
+  loginFailThreshold?: number
+  lockMinutes?: number
+  sessionTimeoutMinutes?: number
+  remark?: string
+}
+
+export interface EstabAuthPolicyUpdateRequest {
+  passwordLoginEnabled?: number
+  smsLoginEnabled?: number
+  emailLoginEnabled?: number
+  wechatLoginEnabled?: number
+  mfaRequired?: number
+  mfaMethods?: string
+  passwordMinLen?: number
+  passwordStrength?: number
+  passwordExpireDays?: number
+  loginFailThreshold?: number
+  lockMinutes?: number
+  sessionTimeoutMinutes?: number
+  remark?: string
+}
+
+export interface EstabUser {
+  id?: number
+  estabId?: number
+  userId?: number
+  memberType?: number
+  isAdmin?: number
+  status?: number
+  joinTime?: string
+  leaveTime?: string
+  positionTitle?: string
+}
+
+export interface EstabUserListQuery {
+  status?: number
+}
+
+export interface EstabUserCreateRequest {
+  userId: number
+  memberType?: number
+  isAdmin?: number
+  status?: number
+  joinTime?: string
+  leaveTime?: string
+  positionTitle?: string
+}
+
+export interface EstabUserUpdateRequest {
+  memberType?: number
+  isAdmin?: number
+  status?: number
+  joinTime?: string
+  leaveTime?: string
+  positionTitle?: string
+}
+
+export interface Team {
+  id?: number
+  estabId?: number
+  teamCode?: string
+  teamName?: string
+  parentId?: number
+  leaderUserId?: number
+  status?: number
+  sort?: number
+  remark?: string
+}
+
+export interface TeamListQuery {
+  estabId?: number
+  parentId?: number
+  status?: number
+  keyword?: string
+}
+
+export interface TeamCreateRequest {
+  estabId?: number
+  teamCode: string
+  teamName: string
+  parentId?: number
+  leaderUserId?: number
+  status?: number
+  sort?: number
+  remark?: string
+}
+
+export interface TeamUpdateRequest {
+  teamName: string
+  parentId?: number
+  leaderUserId?: number
+  status?: number
+  sort?: number
+  remark?: string
+}
+
+export interface TeamUser {
+  id?: number
+  teamId?: number
+  userId?: number
+  roleInTeam?: number
+  status?: number
+  joinTime?: string
+}
+
+export interface TeamUserListQuery {
+  status?: number
+}
+
+export interface TeamUserCreateRequest {
+  userId: number
+  roleInTeam?: number
+  status?: number
+  joinTime?: string
+}
+
+export interface TeamUserUpdateRequest {
+  roleInTeam?: number
+  status?: number
+  joinTime?: string
+}
+
+export interface SystemUser {
+  userId?: number
+  userCode?: string
+  username?: string
+  displayName?: string
+  nickname?: string
+  avatarUrl?: string
+  gender?: number
+  birthday?: string
+  userType?: number
+  status?: number
+  primaryEstabId?: number
+  primaryPhone?: string
+  phoneVerified?: number
+  primaryEmail?: string
+  emailVerified?: number
+  lastLoginTime?: string
+  lastLoginIp?: string
+  loginFailCount?: number
+  lockUntil?: string
+  remark?: string
+}
+
+export interface SystemUserListQuery {
+  primaryEstabId?: number
+  status?: number
+  userType?: number
+  keyword?: string
+  limit?: number
+}
+
+export interface SystemUserCreateRequest {
+  userCode: string
+  username: string
+  displayName: string
+  nickname?: string
+  avatarUrl?: string
+  gender?: number
+  birthday?: string
+  userType?: number
+  status?: number
+  primaryEstabId?: number
+  primaryPhone?: string
+  phoneVerified?: number
+  primaryEmail?: string
+  emailVerified?: number
+  remark?: string
+}
+
+export interface SystemUserUpdateRequest {
+  displayName: string
+  nickname?: string
+  avatarUrl?: string
+  gender?: number
+  birthday?: string
+  userType?: number
+  status?: number
+  primaryEstabId?: number
+  primaryPhone?: string
+  phoneVerified?: number
+  primaryEmail?: string
+  emailVerified?: number
+  remark?: string
+}
+
+export interface SystemUserIdentity {
+  identityId?: number
+  userId?: number
+  identityType?: number
+  identifier?: string
+  issuer?: string
+  credentialAlg?: string
+  isPrimary?: number
+  verified?: number
+  verifiedAt?: string
+  bindTime?: string
+  lastLoginTime?: string
+  lastLoginIp?: string
+  status?: number
+}
+
+export interface SystemUserIdentityCreateRequest {
+  identityType: number
+  identifier: string
+  issuer?: string
+  credential?: string
+  credentialAlg?: string
+  isPrimary?: number
+  verified?: number
+  status?: number
+}
+
+export interface SystemUserIdentityUpdateRequest {
+  identifier: string
+  issuer?: string
+  credential?: string
+  credentialAlg?: string
+  isPrimary?: number
+  verified?: number
+  status?: number
+}

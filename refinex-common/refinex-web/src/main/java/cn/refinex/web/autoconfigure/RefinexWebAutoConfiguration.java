@@ -2,7 +2,9 @@ package cn.refinex.web.autoconfigure;
 
 import cn.refinex.web.filter.TokenFilter;
 import cn.refinex.web.handler.GlobalExceptionHandler;
+import org.redisson.api.RedissonClient;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
@@ -37,6 +39,20 @@ public class RefinexWebAutoConfiguration implements WebMvcConfigurer {
     }
 
     /**
+     * 注册 TokenFilter Bean（仅在显式开启 refinex.web.enabled=true 时创建）
+     *
+     * @param redissonClient Redisson 客户端
+     * @param webProperties  Web 配置
+     * @return TokenFilter
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(prefix = "refinex.web", name = "enabled", havingValue = "true")
+    public TokenFilter tokenFilter(RedissonClient redissonClient, RefinexWebProperties webProperties) {
+        return new TokenFilter(redissonClient, webProperties);
+    }
+
+    /**
      * 注册 Token 校验过滤器
      *
      * @param tokenFilter       Spring 管理的 TokenFilter Bean (确保 @Value 注入生效)
@@ -45,7 +61,7 @@ public class RefinexWebAutoConfiguration implements WebMvcConfigurer {
      */
     @Bean
     @ConditionalOnMissingBean(name = "tokenFilterRegistration")
-    @ConditionalOnProperty(prefix = "refinex.web", name = "enabled", havingValue = "true") // 默认关闭，按需启用
+    @ConditionalOnBean(TokenFilter.class)
     public FilterRegistrationBean<TokenFilter> tokenFilterRegistration(TokenFilter tokenFilter, RefinexWebProperties webProperties) {
         FilterRegistrationBean<TokenFilter> registrationBean = new FilterRegistrationBean<>();
 

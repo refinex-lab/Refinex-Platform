@@ -23,8 +23,13 @@ type NavLink = BaseNavItem & {
   items?: never
 }
 
+type NavNode = BaseNavItem & {
+  url?: LinkProps['to'] | (string & {})
+  items?: NavNode[]
+}
+
 type NavCollapsible = BaseNavItem & {
-  items: (BaseNavItem & { url: LinkProps['to'] | (string & {}) })[]
+  items: NavNode[]
   url?: never
 }
 
@@ -41,4 +46,4 @@ type SidebarData = {
   navGroups: NavGroup[]
 }
 
-export type { SidebarData, NavGroup, NavItem, NavCollapsible, NavLink }
+export type { SidebarData, NavGroup, NavItem, NavCollapsible, NavLink, NavNode }

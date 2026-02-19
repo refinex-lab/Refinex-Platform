@@ -28,8 +28,8 @@ import {
 } from '../ui/dropdown-menu'
 import {
   type NavCollapsible,
-  type NavItem,
   type NavLink,
+  type NavNode,
   type NavGroup as NavGroupProps,
 } from './types'
 
@@ -41,7 +41,7 @@ export function NavGroup({ title, items }: NavGroupProps) {
       <SidebarGroupLabel>{title}</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => {
-          const key = `${item.title}-${item.url}`
+          const key = `${item.title}-${item.url ?? ''}`
 
           if (!item.items)
             return <SidebarMenuLink key={key} item={item} href={href} />
@@ -105,25 +105,73 @@ function SidebarMenuCollapsible({
           </SidebarMenuButton>
         </CollapsibleTrigger>
         <CollapsibleContent className='CollapsibleContent'>
-          <SidebarMenuSub>
-            {item.items.map((subItem) => (
-              <SidebarMenuSubItem key={subItem.title}>
-                <SidebarMenuSubButton
-                  asChild
-                  isActive={checkIsActive(href, subItem)}
-                >
-                  <Link to={subItem.url} onClick={() => setOpenMobile(false)}>
-                    {subItem.icon && <subItem.icon />}
-                    <span>{subItem.title}</span>
-                    {subItem.badge && <NavBadge>{subItem.badge}</NavBadge>}
-                  </Link>
-                </SidebarMenuSubButton>
-              </SidebarMenuSubItem>
-            ))}
-          </SidebarMenuSub>
+          <SidebarMenuSubTree
+            items={item.items}
+            href={href}
+            onNavigate={() => setOpenMobile(false)}
+          />
         </CollapsibleContent>
       </SidebarMenuItem>
     </Collapsible>
+  )
+}
+
+function SidebarMenuSubTree({
+  items,
+  href,
+  onNavigate,
+}: {
+  items: NavNode[]
+  href: string
+  onNavigate: () => void
+}) {
+  return (
+    <SidebarMenuSub>
+      {items.map((subItem) => {
+        const key = `${subItem.title}-${subItem.url ?? ''}`
+
+        if (!subItem.items) {
+          return (
+            <SidebarMenuSubItem key={key}>
+              <SidebarMenuSubButton asChild isActive={checkIsActive(href, subItem)}>
+                <Link to={subItem.url!} onClick={onNavigate}>
+                  {subItem.icon && <subItem.icon />}
+                  <span>{subItem.title}</span>
+                  {subItem.badge && <NavBadge>{subItem.badge}</NavBadge>}
+                </Link>
+              </SidebarMenuSubButton>
+            </SidebarMenuSubItem>
+          )
+        }
+
+        return (
+          <Collapsible
+            key={key}
+            asChild
+            defaultOpen={checkIsActive(href, subItem, true)}
+            className='group/collapsible'
+          >
+            <SidebarMenuSubItem>
+              <CollapsibleTrigger asChild>
+                <SidebarMenuSubButton isActive={checkIsActive(href, subItem)}>
+                  {subItem.icon && <subItem.icon />}
+                  <span>{subItem.title}</span>
+                  {subItem.badge && <NavBadge>{subItem.badge}</NavBadge>}
+                  <ChevronRight className='ms-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90 rtl:rotate-180' />
+                </SidebarMenuSubButton>
+              </CollapsibleTrigger>
+              <CollapsibleContent className='CollapsibleContent'>
+                <SidebarMenuSubTree
+                  items={subItem.items}
+                  href={href}
+                  onNavigate={onNavigate}
+                />
+              </CollapsibleContent>
+            </SidebarMenuSubItem>
+          </Collapsible>
+        )
+      })}
+    </SidebarMenuSub>
   )
 }
 
@@ -153,7 +201,7 @@ function SidebarMenuCollapsedDropdown({
             {item.title} {item.badge ? `(${item.badge})` : ''}
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {item.items.map((sub) => (
+          {flattenNavLinks(item.items).map((sub) => (
             <DropdownMenuItem key={`${sub.title}-${sub.url}`} asChild>
               <Link
                 to={sub.url}
@@ -173,13 +221,50 @@ function SidebarMenuCollapsedDropdown({
   )
 }
 
-function checkIsActive(href: string, item: NavItem, mainNav = false) {
+function checkIsActive(href: string, item: NavNode, mainNav = false) {
+  const hasChildActive = (nodes?: NavNode[]): boolean => {
+    if (!nodes?.length) {
+      return false
+    }
+
+    return nodes.some((node) => {
+      if (!node.items) {
+        return href === node.url || href.split('?')[0] === node.url
+      }
+      return hasChildActive(node.items)
+    })
+  }
+
   return (
     href === item.url || // /endpint?search=param
     href.split('?')[0] === item.url || // endpoint
-    !!item?.items?.filter((i) => i.url === href).length || // if child nav is active
+    hasChildActive(item.items) || // if child nav is active
     (mainNav &&
       href.split('/')[1] !== '' &&
       href.split('/')[1] === item?.url?.split('/')[1])
   )
+}
+
+function flattenNavLinks(items: NavNode[], parentTitle?: string): Array<{
+  title: string
+  url: string
+  icon?: NavNode['icon']
+  badge?: string
+}> {
+  return items.flatMap((item) => {
+    const title = parentTitle ? `${parentTitle} / ${item.title}` : item.title
+
+    if (!item.items) {
+      return [
+        {
+          title,
+          url: item.url as string,
+          icon: item.icon,
+          badge: item.badge,
+        },
+      ]
+    }
+
+    return flattenNavLinks(item.items, title)
+  })
 }
