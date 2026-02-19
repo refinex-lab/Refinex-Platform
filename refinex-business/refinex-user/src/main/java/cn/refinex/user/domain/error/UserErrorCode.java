@@ -21,6 +21,9 @@ public enum UserErrorCode implements ErrorCode {
     USER_LOCKED("USER_423", "账号已锁定"),
     OLD_PASSWORD_INCORRECT("USER_401_PWD", "旧密码错误"),
     DUPLICATE_IDENTITY("USER_409_ID", "账号已存在"),
+    USER_CODE_DUPLICATED("USER_409_CODE", "用户编码已存在"),
+    USERNAME_DUPLICATED("USER_409_USERNAME", "用户名已存在"),
+    LAST_IDENTITY_NOT_ALLOW_DELETE("USER_409_ID_LAST", "至少保留一个登录身份"),
     REGISTER_TYPE_NOT_SUPPORTED("USER_422_REG", "注册方式暂不支持"),
     PASSWORD_RESET_NOT_SUPPORTED("USER_422_PWD_RESET", "该账号暂不支持密码重置"),
     ESTAB_NOT_FOUND("USER_404_ESTAB", "组织不存在");

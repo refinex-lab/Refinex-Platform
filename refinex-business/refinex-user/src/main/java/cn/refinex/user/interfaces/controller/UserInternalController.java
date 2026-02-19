@@ -1,15 +1,23 @@
 package cn.refinex.user.interfaces.controller;
 
 import cn.refinex.api.user.model.dto.EstabResolveRequest;
+import cn.refinex.api.user.model.dto.UserIdentityManageCreateCommand;
+import cn.refinex.api.user.model.dto.UserIdentityManageDTO;
+import cn.refinex.api.user.model.dto.UserIdentityManageUpdateCommand;
 import cn.refinex.api.user.model.dto.UserAuthSubjectDTO;
 import cn.refinex.api.user.model.dto.UserAuthSubjectQuery;
 import cn.refinex.api.user.model.dto.UserInfoQuery;
 import cn.refinex.api.user.model.dto.UserLoginFailureCommand;
 import cn.refinex.api.user.model.dto.UserLoginSuccessCommand;
+import cn.refinex.api.user.model.dto.UserManageCreateCommand;
+import cn.refinex.api.user.model.dto.UserManageDTO;
+import cn.refinex.api.user.model.dto.UserManageListQuery;
+import cn.refinex.api.user.model.dto.UserManageUpdateCommand;
 import cn.refinex.api.user.model.dto.UserRegisterCommand;
 import cn.refinex.api.user.model.dto.UserRegisterResult;
 import cn.refinex.api.user.model.dto.UserResetPasswordCommand;
 import cn.refinex.api.user.model.vo.UserInfo;
+import cn.refinex.base.response.MultiResponse;
 import cn.refinex.base.response.SingleResponse;
 import cn.refinex.user.application.dto.AuthSubjectDTO;
 import cn.refinex.user.application.dto.RegisterUserResultDTO;
@@ -18,10 +26,16 @@ import cn.refinex.user.application.service.UserApplicationService;
 import cn.refinex.user.interfaces.assembler.UserApiAssembler;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 /**
  * 用户内部接口
@@ -118,5 +132,100 @@ public class UserInternalController {
     public SingleResponse<UserInfo> info(@Valid @RequestBody UserInfoQuery query) {
         UserInfoDTO userInfoDto = userApplicationService.queryUserInfo(userApiAssembler.toQueryUserInfoCommand(query));
         return SingleResponse.of(userApiAssembler.toUserInfo(userInfoDto));
+    }
+
+    /**
+     * 用户管理列表
+     *
+     * @param query 查询条件
+     * @return 用户管理列表
+     */
+    @PostMapping("/manage/list")
+    public MultiResponse<UserManageDTO> listManageUsers(@RequestBody(required = false) UserManageListQuery query) {
+        List<UserManageDTO> users = userApplicationService.listManageUsers(query);
+        return MultiResponse.of(users);
+    }
+
+    /**
+     * 用户管理详情
+     *
+     * @param userId 用户ID
+     * @return 用户管理详情
+     */
+    @GetMapping("/manage/{userId}")
+    public SingleResponse<UserManageDTO> getManageUser(@PathVariable Long userId) {
+        return SingleResponse.of(userApplicationService.getManageUser(userId));
+    }
+
+    /**
+     * 创建用户
+     *
+     * @param command 创建命令
+     * @return 用户管理详情
+     */
+    @PostMapping("/manage")
+    public SingleResponse<UserManageDTO> createManageUser(@RequestBody UserManageCreateCommand command) {
+        return SingleResponse.of(userApplicationService.createManageUser(command));
+    }
+
+    /**
+     * 更新用户
+     *
+     * @param userId  用户ID
+     * @param command 更新命令
+     * @return 用户管理详情
+     */
+    @PutMapping("/manage/{userId}")
+    public SingleResponse<UserManageDTO> updateManageUser(@PathVariable Long userId, @RequestBody UserManageUpdateCommand command) {
+        return SingleResponse.of(userApplicationService.updateManageUser(userId, command));
+    }
+
+    /**
+     * 查询用户身份列表
+     *
+     * @param userId 用户ID
+     * @return 身份列表
+     */
+    @GetMapping("/manage/{userId}/identities")
+    public MultiResponse<UserIdentityManageDTO> listManageIdentities(@PathVariable Long userId) {
+        return MultiResponse.of(userApplicationService.listManageIdentities(userId));
+    }
+
+    /**
+     * 创建用户身份
+     *
+     * @param userId  用户ID
+     * @param command 创建命令
+     * @return 身份信息
+     */
+    @PostMapping("/manage/{userId}/identities")
+    public SingleResponse<UserIdentityManageDTO> createManageIdentity(@PathVariable Long userId,
+                                                                      @RequestBody UserIdentityManageCreateCommand command) {
+        return SingleResponse.of(userApplicationService.createManageIdentity(userId, command));
+    }
+
+    /**
+     * 更新用户身份
+     *
+     * @param identityId 身份ID
+     * @param command    更新命令
+     * @return 身份信息
+     */
+    @PutMapping("/manage/identities/{identityId}")
+    public SingleResponse<UserIdentityManageDTO> updateManageIdentity(@PathVariable Long identityId,
+                                                                      @RequestBody UserIdentityManageUpdateCommand command) {
+        return SingleResponse.of(userApplicationService.updateManageIdentity(identityId, command));
+    }
+
+    /**
+     * 删除用户身份
+     *
+     * @param identityId 身份ID
+     * @return 操作结果
+     */
+    @DeleteMapping("/manage/identities/{identityId}")
+    public SingleResponse<Void> deleteManageIdentity(@PathVariable Long identityId) {
+        userApplicationService.deleteManageIdentity(identityId);
+        return SingleResponse.of(null);
     }
 }

@@ -33,12 +33,49 @@ public interface UserRepository {
     UserEntity insertUser(UserEntity user);
 
     /**
+     * 更新用户
+     *
+     * @param user 用户
+     */
+    void updateUser(UserEntity user);
+
+    /**
      * 根据ID查找用户
      *
      * @param userId 用户ID
      * @return 用户
      */
     UserEntity findUserById(Long userId);
+
+    /**
+     * 查询用户管理列表
+     *
+     * @param primaryEstabId 主组织ID
+     * @param status         用户状态
+     * @param userType       用户类型
+     * @param keyword        关键字
+     * @param limit          限制条数
+     * @return 用户列表
+     */
+    List<UserEntity> listUsersForManage(Long primaryEstabId, Integer status, Integer userType, String keyword, Integer limit);
+
+    /**
+     * 根据用户编码统计用户数量
+     *
+     * @param userCode       用户编码
+     * @param excludeUserId  排除用户ID
+     * @return 用户数量
+     */
+    long countUserCode(String userCode, Long excludeUserId);
+
+    /**
+     * 根据用户名统计用户数量
+     *
+     * @param username       用户名
+     * @param excludeUserId  排除用户ID
+     * @return 用户数量
+     */
+    long countUsername(String username, Long excludeUserId);
 
     /**
      * 更新用户主企业
@@ -102,6 +139,63 @@ public interface UserRepository {
      * @return 身份
      */
     UserIdentityEntity findIdentityByUserIdAndType(Long userId, Integer identityType);
+
+    /**
+     * 根据身份ID查询身份
+     *
+     * @param identityId 身份ID
+     * @return 身份
+     */
+    UserIdentityEntity findIdentityById(Long identityId);
+
+    /**
+     * 查询用户身份列表
+     *
+     * @param userId 用户ID
+     * @return 身份列表
+     */
+    List<UserIdentityEntity> listIdentitiesByUserId(Long userId);
+
+    /**
+     * 根据唯一键统计身份数量
+     *
+     * @param identityType       身份类型
+     * @param identifier         标识符
+     * @param issuer             发行方
+     * @param excludeIdentityId  排除身份ID
+     * @return 身份数量
+     */
+    long countIdentityByUnique(Integer identityType, String identifier, String issuer, Long excludeIdentityId);
+
+    /**
+     * 统计用户身份数量
+     *
+     * @param userId 用户ID
+     * @return 身份数量
+     */
+    long countIdentityByUserId(Long userId);
+
+    /**
+     * 更新身份
+     *
+     * @param identity 身份
+     */
+    void updateIdentity(UserIdentityEntity identity);
+
+    /**
+     * 清理用户其他主身份标记
+     *
+     * @param userId            用户ID
+     * @param excludeIdentityId 排除身份ID
+     */
+    void clearPrimaryIdentity(Long userId, Long excludeIdentityId);
+
+    /**
+     * 删除身份（逻辑删除）
+     *
+     * @param identityId 身份ID
+     */
+    void deleteIdentityById(Long identityId);
 
     /**
      * 根据用户ID查找第一个企业

@@ -1,5 +1,12 @@
 package cn.refinex.user.application.service;
 
+import cn.refinex.api.user.model.dto.UserIdentityManageCreateCommand;
+import cn.refinex.api.user.model.dto.UserIdentityManageDTO;
+import cn.refinex.api.user.model.dto.UserIdentityManageUpdateCommand;
+import cn.refinex.api.user.model.dto.UserManageCreateCommand;
+import cn.refinex.api.user.model.dto.UserManageDTO;
+import cn.refinex.api.user.model.dto.UserManageListQuery;
+import cn.refinex.api.user.model.dto.UserManageUpdateCommand;
 import cn.refinex.api.user.enums.UserStatus;
 import cn.refinex.api.user.enums.UserType;
 import cn.refinex.base.exception.BizException;
@@ -26,6 +33,9 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
+import static cn.refinex.base.utils.ValueUtils.defaultIfNull;
+import static cn.refinex.base.utils.ValueUtils.isBlank;
+
 /**
  * 用户应用服务
  *
@@ -36,6 +46,7 @@ import java.util.*;
 public class UserApplicationService {
 
     private static final String DEFAULT_ESTAB_NAME = "默认组织";
+    private static final String DEFAULT_USER_CODE_PREFIX = "U";
     private static final String DEFAULT_PASSWORD_ENCODER = "bcrypt";
     private static final DateTimeFormatter AVATAR_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMM");
     private static final Set<String> ALLOWED_AVATAR_EXTENSIONS = Set.of("jpg", "jpeg", "png", "webp", "gif");
@@ -317,6 +328,259 @@ public class UserApplicationService {
     }
 
     /**
+     * 查询用户管理列表
+     *
+     * @param query 查询条件
+     * @return 用户管理列表
+     */
+    public List<UserManageDTO> listManageUsers(UserManageListQuery query) {
+        Integer resolvedLimit = query == null ? null : query.getLimit();
+        if (resolvedLimit == null || resolvedLimit <= 0) {
+            resolvedLimit = 50;
+        }
+        resolvedLimit = Math.min(resolvedLimit, 200);
+
+        List<UserEntity> users = userRepository.listUsersForManage(
+                query == null ? null : query.getPrimaryEstabId(),
+                query == null ? null : query.getStatus(),
+                query == null ? null : query.getUserType(),
+                query == null ? null : normalizeNullableText(query.getKeyword()),
+                resolvedLimit
+        );
+
+        List<UserManageDTO> result = new ArrayList<>();
+        for (UserEntity user : users) {
+            result.add(toUserManageDto(user));
+        }
+        return result;
+    }
+
+    /**
+     * 查询用户管理详情
+     *
+     * @param userId 用户ID
+     * @return 用户管理详情
+     */
+    public UserManageDTO getManageUser(Long userId) {
+        UserEntity user = requireUserEntity(userId);
+        return toUserManageDto(user);
+    }
+
+    /**
+     * 创建用户（管理端）
+     *
+     * @param command 创建命令
+     * @return 用户管理详情
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public UserManageDTO createManageUser(UserManageCreateCommand command) {
+        if (command == null || isBlank(command.getDisplayName())) {
+            throw new BizException(UserErrorCode.INVALID_PARAM);
+        }
+
+        String userCode = normalizeNullableText(command.getUserCode());
+        if (isBlank(userCode)) {
+            userCode = generateUserCode();
+        }
+        if (userRepository.countUserCode(userCode, null) > 0) {
+            throw new BizException(UserErrorCode.USER_CODE_DUPLICATED);
+        }
+
+        String username = normalizeNullableText(command.getUsername());
+        if (!isBlank(username) && userRepository.countUsername(username, null) > 0) {
+            throw new BizException(UserErrorCode.USERNAME_DUPLICATED);
+        }
+
+        Long primaryEstabId = command.getPrimaryEstabId();
+        if (primaryEstabId != null && userRepository.findEstabId(primaryEstabId, null) == null) {
+            throw new BizException(UserErrorCode.ESTAB_NOT_FOUND);
+        }
+
+        UserEntity user = new UserEntity();
+        user.setUserCode(userCode);
+        user.setUsername(username);
+        user.setDisplayName(command.getDisplayName().trim());
+        user.setNickname(normalizeNullableText(command.getNickname()));
+        user.setAvatarUrl(normalizeNullableText(command.getAvatarUrl()));
+        user.setGender(defaultIfNull(command.getGender(), 0));
+        user.setBirthday(command.getBirthday());
+        user.setUserType(defaultIfNull(command.getUserType(), UserType.TENANT.getCode()));
+        user.setStatus(defaultIfNull(command.getStatus(), UserStatus.ENABLED.getCode()));
+        user.setPrimaryEstabId(primaryEstabId);
+        user.setPrimaryPhone(normalizeNullableText(command.getPrimaryPhone()));
+        user.setPhoneVerified(defaultIfNull(command.getPhoneVerified(), 0));
+        user.setPrimaryEmail(normalizeNullableText(command.getPrimaryEmail()));
+        user.setEmailVerified(defaultIfNull(command.getEmailVerified(), 0));
+        user.setLoginFailCount(0);
+        user.setRemark(normalizeNullableText(command.getRemark()));
+
+        UserEntity created = userRepository.insertUser(user);
+        return toUserManageDto(requireUserEntity(created.getId()));
+    }
+
+    /**
+     * 更新用户（管理端）
+     *
+     * @param userId  用户ID
+     * @param command 更新命令
+     * @return 用户管理详情
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public UserManageDTO updateManageUser(Long userId, UserManageUpdateCommand command) {
+        if (command == null || userId == null || isBlank(command.getDisplayName())) {
+            throw new BizException(UserErrorCode.INVALID_PARAM);
+        }
+
+        UserEntity existing = requireUserEntity(userId);
+        Long primaryEstabId = command.getPrimaryEstabId();
+        if (primaryEstabId != null && userRepository.findEstabId(primaryEstabId, null) == null) {
+            throw new BizException(UserErrorCode.ESTAB_NOT_FOUND);
+        }
+
+        existing.setDisplayName(command.getDisplayName().trim());
+        existing.setNickname(normalizeNullableText(command.getNickname()));
+        existing.setAvatarUrl(normalizeNullableText(command.getAvatarUrl()));
+        existing.setGender(defaultIfNull(command.getGender(), existing.getGender()));
+        existing.setBirthday(command.getBirthday());
+        existing.setUserType(defaultIfNull(command.getUserType(), existing.getUserType()));
+        existing.setStatus(defaultIfNull(command.getStatus(), existing.getStatus()));
+        existing.setPrimaryEstabId(primaryEstabId);
+        existing.setPrimaryPhone(normalizeNullableText(command.getPrimaryPhone()));
+        existing.setPhoneVerified(defaultIfNull(command.getPhoneVerified(), existing.getPhoneVerified()));
+        existing.setPrimaryEmail(normalizeNullableText(command.getPrimaryEmail()));
+        existing.setEmailVerified(defaultIfNull(command.getEmailVerified(), existing.getEmailVerified()));
+        existing.setRemark(normalizeNullableText(command.getRemark()));
+
+        userRepository.updateUser(existing);
+        return toUserManageDto(requireUserEntity(existing.getId()));
+    }
+
+    /**
+     * 查询用户身份列表（管理端）
+     *
+     * @param userId 用户ID
+     * @return 身份列表
+     */
+    public List<UserIdentityManageDTO> listManageIdentities(Long userId) {
+        requireUserEntity(userId);
+        List<UserIdentityEntity> identities = userRepository.listIdentitiesByUserId(userId);
+        List<UserIdentityManageDTO> result = new ArrayList<>();
+        for (UserIdentityEntity identity : identities) {
+            result.add(toIdentityManageDto(identity));
+        }
+        return result;
+    }
+
+    /**
+     * 创建用户身份（管理端）
+     *
+     * @param userId  用户ID
+     * @param command 创建命令
+     * @return 用户身份
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public UserIdentityManageDTO createManageIdentity(Long userId, UserIdentityManageCreateCommand command) {
+        if (command == null || userId == null || command.getIdentityType() == null || isBlank(command.getIdentifier())) {
+            throw new BizException(UserErrorCode.INVALID_PARAM);
+        }
+        requireUserEntity(userId);
+
+        String identifier = normalizeIdentifier(command.getIdentityType(), command.getIdentifier());
+        String issuer = normalizeNullableText(command.getIssuer());
+        if (issuer == null) {
+            issuer = "";
+        }
+        if (userRepository.countIdentityByUnique(command.getIdentityType(), identifier, issuer, null) > 0) {
+            throw new BizException(UserErrorCode.DUPLICATE_IDENTITY);
+        }
+
+        UserIdentityEntity identity = new UserIdentityEntity();
+        identity.setUserId(userId);
+        identity.setIdentityType(command.getIdentityType());
+        identity.setIdentifier(identifier);
+        identity.setIssuer(issuer);
+        identity.setCredential(normalizeNullableText(command.getCredential()));
+        identity.setCredentialAlg(normalizeNullableText(command.getCredentialAlg()));
+        identity.setIsPrimary(defaultIfNull(command.getIsPrimary(), 0));
+        identity.setVerified(defaultIfNull(command.getVerified(), 0));
+        identity.setVerifiedAt(identity.getVerified() == 1 ? LocalDateTime.now() : null);
+        identity.setBindTime(LocalDateTime.now());
+        identity.setStatus(defaultIfNull(command.getStatus(), 1));
+
+        UserIdentityEntity created = userRepository.insertIdentity(identity);
+        if (created.getIsPrimary() != null && created.getIsPrimary() == 1) {
+            userRepository.clearPrimaryIdentity(userId, created.getId());
+        }
+        return toIdentityManageDto(requireIdentityEntity(created.getId()));
+    }
+
+    /**
+     * 更新用户身份（管理端）
+     *
+     * @param identityId 身份ID
+     * @param command    更新命令
+     * @return 用户身份
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public UserIdentityManageDTO updateManageIdentity(Long identityId, UserIdentityManageUpdateCommand command) {
+        if (command == null || identityId == null) {
+            throw new BizException(UserErrorCode.INVALID_PARAM);
+        }
+
+        UserIdentityEntity existing = requireIdentityEntity(identityId);
+        String issuer = command.getIssuer() == null ? existing.getIssuer() : normalizeNullableText(command.getIssuer());
+        if (issuer == null) {
+            issuer = "";
+        }
+        String identifier = command.getIdentifier() == null
+                ? existing.getIdentifier()
+                : normalizeIdentifier(existing.getIdentityType(), command.getIdentifier());
+        if (userRepository.countIdentityByUnique(existing.getIdentityType(), identifier, issuer, existing.getId()) > 0) {
+            throw new BizException(UserErrorCode.DUPLICATE_IDENTITY);
+        }
+
+        existing.setIdentifier(identifier);
+        existing.setIssuer(issuer);
+        if (command.getCredential() != null) {
+            existing.setCredential(normalizeNullableText(command.getCredential()));
+        }
+        if (command.getCredentialAlg() != null) {
+            existing.setCredentialAlg(normalizeNullableText(command.getCredentialAlg()));
+        }
+        if (command.getIsPrimary() != null) {
+            existing.setIsPrimary(command.getIsPrimary());
+        }
+        if (command.getVerified() != null) {
+            existing.setVerified(command.getVerified());
+            existing.setVerifiedAt(command.getVerified() == 1 ? LocalDateTime.now() : null);
+        }
+        if (command.getStatus() != null) {
+            existing.setStatus(command.getStatus());
+        }
+
+        userRepository.updateIdentity(existing);
+        if (existing.getIsPrimary() != null && existing.getIsPrimary() == 1) {
+            userRepository.clearPrimaryIdentity(existing.getUserId(), existing.getId());
+        }
+        return toIdentityManageDto(requireIdentityEntity(existing.getId()));
+    }
+
+    /**
+     * 删除用户身份（管理端）
+     *
+     * @param identityId 身份ID
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteManageIdentity(Long identityId) {
+        UserIdentityEntity existing = requireIdentityEntity(identityId);
+        long identityCount = userRepository.countIdentityByUserId(existing.getUserId());
+        if (identityCount <= 1) {
+            throw new BizException(UserErrorCode.LAST_IDENTITY_NOT_ALLOW_DELETE);
+        }
+        userRepository.deleteIdentityById(identityId);
+    }
+
+    /**
      * 当前用户修改密码
      *
      * @param command 修改密码命令
@@ -560,12 +824,120 @@ public class UserApplicationService {
     }
 
     /**
+     * 校验并返回用户实体
+     *
+     * @param userId 用户ID
+     * @return 用户实体
+     */
+    private UserEntity requireUserEntity(Long userId) {
+        if (userId == null) {
+            throw new BizException(UserErrorCode.INVALID_PARAM);
+        }
+        UserEntity user = userRepository.findUserById(userId);
+        if (user == null || (user.getDeleted() != null && user.getDeleted() == 1)) {
+            throw new BizException(UserErrorCode.USER_NOT_FOUND);
+        }
+        return user;
+    }
+
+    /**
+     * 校验并返回身份实体
+     *
+     * @param identityId 身份ID
+     * @return 身份实体
+     */
+    private UserIdentityEntity requireIdentityEntity(Long identityId) {
+        if (identityId == null) {
+            throw new BizException(UserErrorCode.INVALID_PARAM);
+        }
+        UserIdentityEntity identity = userRepository.findIdentityById(identityId);
+        if (identity == null || (identity.getDeleted() != null && identity.getDeleted() == 1)) {
+            throw new BizException(UserErrorCode.IDENTITY_NOT_FOUND);
+        }
+        return identity;
+    }
+
+    /**
+     * 将用户实体转换为管理端 DTO
+     *
+     * @param user 用户实体
+     * @return 用户管理 DTO
+     */
+    private UserManageDTO toUserManageDto(UserEntity user) {
+        UserManageDTO dto = new UserManageDTO();
+        dto.setUserId(user.getId());
+        dto.setUserCode(user.getUserCode());
+        dto.setUsername(user.getUsername());
+        dto.setDisplayName(user.getDisplayName());
+        dto.setNickname(user.getNickname());
+        dto.setAvatarUrl(user.getAvatarUrl());
+        dto.setGender(user.getGender());
+        dto.setBirthday(user.getBirthday());
+        dto.setUserType(user.getUserType());
+        dto.setStatus(user.getStatus());
+        dto.setPrimaryEstabId(user.getPrimaryEstabId());
+        dto.setPrimaryPhone(user.getPrimaryPhone());
+        dto.setPhoneVerified(user.getPhoneVerified());
+        dto.setPrimaryEmail(user.getPrimaryEmail());
+        dto.setEmailVerified(user.getEmailVerified());
+        dto.setLastLoginTime(user.getLastLoginTime());
+        dto.setLastLoginIp(user.getLastLoginIp());
+        dto.setLoginFailCount(user.getLoginFailCount());
+        dto.setLockUntil(user.getLockUntil());
+        dto.setRemark(user.getRemark());
+        return dto;
+    }
+
+    /**
+     * 将身份实体转换为管理端 DTO
+     *
+     * @param identity 身份实体
+     * @return 身份管理 DTO
+     */
+    private UserIdentityManageDTO toIdentityManageDto(UserIdentityEntity identity) {
+        UserIdentityManageDTO dto = new UserIdentityManageDTO();
+        dto.setIdentityId(identity.getId());
+        dto.setUserId(identity.getUserId());
+        dto.setIdentityType(identity.getIdentityType());
+        dto.setIdentifier(identity.getIdentifier());
+        dto.setIssuer(identity.getIssuer());
+        dto.setCredentialAlg(identity.getCredentialAlg());
+        dto.setIsPrimary(identity.getIsPrimary());
+        dto.setVerified(identity.getVerified());
+        dto.setVerifiedAt(identity.getVerifiedAt());
+        dto.setBindTime(identity.getBindTime());
+        dto.setLastLoginTime(identity.getLastLoginTime());
+        dto.setLastLoginIp(identity.getLastLoginIp());
+        dto.setStatus(identity.getStatus());
+        return dto;
+    }
+
+    /**
+     * 规范化身份标识
+     *
+     * @param identityType 身份类型
+     * @param identifier   身份标识
+     * @return 规范化后的身份标识
+     */
+    private String normalizeIdentifier(Integer identityType, String identifier) {
+        String normalized = normalizeNullableText(identifier);
+        if (normalized == null) {
+            throw new BizException(UserErrorCode.INVALID_PARAM);
+        }
+        if (IdentityType.EMAIL_PASSWORD.getCode() == identityType
+                || IdentityType.EMAIL_CODE.getCode() == identityType) {
+            return normalized.toLowerCase(Locale.ROOT);
+        }
+        return normalized;
+    }
+
+    /**
      * 生成用户编号
      *
      * @return 用户编号
      */
     private String generateUserCode() {
-        return "U" + System.currentTimeMillis();
+        return DEFAULT_USER_CODE_PREFIX + System.currentTimeMillis();
     }
 
     /**

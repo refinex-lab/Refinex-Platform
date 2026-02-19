@@ -78,6 +78,17 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     /**
+     * 更新用户
+     *
+     * @param user 用户
+     */
+    @Override
+    public void updateUser(UserEntity user) {
+        DefUserDo userDo = userDoConverter.toDo(user);
+        defUserMapper.updateById(userDo);
+    }
+
+    /**
      * 根据用户ID查找用户
      *
      * @param userId 用户ID
@@ -91,6 +102,91 @@ public class UserRepositoryImpl implements UserRepository {
         }
 
         return userDoConverter.toEntity(userDo);
+    }
+
+    /**
+     * 查询用户管理列表
+     *
+     * @param primaryEstabId 主组织ID
+     * @param status         用户状态
+     * @param userType       用户类型
+     * @param keyword        关键字
+     * @param limit          限制条数
+     * @return 用户列表
+     */
+    @Override
+    public List<UserEntity> listUsersForManage(Long primaryEstabId, Integer status, Integer userType, String keyword, Integer limit) {
+        var query = Wrappers.lambdaQuery(DefUserDo.class)
+                .eq(DefUserDo::getDeleted, 0)
+                .orderByDesc(DefUserDo::getId);
+        if (primaryEstabId != null) {
+            query.eq(DefUserDo::getPrimaryEstabId, primaryEstabId);
+        }
+        if (status != null) {
+            query.eq(DefUserDo::getStatus, status);
+        }
+        if (userType != null) {
+            query.eq(DefUserDo::getUserType, userType);
+        }
+        if (keyword != null && !keyword.isBlank()) {
+            String trimmed = keyword.trim();
+            query.and(wrapper -> wrapper
+                    .like(DefUserDo::getUsername, trimmed)
+                    .or()
+                    .like(DefUserDo::getDisplayName, trimmed)
+                    .or()
+                    .like(DefUserDo::getNickname, trimmed)
+                    .or()
+                    .like(DefUserDo::getPrimaryPhone, trimmed)
+                    .or()
+                    .like(DefUserDo::getPrimaryEmail, trimmed)
+                    .or()
+                    .like(DefUserDo::getUserCode, trimmed));
+        }
+        if (limit != null && limit > 0) {
+            query.last("LIMIT " + limit);
+        }
+
+        List<DefUserDo> rows = defUserMapper.selectList(query);
+        return rows.stream().map(userDoConverter::toEntity).collect(Collectors.toList());
+    }
+
+    /**
+     * 根据用户编码统计用户数量
+     *
+     * @param userCode      用户编码
+     * @param excludeUserId 排除用户ID
+     * @return 用户数量
+     */
+    @Override
+    public long countUserCode(String userCode, Long excludeUserId) {
+        var query = Wrappers.lambdaQuery(DefUserDo.class)
+                .eq(DefUserDo::getUserCode, userCode)
+                .eq(DefUserDo::getDeleted, 0);
+        if (excludeUserId != null) {
+            query.ne(DefUserDo::getId, excludeUserId);
+        }
+        Long count = defUserMapper.selectCount(query);
+        return count == null ? 0L : count;
+    }
+
+    /**
+     * 根据用户名统计用户数量
+     *
+     * @param username      用户名
+     * @param excludeUserId 排除用户ID
+     * @return 用户数量
+     */
+    @Override
+    public long countUsername(String username, Long excludeUserId) {
+        var query = Wrappers.lambdaQuery(DefUserDo.class)
+                .eq(DefUserDo::getUsername, username)
+                .eq(DefUserDo::getDeleted, 0);
+        if (excludeUserId != null) {
+            query.ne(DefUserDo::getId, excludeUserId);
+        }
+        Long count = defUserMapper.selectCount(query);
+        return count == null ? 0L : count;
     }
 
     /**
@@ -237,6 +333,113 @@ public class UserRepositoryImpl implements UserRepository {
         }
 
         return userIdentityDoConverter.toEntity(identityDo);
+    }
+
+    /**
+     * 根据身份ID查询身份
+     *
+     * @param identityId 身份ID
+     * @return 身份
+     */
+    @Override
+    public UserIdentityEntity findIdentityById(Long identityId) {
+        DefUserIdentityDo identityDo = defUserIdentityMapper.selectById(identityId);
+        return identityDo == null ? null : userIdentityDoConverter.toEntity(identityDo);
+    }
+
+    /**
+     * 查询用户身份列表
+     *
+     * @param userId 用户ID
+     * @return 身份列表
+     */
+    @Override
+    public List<UserIdentityEntity> listIdentitiesByUserId(Long userId) {
+        List<DefUserIdentityDo> rows = defUserIdentityMapper.selectList(
+                Wrappers.lambdaQuery(DefUserIdentityDo.class)
+                        .eq(DefUserIdentityDo::getUserId, userId)
+                        .eq(DefUserIdentityDo::getDeleted, 0)
+                        .orderByAsc(DefUserIdentityDo::getIdentityType, DefUserIdentityDo::getId)
+        );
+        return rows.stream().map(userIdentityDoConverter::toEntity).collect(Collectors.toList());
+    }
+
+    /**
+     * 根据唯一键统计身份数量
+     *
+     * @param identityType      身份类型
+     * @param identifier        标识符
+     * @param issuer            发行方
+     * @param excludeIdentityId 排除身份ID
+     * @return 身份数量
+     */
+    @Override
+    public long countIdentityByUnique(Integer identityType, String identifier, String issuer, Long excludeIdentityId) {
+        var query = Wrappers.lambdaQuery(DefUserIdentityDo.class)
+                .eq(DefUserIdentityDo::getIdentityType, identityType)
+                .eq(DefUserIdentityDo::getIdentifier, identifier)
+                .eq(DefUserIdentityDo::getIssuer, issuer)
+                .eq(DefUserIdentityDo::getDeleted, 0);
+        if (excludeIdentityId != null) {
+            query.ne(DefUserIdentityDo::getId, excludeIdentityId);
+        }
+        Long count = defUserIdentityMapper.selectCount(query);
+        return count == null ? 0L : count;
+    }
+
+    /**
+     * 统计用户身份数量
+     *
+     * @param userId 用户ID
+     * @return 身份数量
+     */
+    @Override
+    public long countIdentityByUserId(Long userId) {
+        Long count = defUserIdentityMapper.selectCount(
+                Wrappers.lambdaQuery(DefUserIdentityDo.class)
+                        .eq(DefUserIdentityDo::getUserId, userId)
+                        .eq(DefUserIdentityDo::getDeleted, 0)
+        );
+        return count == null ? 0L : count;
+    }
+
+    /**
+     * 更新身份
+     *
+     * @param identity 身份
+     */
+    @Override
+    public void updateIdentity(UserIdentityEntity identity) {
+        DefUserIdentityDo row = userIdentityDoConverter.toDo(identity);
+        defUserIdentityMapper.updateById(row);
+    }
+
+    /**
+     * 清理用户其他主身份标记
+     *
+     * @param userId            用户ID
+     * @param excludeIdentityId 排除身份ID
+     */
+    @Override
+    public void clearPrimaryIdentity(Long userId, Long excludeIdentityId) {
+        var update = Wrappers.lambdaUpdate(DefUserIdentityDo.class)
+                .eq(DefUserIdentityDo::getUserId, userId)
+                .eq(DefUserIdentityDo::getDeleted, 0)
+                .set(DefUserIdentityDo::getIsPrimary, 0);
+        if (excludeIdentityId != null) {
+            update.ne(DefUserIdentityDo::getId, excludeIdentityId);
+        }
+        defUserIdentityMapper.update(null, update);
+    }
+
+    /**
+     * 删除身份（逻辑删除）
+     *
+     * @param identityId 身份ID
+     */
+    @Override
+    public void deleteIdentityById(Long identityId) {
+        defUserIdentityMapper.deleteById(identityId);
     }
 
     /**

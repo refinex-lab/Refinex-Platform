@@ -14,5 +14,9 @@
   <description>Refinex Business (业务服务)</description>
   <modules>
     <module>refinex-user</module>
+    <module>refinex-system</module>
+    <module>refinex-kb</module>
+    <module>refinex-ai</module>
+    <module>refinex-openapi</module>
   </modules>
 </project>

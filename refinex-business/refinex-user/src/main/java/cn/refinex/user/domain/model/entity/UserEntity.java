@@ -109,6 +109,11 @@ public class UserEntity {
     private LocalDateTime lockUntil;
 
     /**
+     * 备注
+     */
+    private String remark;
+
+    /**
      * 是否删除
      */
     private Integer deleted;

@@ -107,4 +107,9 @@ public class DefUserDo extends BaseEntity {
      * 锁定直到
      */
     private LocalDateTime lockUntil;
+
+    /**
+     * 备注
+     */
+    private String remark;
 }

@@ -79,3 +79,9 @@ spring:
                 - Path=/refinex-user/**
               filters:
                 - StripPrefix=1
+            - id: refinex-system
+              uri: lb://refinex-system
+              predicates:
+                - Path=/refinex-system/**
+              filters:
+                - StripPrefix=1
