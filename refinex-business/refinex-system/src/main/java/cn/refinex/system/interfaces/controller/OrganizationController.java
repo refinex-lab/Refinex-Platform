@@ -15,6 +15,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 /**
  * 企业与组织结构管理接口
  *
@@ -356,6 +358,25 @@ public class OrganizationController {
                 list.getCurrentPage(),
                 list.getPageSize()
         );
+    }
+
+    /**
+     * 查询团队成员候选用户（用于前端联想）
+     *
+     * @param teamId 团队ID
+     * @param query  查询参数
+     * @return 候选用户列表
+     */
+    @GetMapping("/teams/{teamId}/users/candidates")
+    public Result<List<TeamUserCandidateVO>> listTeamUserCandidates(
+            @PathVariable @Positive(message = "团队ID必须大于0") Long teamId,
+            @Valid TeamUserCandidateQuery query) {
+        List<TeamUserCandidateDTO> users = organizationApplicationService.listTeamUserCandidates(
+                teamId,
+                query.getKeyword(),
+                query.getLimit()
+        );
+        return Result.success(organizationApiAssembler.toTeamUserCandidateVoList(users));
     }
 
     /**

@@ -119,7 +119,8 @@ public class UserRepositoryImpl implements UserRepository {
      */
     @Override
     public PageResponse<UserEntity> listUsersForManage(Long primaryEstabId, Integer status, Integer userType,
-                                                       String keyword, int currentPage, int pageSize) {
+                                                       String keyword, List<Long> userIds, int currentPage,
+                                                       int pageSize) {
         var query = Wrappers.lambdaQuery(DefUserDo.class)
                 .eq(DefUserDo::getDeleted, 0)
                 .orderByDesc(DefUserDo::getId);
@@ -146,6 +147,9 @@ public class UserRepositoryImpl implements UserRepository {
                     .like(DefUserDo::getPrimaryEmail, trimmed)
                     .or()
                     .like(DefUserDo::getUserCode, trimmed));
+        }
+        if (userIds != null && !userIds.isEmpty()) {
+            query.in(DefUserDo::getId, userIds);
         }
 
         Page<DefUserDo> page = new Page<>(currentPage, pageSize);

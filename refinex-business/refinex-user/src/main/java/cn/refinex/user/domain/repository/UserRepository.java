@@ -55,11 +55,13 @@ public interface UserRepository {
      * @param status         用户状态
      * @param userType       用户类型
      * @param keyword        关键字
+     * @param userIds        用户ID列表
      * @param currentPage    当前页
      * @param pageSize       每页条数
      * @return 用户分页列表
      */
     PageResponse<UserEntity> listUsersForManage(Long primaryEstabId, Integer status, Integer userType, String keyword,
+                                                List<Long> userIds,
                                                 int currentPage, int pageSize);
 
     /**

@@ -23,9 +23,19 @@ public class LoginLogVO {
     private Long userId;
 
     /**
+     * 用户名
+     */
+    private String nickname;
+
+    /**
      * 企业ID
      */
     private Long estabId;
+
+    /**
+     * 企业名称
+     */
+    private String estabName;
 
     /**
      * 身份ID
@@ -76,7 +86,7 @@ public class LoginLogVO {
      * 请求ID
      */
     private String requestId;
-    
+
     /**
      * 创建时间
      */

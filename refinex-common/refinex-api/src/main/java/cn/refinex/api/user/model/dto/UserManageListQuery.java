@@ -3,6 +3,8 @@ package cn.refinex.api.user.model.dto;
 import cn.refinex.base.request.PageRequest;
 import lombok.Data;
 
+import java.util.List;
+
 /**
  * 用户管理列表查询参数
  *
@@ -30,5 +32,10 @@ public class UserManageListQuery extends PageRequest {
      * 关键字（用户名/显示名/昵称/手机号/邮箱）
      */
     private String keyword;
+
+    /**
+     * 用户ID列表（可选）
+     */
+    private List<Long> userIds;
 
 }

@@ -38,12 +38,15 @@ import { Route as ClerkauthSignUpRouteImport } from './routes/clerk/(auth)/sign-
 import { Route as ClerkauthSignInRouteImport } from './routes/clerk/(auth)/sign-in'
 import { Route as AuthenticatedSystemManagementValueSetsRouteImport } from './routes/_authenticated/system-management/value-sets'
 import { Route as AuthenticatedSystemManagementSystemsRouteImport } from './routes/_authenticated/system-management/systems'
+import { Route as AuthenticatedSystemManagementSystemUsersRouteImport } from './routes/_authenticated/system-management/system-users'
 import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes/_authenticated/settings/notifications'
 import { Route as AuthenticatedSettingsDisplayRouteImport } from './routes/_authenticated/settings/display'
 import { Route as AuthenticatedSettingsAppearanceRouteImport } from './routes/_authenticated/settings/appearance'
 import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings/account'
 import { Route as AuthenticatedErrorsErrorRouteImport } from './routes/_authenticated/errors/$error'
 import { Route as AuthenticatedSystemManagementValueSetsSetCodeRouteImport } from './routes/_authenticated/system-management/value-sets.$setCode'
+import { Route as AuthenticatedSystemManagementOrganizationsTeamsRouteImport } from './routes/_authenticated/system-management/organizations/teams'
+import { Route as AuthenticatedSystemManagementOrganizationsEstabsRouteImport } from './routes/_authenticated/system-management/organizations/estabs'
 import { Route as AuthenticatedSystemManagementLogsOperateRouteImport } from './routes/_authenticated/system-management/logs/operate'
 import { Route as AuthenticatedSystemManagementLogsNotifyRouteImport } from './routes/_authenticated/system-management/logs/notify'
 import { Route as AuthenticatedSystemManagementLogsLoginRouteImport } from './routes/_authenticated/system-management/logs/login'
@@ -197,6 +200,12 @@ const AuthenticatedSystemManagementSystemsRoute =
     path: '/system-management/systems',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedSystemManagementSystemUsersRoute =
+  AuthenticatedSystemManagementSystemUsersRouteImport.update({
+    id: '/system-management/system-users',
+    path: '/system-management/system-users',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSettingsNotificationsRoute =
   AuthenticatedSettingsNotificationsRouteImport.update({
     id: '/notifications',
@@ -232,6 +241,18 @@ const AuthenticatedSystemManagementValueSetsSetCodeRoute =
     id: '/$setCode',
     path: '/$setCode',
     getParentRoute: () => AuthenticatedSystemManagementValueSetsRoute,
+  } as any)
+const AuthenticatedSystemManagementOrganizationsTeamsRoute =
+  AuthenticatedSystemManagementOrganizationsTeamsRouteImport.update({
+    id: '/system-management/organizations/teams',
+    path: '/system-management/organizations/teams',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSystemManagementOrganizationsEstabsRoute =
+  AuthenticatedSystemManagementOrganizationsEstabsRouteImport.update({
+    id: '/system-management/organizations/estabs',
+    path: '/system-management/organizations/estabs',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedSystemManagementLogsOperateRoute =
   AuthenticatedSystemManagementLogsOperateRouteImport.update({
@@ -279,6 +300,7 @@ export interface FileRoutesByFullPath {
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/display': typeof AuthenticatedSettingsDisplayRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
+  '/system-management/system-users': typeof AuthenticatedSystemManagementSystemUsersRoute
   '/system-management/systems': typeof AuthenticatedSystemManagementSystemsRoute
   '/system-management/value-sets': typeof AuthenticatedSystemManagementValueSetsRouteWithChildren
   '/clerk/sign-in': typeof ClerkauthSignInRoute
@@ -294,6 +316,8 @@ export interface FileRoutesByFullPath {
   '/system-management/logs/login': typeof AuthenticatedSystemManagementLogsLoginRoute
   '/system-management/logs/notify': typeof AuthenticatedSystemManagementLogsNotifyRoute
   '/system-management/logs/operate': typeof AuthenticatedSystemManagementLogsOperateRoute
+  '/system-management/organizations/estabs': typeof AuthenticatedSystemManagementOrganizationsEstabsRoute
+  '/system-management/organizations/teams': typeof AuthenticatedSystemManagementOrganizationsTeamsRoute
   '/system-management/value-sets/$setCode': typeof AuthenticatedSystemManagementValueSetsSetCodeRoute
 }
 export interface FileRoutesByTo {
@@ -316,6 +340,7 @@ export interface FileRoutesByTo {
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/display': typeof AuthenticatedSettingsDisplayRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
+  '/system-management/system-users': typeof AuthenticatedSystemManagementSystemUsersRoute
   '/system-management/systems': typeof AuthenticatedSystemManagementSystemsRoute
   '/system-management/value-sets': typeof AuthenticatedSystemManagementValueSetsRouteWithChildren
   '/clerk/sign-in': typeof ClerkauthSignInRoute
@@ -331,6 +356,8 @@ export interface FileRoutesByTo {
   '/system-management/logs/login': typeof AuthenticatedSystemManagementLogsLoginRoute
   '/system-management/logs/notify': typeof AuthenticatedSystemManagementLogsNotifyRoute
   '/system-management/logs/operate': typeof AuthenticatedSystemManagementLogsOperateRoute
+  '/system-management/organizations/estabs': typeof AuthenticatedSystemManagementOrganizationsEstabsRoute
+  '/system-management/organizations/teams': typeof AuthenticatedSystemManagementOrganizationsTeamsRoute
   '/system-management/value-sets/$setCode': typeof AuthenticatedSystemManagementValueSetsSetCodeRoute
 }
 export interface FileRoutesById {
@@ -358,6 +385,7 @@ export interface FileRoutesById {
   '/_authenticated/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/_authenticated/settings/display': typeof AuthenticatedSettingsDisplayRoute
   '/_authenticated/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
+  '/_authenticated/system-management/system-users': typeof AuthenticatedSystemManagementSystemUsersRoute
   '/_authenticated/system-management/systems': typeof AuthenticatedSystemManagementSystemsRoute
   '/_authenticated/system-management/value-sets': typeof AuthenticatedSystemManagementValueSetsRouteWithChildren
   '/clerk/(auth)/sign-in': typeof ClerkauthSignInRoute
@@ -373,6 +401,8 @@ export interface FileRoutesById {
   '/_authenticated/system-management/logs/login': typeof AuthenticatedSystemManagementLogsLoginRoute
   '/_authenticated/system-management/logs/notify': typeof AuthenticatedSystemManagementLogsNotifyRoute
   '/_authenticated/system-management/logs/operate': typeof AuthenticatedSystemManagementLogsOperateRoute
+  '/_authenticated/system-management/organizations/estabs': typeof AuthenticatedSystemManagementOrganizationsEstabsRoute
+  '/_authenticated/system-management/organizations/teams': typeof AuthenticatedSystemManagementOrganizationsTeamsRoute
   '/_authenticated/system-management/value-sets/$setCode': typeof AuthenticatedSystemManagementValueSetsSetCodeRoute
 }
 export interface FileRouteTypes {
@@ -398,6 +428,7 @@ export interface FileRouteTypes {
     | '/settings/appearance'
     | '/settings/display'
     | '/settings/notifications'
+    | '/system-management/system-users'
     | '/system-management/systems'
     | '/system-management/value-sets'
     | '/clerk/sign-in'
@@ -413,6 +444,8 @@ export interface FileRouteTypes {
     | '/system-management/logs/login'
     | '/system-management/logs/notify'
     | '/system-management/logs/operate'
+    | '/system-management/organizations/estabs'
+    | '/system-management/organizations/teams'
     | '/system-management/value-sets/$setCode'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -435,6 +468,7 @@ export interface FileRouteTypes {
     | '/settings/appearance'
     | '/settings/display'
     | '/settings/notifications'
+    | '/system-management/system-users'
     | '/system-management/systems'
     | '/system-management/value-sets'
     | '/clerk/sign-in'
@@ -450,6 +484,8 @@ export interface FileRouteTypes {
     | '/system-management/logs/login'
     | '/system-management/logs/notify'
     | '/system-management/logs/operate'
+    | '/system-management/organizations/estabs'
+    | '/system-management/organizations/teams'
     | '/system-management/value-sets/$setCode'
   id:
     | '__root__'
@@ -476,6 +512,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/appearance'
     | '/_authenticated/settings/display'
     | '/_authenticated/settings/notifications'
+    | '/_authenticated/system-management/system-users'
     | '/_authenticated/system-management/systems'
     | '/_authenticated/system-management/value-sets'
     | '/clerk/(auth)/sign-in'
@@ -491,6 +528,8 @@ export interface FileRouteTypes {
     | '/_authenticated/system-management/logs/login'
     | '/_authenticated/system-management/logs/notify'
     | '/_authenticated/system-management/logs/operate'
+    | '/_authenticated/system-management/organizations/estabs'
+    | '/_authenticated/system-management/organizations/teams'
     | '/_authenticated/system-management/value-sets/$setCode'
   fileRoutesById: FileRoutesById
 }
@@ -716,6 +755,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSystemManagementSystemsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/system-management/system-users': {
+      id: '/_authenticated/system-management/system-users'
+      path: '/system-management/system-users'
+      fullPath: '/system-management/system-users'
+      preLoaderRoute: typeof AuthenticatedSystemManagementSystemUsersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/settings/notifications': {
       id: '/_authenticated/settings/notifications'
       path: '/notifications'
@@ -757,6 +803,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/system-management/value-sets/$setCode'
       preLoaderRoute: typeof AuthenticatedSystemManagementValueSetsSetCodeRouteImport
       parentRoute: typeof AuthenticatedSystemManagementValueSetsRoute
+    }
+    '/_authenticated/system-management/organizations/teams': {
+      id: '/_authenticated/system-management/organizations/teams'
+      path: '/system-management/organizations/teams'
+      fullPath: '/system-management/organizations/teams'
+      preLoaderRoute: typeof AuthenticatedSystemManagementOrganizationsTeamsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/system-management/organizations/estabs': {
+      id: '/_authenticated/system-management/organizations/estabs'
+      path: '/system-management/organizations/estabs'
+      fullPath: '/system-management/organizations/estabs'
+      preLoaderRoute: typeof AuthenticatedSystemManagementOrganizationsEstabsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/system-management/logs/operate': {
       id: '/_authenticated/system-management/logs/operate'
@@ -831,6 +891,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
+  AuthenticatedSystemManagementSystemUsersRoute: typeof AuthenticatedSystemManagementSystemUsersRoute
   AuthenticatedSystemManagementSystemsRoute: typeof AuthenticatedSystemManagementSystemsRoute
   AuthenticatedSystemManagementValueSetsRoute: typeof AuthenticatedSystemManagementValueSetsRouteWithChildren
   AuthenticatedAppsIndexRoute: typeof AuthenticatedAppsIndexRoute
@@ -842,12 +903,16 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSystemManagementLogsLoginRoute: typeof AuthenticatedSystemManagementLogsLoginRoute
   AuthenticatedSystemManagementLogsNotifyRoute: typeof AuthenticatedSystemManagementLogsNotifyRoute
   AuthenticatedSystemManagementLogsOperateRoute: typeof AuthenticatedSystemManagementLogsOperateRoute
+  AuthenticatedSystemManagementOrganizationsEstabsRoute: typeof AuthenticatedSystemManagementOrganizationsEstabsRoute
+  AuthenticatedSystemManagementOrganizationsTeamsRoute: typeof AuthenticatedSystemManagementOrganizationsTeamsRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,
+  AuthenticatedSystemManagementSystemUsersRoute:
+    AuthenticatedSystemManagementSystemUsersRoute,
   AuthenticatedSystemManagementSystemsRoute:
     AuthenticatedSystemManagementSystemsRoute,
   AuthenticatedSystemManagementValueSetsRoute:
@@ -865,6 +930,10 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
     AuthenticatedSystemManagementLogsNotifyRoute,
   AuthenticatedSystemManagementLogsOperateRoute:
     AuthenticatedSystemManagementLogsOperateRoute,
+  AuthenticatedSystemManagementOrganizationsEstabsRoute:
+    AuthenticatedSystemManagementOrganizationsEstabsRoute,
+  AuthenticatedSystemManagementOrganizationsTeamsRoute:
+    AuthenticatedSystemManagementOrganizationsTeamsRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

@@ -257,6 +257,14 @@ public interface OrganizationRepository {
     long countTeamUsers(Long teamId);
 
     /**
+     * 查询团队下已存在的用户ID列表
+     *
+     * @param teamId 团队ID
+     * @return 用户ID列表
+     */
+    List<Long> listTeamUserIds(Long teamId);
+
+    /**
      * 查询团队成员列表
      *
      * @param teamId 团队ID

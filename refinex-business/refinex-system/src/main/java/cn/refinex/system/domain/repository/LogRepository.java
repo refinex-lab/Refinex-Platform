@@ -29,8 +29,7 @@ public interface LogRepository {
      * @param pageSize    页大小
      * @return 登录日志列表
      */
-    PageResponse<LoginLogEntity> listLoginLogs(Long userId, Long estabId, Integer success, Integer loginType, Integer sourceType,
-                                               LocalDateTime startTime, LocalDateTime endTime, int currentPage, int pageSize);
+    PageResponse<LoginLogEntity> listLoginLogs(Long userId, Long estabId, Integer success, Integer loginType, Integer sourceType, LocalDateTime startTime, LocalDateTime endTime, int currentPage, int pageSize);
 
     /**
      * 根据日志ID查询登录日志

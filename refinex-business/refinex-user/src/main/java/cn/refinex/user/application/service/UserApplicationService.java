@@ -349,6 +349,7 @@ public class UserApplicationService {
                 safeQuery.getStatus(),
                 safeQuery.getUserType(),
                 normalizeNullableText(safeQuery.getKeyword()),
+                safeQuery.getUserIds(),
                 currentPage,
                 pageSize
         );

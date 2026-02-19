@@ -128,4 +128,52 @@ public interface SystemDomainAssembler {
      */
     @Mapping(target = "assigned", ignore = true)
     MenuOpDTO toMenuOpDto(MenuOpEntity menuOpEntity);
+
+    /**
+     * 企业实体转换为企业DTO
+     *
+     * @param estabEntity 企业实体
+     * @return 企业DTO
+     */
+    EstabDTO toEstabDto(EstabEntity estabEntity);
+
+    /**
+     * 企业地址实体转换为企业地址DTO
+     *
+     * @param estabAddressEntity 企业地址实体
+     * @return 企业地址DTO
+     */
+    EstabAddressDTO toEstabAddressDto(EstabAddressEntity estabAddressEntity);
+
+    /**
+     * 企业认证策略实体转换为企业认证策略DTO
+     *
+     * @param estabAuthPolicyEntity 企业认证策略实体
+     * @return 企业认证策略DTO
+     */
+    EstabAuthPolicyDTO toEstabAuthPolicyDto(EstabAuthPolicyEntity estabAuthPolicyEntity);
+
+    /**
+     * 企业成员关系实体转换为企业成员关系DTO
+     *
+     * @param estabUserEntity 企业成员关系实体
+     * @return 企业成员关系DTO
+     */
+    EstabUserDTO toEstabUserDto(EstabUserEntity estabUserEntity);
+
+    /**
+     * 团队实体转换为团队DTO
+     *
+     * @param teamEntity 团队实体
+     * @return 团队DTO
+     */
+    TeamDTO toTeamDto(TeamEntity teamEntity);
+
+    /**
+     * 团队成员关系实体转换为团队成员关系DTO
+     *
+     * @param teamUserEntity 团队成员关系实体
+     * @return 团队成员关系DTO
+     */
+    TeamUserDTO toTeamUserDto(TeamUserEntity teamUserEntity);
 }

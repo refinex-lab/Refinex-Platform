@@ -217,4 +217,20 @@ public interface OrganizationApiAssembler {
      * @return 团队成员 VO
      */
     TeamUserVO toTeamUserVo(TeamUserDTO dto);
+
+    /**
+     * 团队成员候选 DTO 列表转换为 VO 列表
+     *
+     * @param dtos 团队成员候选 DTO 列表
+     * @return 团队成员候选 VO 列表
+     */
+    List<TeamUserCandidateVO> toTeamUserCandidateVoList(List<TeamUserCandidateDTO> dtos);
+
+    /**
+     * 团队成员候选 DTO 转换为 VO
+     *
+     * @param dto 团队成员候选 DTO
+     * @return 团队成员候选 VO
+     */
+    TeamUserCandidateVO toTeamUserCandidateVo(TeamUserCandidateDTO dto);
 }

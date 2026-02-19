@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -508,6 +509,27 @@ public class OrganizationRepositoryImpl implements OrganizationRepository {
                         .eq(DefTeamUserDo::getDeleted, 0)
         );
         return count == null ? 0L : count;
+    }
+
+    /**
+     * 查询团队下已存在的用户ID列表
+     *
+     * @param teamId 团队ID
+     * @return 用户ID列表
+     */
+    @Override
+    public List<Long> listTeamUserIds(Long teamId) {
+        List<DefTeamUserDo> rows = defTeamUserMapper.selectList(
+                Wrappers.lambdaQuery(DefTeamUserDo.class)
+                        .select(DefTeamUserDo::getUserId)
+                        .eq(DefTeamUserDo::getTeamId, teamId)
+                        .eq(DefTeamUserDo::getDeleted, 0)
+        );
+        return rows.stream()
+                .map(DefTeamUserDo::getUserId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
     }
 
     /**

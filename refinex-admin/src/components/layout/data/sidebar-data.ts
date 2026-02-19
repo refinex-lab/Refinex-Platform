@@ -22,6 +22,7 @@ import {
   Command,
   GalleryVerticalEnd,
   Database,
+  Building2,
 } from 'lucide-react'
 import { ClerkLogo } from '@/assets/clerk-logo'
 import { appConfig } from '@/config/app-config'
@@ -204,6 +205,25 @@ export const sidebarData: SidebarData = {
               title: '系统定义',
               url: '/system-management/systems',
               icon: Settings,
+            },
+            {
+              title: '组织管理',
+              icon: Building2,
+              items: [
+                {
+                  title: '企业管理',
+                  url: '/system-management/organizations/estabs',
+                },
+                {
+                  title: '团队管理',
+                  url: '/system-management/organizations/teams',
+                },
+              ],
+            },
+            {
+              title: '用户管理',
+              url: '/system-management/system-users',
+              icon: Users,
             },
             {
               title: '集合定义',

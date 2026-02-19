@@ -1,24 +1,25 @@
 package cn.refinex.system.application.service;
 
+import cn.refinex.api.user.model.dto.UserManageDTO;
+import cn.refinex.api.user.model.dto.UserManageListQuery;
 import cn.refinex.base.exception.BizException;
 import cn.refinex.base.response.PageResponse;
 import cn.refinex.base.utils.PageUtils;
+import cn.refinex.system.application.assembler.SystemDomainAssembler;
 import cn.refinex.system.application.command.*;
 import cn.refinex.system.application.dto.*;
 import cn.refinex.system.domain.error.SystemErrorCode;
 import cn.refinex.system.domain.model.entity.*;
 import cn.refinex.system.domain.repository.OrganizationRepository;
+import cn.refinex.system.infrastructure.client.user.UserManageRemoteGateway;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
-import static cn.refinex.base.utils.ValueUtils.defaultIfNull;
-import static cn.refinex.base.utils.ValueUtils.isBlank;
-import static cn.refinex.base.utils.ValueUtils.trimToNull;
+import static cn.refinex.base.utils.ValueUtils.*;
 
 /**
  * 企业与组织结构应用服务
@@ -30,6 +31,8 @@ import static cn.refinex.base.utils.ValueUtils.trimToNull;
 public class OrganizationApplicationService {
 
     private final OrganizationRepository organizationRepository;
+    private final SystemDomainAssembler systemDomainAssembler;
+    private final UserManageRemoteGateway userManageRemoteGateway;
 
     /**
      * 查询企业列表
@@ -50,7 +53,7 @@ public class OrganizationApplicationService {
         );
         List<EstabDTO> result = new ArrayList<>();
         for (EstabEntity entity : entities.getData()) {
-            result.add(toEstabDto(entity));
+            result.add(systemDomainAssembler.toEstabDto(entity));
         }
         return PageResponse.of(result, entities.getTotal(), entities.getPageSize(), entities.getCurrentPage());
     }
@@ -62,7 +65,7 @@ public class OrganizationApplicationService {
      * @return 企业详情
      */
     public EstabDTO getEstab(Long estabId) {
-        return toEstabDto(requireEstab(estabId));
+        return systemDomainAssembler.toEstabDto(requireEstab(estabId));
     }
 
     /**
@@ -99,7 +102,7 @@ public class OrganizationApplicationService {
         estab.setRemark(trimToNull(command.getRemark()));
 
         EstabEntity created = organizationRepository.insertEstab(estab);
-        return toEstabDto(created);
+        return systemDomainAssembler.toEstabDto(created);
     }
 
     /**
@@ -130,7 +133,7 @@ public class OrganizationApplicationService {
         existing.setRemark(trimToNull(command.getRemark()));
 
         organizationRepository.updateEstab(existing);
-        return toEstabDto(requireEstab(existing.getId()));
+        return systemDomainAssembler.toEstabDto(requireEstab(existing.getId()));
     }
 
     /**
@@ -167,7 +170,7 @@ public class OrganizationApplicationService {
         );
         List<EstabAddressDTO> result = new ArrayList<>();
         for (EstabAddressEntity entity : entities.getData()) {
-            result.add(toEstabAddressDto(entity));
+            result.add(systemDomainAssembler.toEstabAddressDto(entity));
         }
         return PageResponse.of(result, entities.getTotal(), entities.getPageSize(), entities.getCurrentPage());
     }
@@ -207,7 +210,7 @@ public class OrganizationApplicationService {
         if (created.getIsDefault() != null && created.getIsDefault() == 1) {
             organizationRepository.clearDefaultAddress(created.getEstabId(), created.getId());
         }
-        return toEstabAddressDto(requireEstabAddress(created.getId()));
+        return systemDomainAssembler.toEstabAddressDto(requireEstabAddress(created.getId()));
     }
 
     /**
@@ -243,7 +246,7 @@ public class OrganizationApplicationService {
         if (existing.getIsDefault() != null && existing.getIsDefault() == 1) {
             organizationRepository.clearDefaultAddress(existing.getEstabId(), existing.getId());
         }
-        return toEstabAddressDto(requireEstabAddress(existing.getId()));
+        return systemDomainAssembler.toEstabAddressDto(requireEstabAddress(existing.getId()));
     }
 
     /**
@@ -269,7 +272,7 @@ public class OrganizationApplicationService {
         if (policy == null) {
             policy = buildDefaultPolicy(estabId);
         }
-        return toEstabAuthPolicyDto(policy);
+        return systemDomainAssembler.toEstabAuthPolicyDto(policy);
     }
 
     /**
@@ -305,7 +308,7 @@ public class OrganizationApplicationService {
         policy.setRemark(trimToNull(command.getRemark()));
 
         EstabAuthPolicyEntity saved = organizationRepository.saveEstabAuthPolicy(policy);
-        return toEstabAuthPolicyDto(saved);
+        return systemDomainAssembler.toEstabAuthPolicyDto(saved);
     }
 
     /**
@@ -325,7 +328,7 @@ public class OrganizationApplicationService {
         );
         List<EstabUserDTO> result = new ArrayList<>();
         for (EstabUserEntity entity : entities.getData()) {
-            result.add(toEstabUserDto(entity));
+            result.add(systemDomainAssembler.toEstabUserDto(entity));
         }
         return PageResponse.of(result, entities.getTotal(), entities.getPageSize(), entities.getCurrentPage());
     }
@@ -356,7 +359,7 @@ public class OrganizationApplicationService {
         estabUser.setLeaveTime(command.getLeaveTime());
         estabUser.setPositionTitle(trimToNull(command.getPositionTitle()));
 
-        return toEstabUserDto(organizationRepository.insertEstabUser(estabUser));
+        return systemDomainAssembler.toEstabUserDto(organizationRepository.insertEstabUser(estabUser));
     }
 
     /**
@@ -379,7 +382,7 @@ public class OrganizationApplicationService {
         existing.setLeaveTime(command.getLeaveTime());
         existing.setPositionTitle(trimToNull(command.getPositionTitle()));
         organizationRepository.updateEstabUser(existing);
-        return toEstabUserDto(requireEstabUser(existing.getId()));
+        return systemDomainAssembler.toEstabUserDto(requireEstabUser(existing.getId()));
     }
 
     /**
@@ -403,10 +406,12 @@ public class OrganizationApplicationService {
         if (command == null || command.getEstabId() == null) {
             throw new BizException(SystemErrorCode.INVALID_PARAM);
         }
+
         requireEstab(command.getEstabId());
+
         int currentPage = PageUtils.normalizeCurrentPage(command.getCurrentPage());
-        int pageSize = PageUtils.normalizePageSize(command.getPageSize(),
-                PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE);
+        int pageSize = PageUtils.normalizePageSize(command.getPageSize(), PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE);
+
         PageResponse<TeamEntity> entities = organizationRepository.listTeams(
                 command.getEstabId(),
                 command.getParentId(),
@@ -417,7 +422,7 @@ public class OrganizationApplicationService {
         );
         List<TeamDTO> result = new ArrayList<>();
         for (TeamEntity entity : entities.getData()) {
-            result.add(toTeamDto(entity));
+            result.add(systemDomainAssembler.toTeamDto(entity));
         }
         return PageResponse.of(result, entities.getTotal(), entities.getPageSize(), entities.getCurrentPage());
     }
@@ -429,7 +434,7 @@ public class OrganizationApplicationService {
      * @return 团队详情
      */
     public TeamDTO getTeam(Long teamId) {
-        return toTeamDto(requireTeam(teamId));
+        return systemDomainAssembler.toTeamDto(requireTeam(teamId));
     }
 
     /**
@@ -468,7 +473,7 @@ public class OrganizationApplicationService {
         team.setSort(defaultIfNull(command.getSort(), 0));
         team.setRemark(trimToNull(command.getRemark()));
 
-        return toTeamDto(organizationRepository.insertTeam(team));
+        return systemDomainAssembler.toTeamDto(organizationRepository.insertTeam(team));
     }
 
     /**
@@ -503,7 +508,7 @@ public class OrganizationApplicationService {
         existing.setRemark(trimToNull(command.getRemark()));
 
         organizationRepository.updateTeam(existing);
-        return toTeamDto(requireTeam(existing.getId()));
+        return systemDomainAssembler.toTeamDto(requireTeam(existing.getId()));
     }
 
     /**
@@ -540,8 +545,9 @@ public class OrganizationApplicationService {
         );
         List<TeamUserDTO> result = new ArrayList<>();
         for (TeamUserEntity entity : entities.getData()) {
-            result.add(toTeamUserDto(entity));
+            result.add(systemDomainAssembler.toTeamUserDto(entity));
         }
+        enrichTeamUsers(result);
         return PageResponse.of(result, entities.getTotal(), entities.getPageSize(), entities.getCurrentPage());
     }
 
@@ -568,7 +574,9 @@ public class OrganizationApplicationService {
         teamUser.setStatus(defaultIfNull(command.getStatus(), 1));
         teamUser.setJoinTime(defaultIfNull(command.getJoinTime(), LocalDateTime.now()));
 
-        return toTeamUserDto(organizationRepository.insertTeamUser(teamUser));
+        TeamUserDTO dto = systemDomainAssembler.toTeamUserDto(organizationRepository.insertTeamUser(teamUser));
+        enrichTeamUser(dto);
+        return dto;
     }
 
     /**
@@ -589,7 +597,56 @@ public class OrganizationApplicationService {
         existing.setJoinTime(defaultIfNull(command.getJoinTime(), existing.getJoinTime()));
 
         organizationRepository.updateTeamUser(existing);
-        return toTeamUserDto(requireTeamUser(existing.getId()));
+        TeamUserDTO dto = systemDomainAssembler.toTeamUserDto(requireTeamUser(existing.getId()));
+        enrichTeamUser(dto);
+        return dto;
+    }
+
+    /**
+     * 查询团队成员候选用户（用于前端联想）
+     *
+     * @param teamId  团队ID
+     * @param keyword 用户名关键字
+     * @param limit   返回条数
+     * @return 候选用户列表
+     */
+    public List<TeamUserCandidateDTO> listTeamUserCandidates(Long teamId, String keyword, Integer limit) {
+        TeamEntity team = requireTeam(teamId);
+        String safeKeyword = trimToNull(keyword);
+        if (safeKeyword == null) {
+            return Collections.emptyList();
+        }
+
+        int safeLimit = limit == null ? 10 : Math.max(1, Math.min(limit, 50));
+        List<Long> existingUserIds = organizationRepository.listTeamUserIds(teamId);
+        UserManageListQuery query = new UserManageListQuery();
+        query.setPrimaryEstabId(team.getEstabId());
+        query.setKeyword(safeKeyword);
+        query.setStatus(1);
+        query.setCurrentPage(1);
+        query.setPageSize(safeLimit * 3);
+
+        PageResponse<UserManageDTO> users = userManageRemoteGateway.listUsers(query);
+        List<TeamUserCandidateDTO> result = new ArrayList<>();
+        List<UserManageDTO> rows = users.getData() == null ? Collections.emptyList() : users.getData();
+        for (UserManageDTO user : rows) {
+            if (user == null || user.getUserId() == null) {
+                continue;
+            }
+            if (existingUserIds.contains(user.getUserId())) {
+                continue;
+            }
+            TeamUserCandidateDTO dto = new TeamUserCandidateDTO();
+            dto.setUserId(user.getUserId());
+            dto.setUsername(user.getUsername());
+            dto.setUserCode(user.getUserCode());
+            dto.setDisplayName(user.getDisplayName());
+            result.add(dto);
+            if (result.size() >= safeLimit) {
+                break;
+            }
+        }
+        return result;
     }
 
     /**
@@ -603,61 +660,181 @@ public class OrganizationApplicationService {
         organizationRepository.deleteTeamUser(teamUser.getId());
     }
 
+    /**
+     * 批量补充团队成员用户信息
+     *
+     * @param teamUsers 团队成员列表
+     */
+    private void enrichTeamUsers(List<TeamUserDTO> teamUsers) {
+        if (teamUsers == null || teamUsers.isEmpty()) {
+            return;
+        }
+        List<Long> userIds = teamUsers.stream()
+                .map(TeamUserDTO::getUserId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Long, UserManageDTO> userMap = loadUserMapByIds(userIds);
+        for (TeamUserDTO teamUser : teamUsers) {
+            fillTeamUserDisplayFields(teamUser, userMap.get(teamUser.getUserId()));
+        }
+    }
+
+    /**
+     * 补充单个团队成员用户信息
+     *
+     * @param teamUser 团队成员
+     */
+    private void enrichTeamUser(TeamUserDTO teamUser) {
+        if (teamUser == null || teamUser.getUserId() == null) {
+            return;
+        }
+        Map<Long, UserManageDTO> userMap = loadUserMapByIds(List.of(teamUser.getUserId()));
+        fillTeamUserDisplayFields(teamUser, userMap.get(teamUser.getUserId()));
+    }
+
+    /**
+     * 根据用户ID列表加载用户档案
+     *
+     * @param userIds 用户ID列表
+     * @return 用户信息映射
+     */
+    private Map<Long, UserManageDTO> loadUserMapByIds(List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        UserManageListQuery query = new UserManageListQuery();
+        query.setUserIds(userIds);
+        query.setCurrentPage(1);
+        query.setPageSize(userIds.size());
+        PageResponse<UserManageDTO> response = userManageRemoteGateway.listUsers(query);
+
+        Map<Long, UserManageDTO> userMap = new HashMap<>();
+        List<UserManageDTO> rows = response.getData() == null ? Collections.emptyList() : response.getData();
+        for (UserManageDTO user : rows) {
+            if (user != null && user.getUserId() != null) {
+                userMap.put(user.getUserId(), user);
+            }
+        }
+        return userMap;
+    }
+
+    /**
+     * 将用户信息写入团队成员DTO
+     *
+     * @param teamUser 团队成员DTO
+     * @param user     用户信息
+     */
+    private void fillTeamUserDisplayFields(TeamUserDTO teamUser, UserManageDTO user) {
+        if (teamUser == null || user == null) {
+            return;
+        }
+        teamUser.setUsername(user.getUsername());
+        teamUser.setUserCode(user.getUserCode());
+        teamUser.setDisplayName(user.getDisplayName());
+    }
+
+    /**
+     * 获取企业
+     *
+     * @param estabId 企业ID
+     * @return 企业
+     */
     private EstabEntity requireEstab(Long estabId) {
         if (estabId == null) {
             throw new BizException(SystemErrorCode.INVALID_PARAM);
         }
+
         EstabEntity estab = organizationRepository.findEstabById(estabId);
         if (estab == null || (estab.getDeleted() != null && estab.getDeleted() == 1)) {
             throw new BizException(SystemErrorCode.ESTAB_NOT_FOUND);
         }
+
         return estab;
     }
 
+    /**
+     * 获取企业地址
+     *
+     * @param addressId 地址ID
+     * @return 地址
+     */
     private EstabAddressEntity requireEstabAddress(Long addressId) {
         if (addressId == null) {
             throw new BizException(SystemErrorCode.INVALID_PARAM);
         }
+
         EstabAddressEntity address = organizationRepository.findEstabAddressById(addressId);
         if (address == null || (address.getDeleted() != null && address.getDeleted() == 1)) {
             throw new BizException(SystemErrorCode.ESTAB_ADDRESS_NOT_FOUND);
         }
+
         return address;
     }
 
+    /**
+     * 获取企业成员关系
+     *
+     * @param estabUserId 企业成员关系ID
+     * @return 成员关系
+     */
     private EstabUserEntity requireEstabUser(Long estabUserId) {
         if (estabUserId == null) {
             throw new BizException(SystemErrorCode.INVALID_PARAM);
         }
+
         EstabUserEntity estabUser = organizationRepository.findEstabUserById(estabUserId);
         if (estabUser == null || (estabUser.getDeleted() != null && estabUser.getDeleted() == 1)) {
             throw new BizException(SystemErrorCode.ESTAB_USER_NOT_FOUND);
         }
+
         return estabUser;
     }
 
+    /**
+     * 获取团队
+     *
+     * @param teamId 团队ID
+     * @return 团队
+     */
     private TeamEntity requireTeam(Long teamId) {
         if (teamId == null) {
             throw new BizException(SystemErrorCode.INVALID_PARAM);
         }
+
         TeamEntity team = organizationRepository.findTeamById(teamId);
         if (team == null || (team.getDeleted() != null && team.getDeleted() == 1)) {
             throw new BizException(SystemErrorCode.TEAM_NOT_FOUND);
         }
+
         return team;
     }
 
+    /**
+     * 获取团队成员关系
+     *
+     * @param teamUserId 团队成员关系ID
+     * @return 团队成员关系
+     */
     private TeamUserEntity requireTeamUser(Long teamUserId) {
         if (teamUserId == null) {
             throw new BizException(SystemErrorCode.INVALID_PARAM);
         }
+
         TeamUserEntity teamUser = organizationRepository.findTeamUserById(teamUserId);
         if (teamUser == null || (teamUser.getDeleted() != null && teamUser.getDeleted() == 1)) {
             throw new BizException(SystemErrorCode.TEAM_USER_NOT_FOUND);
         }
+
         return teamUser;
     }
 
+    /**
+     * 构建默认策略
+     *
+     * @param estabId 企业ID
+     * @return 默认策略
+     */
     private EstabAuthPolicyEntity buildDefaultPolicy(Long estabId) {
         EstabAuthPolicyEntity policy = new EstabAuthPolicyEntity();
         policy.setEstabId(estabId);
@@ -673,106 +850,5 @@ public class OrganizationApplicationService {
         policy.setLockMinutes(30);
         policy.setSessionTimeoutMinutes(120);
         return policy;
-    }
-
-    private EstabDTO toEstabDto(EstabEntity entity) {
-        EstabDTO dto = new EstabDTO();
-        dto.setId(entity.getId());
-        dto.setEstabCode(entity.getEstabCode());
-        dto.setEstabName(entity.getEstabName());
-        dto.setEstabShortName(entity.getEstabShortName());
-        dto.setEstabType(entity.getEstabType());
-        dto.setStatus(entity.getStatus());
-        dto.setIndustryCode(entity.getIndustryCode());
-        dto.setSizeRange(entity.getSizeRange());
-        dto.setOwnerUserId(entity.getOwnerUserId());
-        dto.setContactName(entity.getContactName());
-        dto.setContactPhone(entity.getContactPhone());
-        dto.setContactEmail(entity.getContactEmail());
-        dto.setWebsiteUrl(entity.getWebsiteUrl());
-        dto.setLogoUrl(entity.getLogoUrl());
-        dto.setRemark(entity.getRemark());
-        return dto;
-    }
-
-    private EstabAddressDTO toEstabAddressDto(EstabAddressEntity entity) {
-        EstabAddressDTO dto = new EstabAddressDTO();
-        dto.setId(entity.getId());
-        dto.setEstabId(entity.getEstabId());
-        dto.setAddrType(entity.getAddrType());
-        dto.setCountryCode(entity.getCountryCode());
-        dto.setProvinceCode(entity.getProvinceCode());
-        dto.setCityCode(entity.getCityCode());
-        dto.setDistrictCode(entity.getDistrictCode());
-        dto.setProvinceName(entity.getProvinceName());
-        dto.setCityName(entity.getCityName());
-        dto.setDistrictName(entity.getDistrictName());
-        dto.setAddressLine1(entity.getAddressLine1());
-        dto.setAddressLine2(entity.getAddressLine2());
-        dto.setPostalCode(entity.getPostalCode());
-        dto.setLatitude(entity.getLatitude());
-        dto.setLongitude(entity.getLongitude());
-        dto.setIsDefault(entity.getIsDefault());
-        dto.setRemark(entity.getRemark());
-        return dto;
-    }
-
-    private EstabAuthPolicyDTO toEstabAuthPolicyDto(EstabAuthPolicyEntity entity) {
-        EstabAuthPolicyDTO dto = new EstabAuthPolicyDTO();
-        dto.setId(entity.getId());
-        dto.setEstabId(entity.getEstabId());
-        dto.setPasswordLoginEnabled(entity.getPasswordLoginEnabled());
-        dto.setSmsLoginEnabled(entity.getSmsLoginEnabled());
-        dto.setEmailLoginEnabled(entity.getEmailLoginEnabled());
-        dto.setWechatLoginEnabled(entity.getWechatLoginEnabled());
-        dto.setMfaRequired(entity.getMfaRequired());
-        dto.setMfaMethods(entity.getMfaMethods());
-        dto.setPasswordMinLen(entity.getPasswordMinLen());
-        dto.setPasswordStrength(entity.getPasswordStrength());
-        dto.setPasswordExpireDays(entity.getPasswordExpireDays());
-        dto.setLoginFailThreshold(entity.getLoginFailThreshold());
-        dto.setLockMinutes(entity.getLockMinutes());
-        dto.setSessionTimeoutMinutes(entity.getSessionTimeoutMinutes());
-        dto.setRemark(entity.getRemark());
-        return dto;
-    }
-
-    private EstabUserDTO toEstabUserDto(EstabUserEntity entity) {
-        EstabUserDTO dto = new EstabUserDTO();
-        dto.setId(entity.getId());
-        dto.setEstabId(entity.getEstabId());
-        dto.setUserId(entity.getUserId());
-        dto.setMemberType(entity.getMemberType());
-        dto.setIsAdmin(entity.getIsAdmin());
-        dto.setStatus(entity.getStatus());
-        dto.setJoinTime(entity.getJoinTime());
-        dto.setLeaveTime(entity.getLeaveTime());
-        dto.setPositionTitle(entity.getPositionTitle());
-        return dto;
-    }
-
-    private TeamDTO toTeamDto(TeamEntity entity) {
-        TeamDTO dto = new TeamDTO();
-        dto.setId(entity.getId());
-        dto.setEstabId(entity.getEstabId());
-        dto.setTeamCode(entity.getTeamCode());
-        dto.setTeamName(entity.getTeamName());
-        dto.setParentId(entity.getParentId());
-        dto.setLeaderUserId(entity.getLeaderUserId());
-        dto.setStatus(entity.getStatus());
-        dto.setSort(entity.getSort());
-        dto.setRemark(entity.getRemark());
-        return dto;
-    }
-
-    private TeamUserDTO toTeamUserDto(TeamUserEntity entity) {
-        TeamUserDTO dto = new TeamUserDTO();
-        dto.setId(entity.getId());
-        dto.setTeamId(entity.getTeamId());
-        dto.setUserId(entity.getUserId());
-        dto.setRoleInTeam(entity.getRoleInTeam());
-        dto.setStatus(entity.getStatus());
-        dto.setJoinTime(entity.getJoinTime());
-        return dto;
     }
 }

@@ -20,6 +20,8 @@ import type {
   TeamListQuery,
   TeamUpdateRequest,
   TeamUser,
+  TeamUserCandidate,
+  TeamUserCandidateQuery,
   TeamUserCreateRequest,
   TeamUserListQuery,
   TeamUserUpdateRequest,
@@ -177,6 +179,19 @@ export async function listTeamUsers(
     params: query,
   })
   return response.data ?? { data: [] }
+}
+
+export async function listTeamUserCandidates(
+  teamId: number,
+  query: TeamUserCandidateQuery
+): Promise<TeamUserCandidate[]> {
+  const response = await http.get<TeamUserCandidate[]>(
+    buildSystemPath(`/teams/${teamId}/users/candidates`),
+    {
+      params: query,
+    }
+  )
+  return response.data ?? []
 }
 
 export async function createTeamUser(

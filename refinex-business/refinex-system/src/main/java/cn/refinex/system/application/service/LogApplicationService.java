@@ -19,9 +19,11 @@ import cn.refinex.system.domain.model.entity.NotifyLogEntity;
 import cn.refinex.system.domain.model.entity.OperateLogEntity;
 import cn.refinex.system.domain.repository.LogRepository;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -44,8 +46,8 @@ public class LogApplicationService {
      */
     public PageResponse<LoginLogDTO> listLoginLogs(QueryLoginLogListCommand command) {
         int currentPage = PageUtils.normalizeCurrentPage(command == null ? null : command.getCurrentPage());
-        int pageSize = PageUtils.normalizePageSize(command == null ? null : command.getPageSize(),
-                PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE);
+        int pageSize = PageUtils.normalizePageSize(command == null ? null : command.getPageSize(), PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE);
+
         PageResponse<LoginLogEntity> entities = logRepository.listLoginLogs(
                 command == null ? null : command.getUserId(),
                 command == null ? null : command.getEstabId(),
@@ -57,10 +59,17 @@ public class LogApplicationService {
                 currentPage,
                 pageSize
         );
+
+        List<LoginLogEntity> entitiesData = entities.getData();
+        if (CollectionUtils.isEmpty(entitiesData)) {
+            return PageResponse.of(Collections.emptyList(), 0, pageSize, currentPage);
+        }
+
         List<LoginLogDTO> result = new ArrayList<>();
         for (LoginLogEntity entity : entities.getData()) {
             result.add(systemDomainAssembler.toLoginLogDto(entity));
         }
+
         return PageResponse.of(result, entities.getTotal(), entities.getPageSize(), entities.getCurrentPage());
     }
 

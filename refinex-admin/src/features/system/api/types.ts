@@ -716,6 +716,9 @@ export interface TeamUser {
   id?: number
   teamId?: number
   userId?: number
+  username?: string
+  userCode?: string
+  displayName?: string
   roleInTeam?: number
   status?: number
   joinTime?: string
@@ -736,6 +739,18 @@ export interface TeamUserUpdateRequest {
   roleInTeam?: number
   status?: number
   joinTime?: string
+}
+
+export interface TeamUserCandidate {
+  userId?: number
+  username?: string
+  userCode?: string
+  displayName?: string
+}
+
+export interface TeamUserCandidateQuery {
+  keyword: string
+  limit?: number
 }
 
 export interface SystemUser {

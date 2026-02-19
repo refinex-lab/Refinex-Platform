@@ -61,11 +61,11 @@ public class LogRepositoryImpl implements LogRepository {
      * @return 登录日志列表
      */
     @Override
-    public PageResponse<LoginLogEntity> listLoginLogs(Long userId, Long estabId, Integer success, Integer loginType, Integer sourceType,
-                                                      LocalDateTime startTime, LocalDateTime endTime, int currentPage, int pageSize) {
+    public PageResponse<LoginLogEntity> listLoginLogs(Long userId, Long estabId, Integer success, Integer loginType, Integer sourceType, LocalDateTime startTime, LocalDateTime endTime, int currentPage, int pageSize) {
         LambdaQueryWrapper<LogLoginDo> query = Wrappers.lambdaQuery(LogLoginDo.class)
                 .eq(LogLoginDo::getDeleted, 0)
                 .orderByDesc(LogLoginDo::getId);
+
         if (userId != null) {
             query.eq(LogLoginDo::getUserId, userId);
         }
@@ -87,6 +87,7 @@ public class LogRepositoryImpl implements LogRepository {
         if (endTime != null) {
             query.le(LogLoginDo::getGmtCreate, endTime);
         }
+
         Page<LogLoginDo> page = new Page<>(currentPage, pageSize);
         Page<LogLoginDo> rowsPage = logLoginMapper.selectPage(page, query);
         List<LogLoginDo> rows = rowsPage.getRecords();
@@ -94,6 +95,7 @@ public class LogRepositoryImpl implements LogRepository {
         for (LogLoginDo row : rows) {
             result.add(loginLogDoConverter.toEntity(row));
         }
+
         return PageResponse.of(result, rowsPage.getTotal(), (int) rowsPage.getSize(), (int) rowsPage.getCurrent());
     }
 

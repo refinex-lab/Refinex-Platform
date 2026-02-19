@@ -28,6 +28,21 @@ public class TeamUserDTO {
     private Long userId;
 
     /**
+     * 用户名
+     */
+    private String username;
+
+    /**
+     * 用户编码
+     */
+    private String userCode;
+
+    /**
+     * 显示名称
+     */
+    private String displayName;
+
+    /**
      * 团队角色 0成员 1负责人
      */
     private Integer roleInTeam;
