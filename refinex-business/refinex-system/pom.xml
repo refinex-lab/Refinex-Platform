@@ -3,21 +3,16 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>cn.refinex</groupId>
-        <artifactId>Refinex-Platform</artifactId>
+        <artifactId>refinex-business</artifactId>
         <version>${revision}</version>
     </parent>
 
-    <artifactId>refinex-business</artifactId>
-    <packaging>pom</packaging>
+    <artifactId>refinex-system</artifactId>
+    <packaging>jar</packaging>
 
     <name>${project.artifactId}</name>
-    <description>Refinex Business (业务服务)</description>
+    <description>Refinex System (系统管理服务)</description>
 
-    <modules>
-        <module>refinex-user</module>
-        <module>refinex-system</module>
-        <module>refinex-kb</module>
-        <module>refinex-ai</module>
-        <module>refinex-openapi</module>
-    </modules>
+    <dependencies>
+    </dependencies>
 </project>
