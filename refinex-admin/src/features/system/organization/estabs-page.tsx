@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
+  Eye,
   Loader2,
+  Maximize2,
   MapPin,
+  Minimize2,
   Pencil,
   Plus,
   RefreshCw,
@@ -66,6 +69,7 @@ import {
   deleteEstabAddress,
   deleteEstabUser,
   getEstabAuthPolicy,
+  listSystemUsers,
   listEstabAddresses,
   listEstabUsers,
   listEstabs,
@@ -83,6 +87,7 @@ import {
   type EstabUserCreateRequest,
   type EstabUserListQuery,
   type EstabUserUpdateRequest,
+  type SystemUser,
   updateEstab,
   updateEstabAddress,
   updateEstabAuthPolicy,
@@ -152,6 +157,7 @@ type EstabFormValues = z.infer<typeof estabFormSchema>
 type AddressFormValues = z.infer<typeof addressFormSchema>
 type EstabUserFormValues = z.infer<typeof estabUserFormSchema>
 type PolicyFormValues = z.infer<typeof policyFormSchema>
+type EstabDialogMode = 'create' | 'edit' | 'view'
 
 const DEFAULT_ESTAB_FORM: EstabFormValues = {
   estabCode: '',
@@ -203,6 +209,15 @@ const DEFAULT_POLICY_FORM: PolicyFormValues = {
   remark: '',
 }
 
+const USER_CANDIDATE_LIMIT = 10
+
+type EstabOwnerCandidate = {
+  userId?: number
+  username?: string
+  userCode?: string
+  displayName?: string
+}
+
 function toEstabTypeLabel(type?: number): string {
   if (type === 1) return '租户企业'
   if (type === 2) return '平台组织'
@@ -233,6 +248,22 @@ function parsePositiveInteger(value?: string): number | undefined {
   const parsed = toOptionalNumber(value)
   if (parsed == null || parsed <= 0) return undefined
   return parsed
+}
+
+function mapSystemUserToOwnerCandidate(user: SystemUser): EstabOwnerCandidate {
+  return {
+    userId: user.userId,
+    username: user.username,
+    userCode: user.userCode,
+    displayName: user.displayName,
+  }
+}
+
+function buildOwnerCandidateLabel(candidate?: EstabOwnerCandidate | null): string {
+  if (!candidate) return ''
+  const name = candidate.username || candidate.displayName || ''
+  const code = candidate.userCode ? `（${candidate.userCode}）` : ''
+  return `${name}${code}`
 }
 
 export function EstabsPage() {
@@ -272,6 +303,8 @@ export function EstabsPage() {
   const [estabDialogOpen, setEstabDialogOpen] = useState(false)
   const [savingEstab, setSavingEstab] = useState(false)
   const [editingEstab, setEditingEstab] = useState<Estab | null>(null)
+  const [estabDialogMode, setEstabDialogMode] = useState<EstabDialogMode>('create')
+  const [estabDialogExpanded, setEstabDialogExpanded] = useState(false)
   const [deletingEstab, setDeletingEstab] = useState<Estab | null>(null)
   const [deletingEstabLoading, setDeletingEstabLoading] = useState(false)
 
@@ -286,6 +319,11 @@ export function EstabsPage() {
   const [editingMember, setEditingMember] = useState<EstabUser | null>(null)
   const [deletingMember, setDeletingMember] = useState<EstabUser | null>(null)
   const [deletingMemberLoading, setDeletingMemberLoading] = useState(false)
+
+  const [ownerKeyword, setOwnerKeyword] = useState('')
+  const [ownerCandidates, setOwnerCandidates] = useState<EstabOwnerCandidate[]>([])
+  const [ownerLoading, setOwnerLoading] = useState(false)
+  const [selectedOwnerCandidate, setSelectedOwnerCandidate] = useState<EstabOwnerCandidate | null>(null)
 
   const estabForm = useForm<EstabFormValues>({
     resolver: zodResolver(estabFormSchema),
@@ -307,13 +345,8 @@ export function EstabsPage() {
     defaultValues: DEFAULT_POLICY_FORM,
     mode: 'onChange',
   })
-
-  const selectedEstabSummary = useMemo(() => {
-    if (!selectedEstab) {
-      return '请从上方企业列表中选择要管理的企业。'
-    }
-    return `当前企业：${selectedEstab.estabName || '-'}（${selectedEstab.estabCode || '-'}）`
-  }, [selectedEstab])
+  const isEstabReadOnly = estabDialogMode === 'view'
+  const isEstabThreeColumnLayout = isEstabReadOnly || estabDialogMode === 'edit'
 
   async function loadEstabs(activeQuery: EstabListQuery = query) {
     setLoading(true)
@@ -421,6 +454,56 @@ export function EstabsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedEstabId, memberQuery])
 
+  useEffect(() => {
+    if (!estabDialogOpen || isEstabReadOnly) {
+      return
+    }
+    if (selectedOwnerCandidate?.userId) {
+      return
+    }
+    const keyword = ownerKeyword.trim()
+    if (!keyword) {
+      setOwnerCandidates([])
+      return
+    }
+
+    const timer = window.setTimeout(async () => {
+      setOwnerLoading(true)
+      try {
+        const pageData = await listSystemUsers({
+          status: 1,
+          keyword,
+          currentPage: 1,
+          pageSize: USER_CANDIDATE_LIMIT,
+        })
+        const candidates = (pageData.data ?? [])
+          .filter((item) => item.userId != null)
+          .map(mapSystemUserToOwnerCandidate)
+        setOwnerCandidates(candidates)
+      } catch (error) {
+        handleServerError(error)
+      } finally {
+        setOwnerLoading(false)
+      }
+    }, 300)
+
+    return () => window.clearTimeout(timer)
+  }, [estabDialogOpen, isEstabReadOnly, ownerKeyword, selectedOwnerCandidate])
+
+  function resetOwnerCandidateState() {
+    setOwnerKeyword('')
+    setOwnerCandidates([])
+    setSelectedOwnerCandidate(null)
+  }
+
+  function selectOwnerCandidate(candidate: EstabOwnerCandidate, onChange: (value: string) => void) {
+    if (!candidate.userId) return
+    onChange(String(candidate.userId))
+    setSelectedOwnerCandidate(candidate)
+    setOwnerKeyword(candidate.username || candidate.displayName || '')
+    setOwnerCandidates([])
+  }
+
   function applyFilters() {
     setQuery({
       keyword: toOptionalString(keywordInput),
@@ -447,13 +530,18 @@ export function EstabsPage() {
   }
 
   function openCreateEstabDialog() {
+    setEstabDialogMode('create')
+    setEstabDialogExpanded(false)
     setEditingEstab(null)
     setSelectedEstab(null)
     estabForm.reset(DEFAULT_ESTAB_FORM)
+    resetOwnerCandidateState()
     setEstabDialogOpen(true)
   }
 
   function openEditEstabDialog(estab: Estab) {
+    setEstabDialogMode('edit')
+    setEstabDialogExpanded(false)
     setSelectedEstab(estab)
     setEditingEstab(estab)
     estabForm.reset({
@@ -469,16 +557,63 @@ export function EstabsPage() {
       websiteUrl: estab.websiteUrl ?? '',
       remark: estab.remark ?? '',
     })
+    const ownerCandidate =
+      estab.ownerUserId == null
+        ? null
+        : ({
+            userId: estab.ownerUserId,
+            username: estab.ownerUsername,
+          } satisfies EstabOwnerCandidate)
+    setSelectedOwnerCandidate(ownerCandidate)
+    setOwnerKeyword(estab.ownerUsername ?? '')
+    setOwnerCandidates([])
+    setEstabDialogOpen(true)
+  }
+
+  function openViewEstabDialog(estab: Estab) {
+    setEstabDialogMode('view')
+    setEstabDialogExpanded(false)
+    setSelectedEstab(estab)
+    setEditingEstab(estab)
+    estabForm.reset({
+      estabCode: estab.estabCode ?? '',
+      estabName: estab.estabName ?? '',
+      estabShortName: estab.estabShortName ?? '',
+      estabType: String(estab.estabType ?? 1) as '1' | '2' | '3',
+      status: String(estab.status ?? 1) as '1' | '2',
+      ownerUserId: estab.ownerUserId == null ? '' : String(estab.ownerUserId),
+      contactName: estab.contactName ?? '',
+      contactPhone: estab.contactPhone ?? '',
+      contactEmail: estab.contactEmail ?? '',
+      websiteUrl: estab.websiteUrl ?? '',
+      remark: estab.remark ?? '',
+    })
+    const ownerCandidate =
+      estab.ownerUserId == null
+        ? null
+        : ({
+            userId: estab.ownerUserId,
+            username: estab.ownerUsername,
+          } satisfies EstabOwnerCandidate)
+    setSelectedOwnerCandidate(ownerCandidate)
+    setOwnerKeyword(estab.ownerUsername ?? '')
+    setOwnerCandidates([])
     setEstabDialogOpen(true)
   }
 
   function closeEstabDialog() {
     setEstabDialogOpen(false)
+    setEstabDialogMode('create')
+    setEstabDialogExpanded(false)
     setEditingEstab(null)
     estabForm.reset(DEFAULT_ESTAB_FORM)
+    resetOwnerCandidateState()
   }
 
   async function submitEstab(values: EstabFormValues) {
+    if (isEstabReadOnly) {
+      return
+    }
     setSavingEstab(true)
     try {
       const basePayload: EstabUpdateRequest = {
@@ -857,6 +992,18 @@ export function EstabsPage() {
                             className='h-8 w-8'
                             onClick={(event) => {
                               event.stopPropagation()
+                              openViewEstabDialog(item)
+                            }}
+                          >
+                            <Eye className='h-4 w-4' />
+                          </Button>
+                          <Button
+                            type='button'
+                            variant='ghost'
+                            size='icon'
+                            className='h-8 w-8'
+                            onClick={(event) => {
+                              event.stopPropagation()
                               openEditEstabDialog(item)
                             }}
                           >
@@ -893,14 +1040,45 @@ export function EstabsPage() {
         </Card>
       </Main>
 
-      <Dialog open={estabDialogOpen} onOpenChange={setEstabDialogOpen}>
-        <DialogContent className='max-h-[92vh] overflow-y-auto sm:max-w-6xl'>
+      <Dialog
+        open={estabDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeEstabDialog()
+            return
+          }
+          setEstabDialogOpen(true)
+        }}
+      >
+        <DialogContent
+          className={`max-h-[92vh] overflow-y-auto ${
+            estabDialogExpanded ? 'sm:max-w-[92vw]' : 'sm:max-w-6xl'
+          }`}
+        >
+          {editingEstab ? (
+            <Button
+              type='button'
+              variant='outline'
+              size='icon'
+              className='absolute right-12 top-2 z-10 h-8 w-8 shrink-0'
+              onClick={() => setEstabDialogExpanded((prev) => !prev)}
+            >
+              {estabDialogExpanded ? <Minimize2 className='h-4 w-4' /> : <Maximize2 className='h-4 w-4' />}
+            </Button>
+          ) : null}
           <DialogHeader>
-            <DialogTitle>{editingEstab ? '编辑企业' : '新建企业'}</DialogTitle>
-            <DialogDescription>维护企业主体信息，保存后可继续配置地址、成员与策略。</DialogDescription>
+            <div className='space-y-1'>
+              <DialogTitle>
+                {estabDialogMode === 'view' ? '查看企业' : editingEstab ? '编辑企业' : '新建企业'}
+              </DialogTitle>
+              <DialogDescription>维护企业主体信息，保存后可继续配置地址、成员与策略。</DialogDescription>
+            </div>
           </DialogHeader>
           <Form {...estabForm}>
-            <form className='grid gap-4 md:grid-cols-2' onSubmit={estabForm.handleSubmit(submitEstab)}>
+            <form
+              className={`grid gap-4 ${isEstabThreeColumnLayout ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}
+              onSubmit={estabForm.handleSubmit(submitEstab)}
+            >
               <FormField
                 control={estabForm.control}
                 name='estabCode'
@@ -908,7 +1086,7 @@ export function EstabsPage() {
                   <FormItem>
                     <FormLabel>企业编码</FormLabel>
                     <FormControl>
-                      <Input {...field} disabled={Boolean(editingEstab)} />
+                      <Input {...field} disabled={Boolean(editingEstab) || isEstabReadOnly} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -921,7 +1099,7 @@ export function EstabsPage() {
                   <FormItem>
                     <FormLabel>企业名称</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input {...field} disabled={isEstabReadOnly} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -934,7 +1112,7 @@ export function EstabsPage() {
                   <FormItem>
                     <FormLabel>企业简称</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input {...field} disabled={isEstabReadOnly} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -946,9 +1124,9 @@ export function EstabsPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>企业类型</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isEstabReadOnly}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className='w-full'>
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -968,9 +1146,9 @@ export function EstabsPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>状态</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isEstabReadOnly}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className='w-full'>
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -988,10 +1166,72 @@ export function EstabsPage() {
                 name='ownerUserId'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>负责人用户ID</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder='例如：10001' />
-                    </FormControl>
+                    <FormLabel>负责人用户</FormLabel>
+                    {isEstabReadOnly ? (
+                      <FormControl>
+                        <Input
+                          value={
+                            buildOwnerCandidateLabel(selectedOwnerCandidate) ||
+                            (editingEstab?.ownerUsername || (field.value ? `用户 #${field.value}` : '-'))
+                          }
+                          disabled
+                        />
+                      </FormControl>
+                    ) : (
+                      <div className='space-y-2'>
+                        <FormControl>
+                          <Input
+                            value={
+                              selectedOwnerCandidate
+                                ? buildOwnerCandidateLabel(selectedOwnerCandidate) || ownerKeyword
+                                : ownerKeyword
+                            }
+                            placeholder='输入用户名进行联想，例如：refinex'
+                            onChange={(event) => {
+                              setOwnerKeyword(event.target.value)
+                              setSelectedOwnerCandidate(null)
+                              setOwnerCandidates([])
+                              field.onChange('')
+                            }}
+                          />
+                        </FormControl>
+
+                        {ownerLoading ? (
+                          <div className='flex items-center gap-2 rounded-md border px-3 py-2 text-sm text-muted-foreground'>
+                            <Loader2 className='h-3.5 w-3.5 animate-spin' />
+                            正在检索用户...
+                          </div>
+                        ) : null}
+
+                        {!ownerLoading && ownerKeyword.trim().length > 0 && ownerCandidates.length === 0 ? (
+                          <div className='rounded-md border px-3 py-2 text-sm text-muted-foreground'>
+                            未找到可选负责人
+                          </div>
+                        ) : null}
+
+                        {!ownerLoading && ownerCandidates.length > 0 ? (
+                          <div className='max-h-48 overflow-auto rounded-md border'>
+                            {ownerCandidates.map((candidate) => (
+                              <button
+                                key={candidate.userId}
+                                type='button'
+                                className='flex w-full items-center justify-between border-b px-3 py-2 text-left text-sm last:border-b-0 hover:bg-muted/40'
+                                onClick={() => selectOwnerCandidate(candidate, field.onChange)}
+                              >
+                                <span className='truncate'>
+                                  {candidate.username ||
+                                    candidate.displayName ||
+                                    `用户 #${candidate.userId ?? '-'}`}
+                                </span>
+                                <span className='ml-2 text-xs text-muted-foreground'>
+                                  {candidate.userCode || '-'}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -1003,7 +1243,7 @@ export function EstabsPage() {
                   <FormItem>
                     <FormLabel>联系人</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input {...field} disabled={isEstabReadOnly} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1016,7 +1256,7 @@ export function EstabsPage() {
                   <FormItem>
                     <FormLabel>联系电话</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input {...field} disabled={isEstabReadOnly} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1029,7 +1269,7 @@ export function EstabsPage() {
                   <FormItem>
                     <FormLabel>联系邮箱</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input {...field} disabled={isEstabReadOnly} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1042,7 +1282,7 @@ export function EstabsPage() {
                   <FormItem>
                     <FormLabel>官网地址</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input {...field} disabled={isEstabReadOnly} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1052,35 +1292,36 @@ export function EstabsPage() {
                 control={estabForm.control}
                 name='remark'
                 render={({ field }) => (
-                  <FormItem className='md:col-span-2'>
+                  <FormItem className={isEstabThreeColumnLayout ? 'md:col-span-3' : 'md:col-span-2'}>
                     <FormLabel>备注</FormLabel>
                     <FormControl>
-                      <Textarea rows={3} {...field} />
+                      <Textarea rows={3} {...field} disabled={isEstabReadOnly} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <DialogFooter className='md:col-span-2'>
-                <Button type='button' variant='outline' onClick={closeEstabDialog}>
-                  取消
-                </Button>
-                <Button type='submit' disabled={savingEstab}>
-                  {savingEstab ? (
-                    <>
-                      <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                      保存中...
-                    </>
-                  ) : (
-                    '保存企业'
-                  )}
-                </Button>
-              </DialogFooter>
+              {!isEstabReadOnly ? (
+                <DialogFooter className={isEstabThreeColumnLayout ? 'md:col-span-3' : 'md:col-span-2'}>
+                  <Button type='button' variant='outline' onClick={closeEstabDialog}>
+                    取消
+                  </Button>
+                  <Button type='submit' disabled={savingEstab}>
+                    {savingEstab ? (
+                      <>
+                        <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                        保存中...
+                      </>
+                    ) : (
+                      '保存企业'
+                    )}
+                  </Button>
+                </DialogFooter>
+              ) : null}
             </form>
           </Form>
           {editingEstab?.id ? (
             <div className='mt-2 border-t pt-4'>
-              <p className='mb-3 text-sm text-muted-foreground'>{selectedEstabSummary}</p>
               <Tabs
                 value={activeTab}
                 onValueChange={(value) => setActiveTab(value as 'addresses' | 'members' | 'policy')}
@@ -1103,10 +1344,12 @@ export function EstabsPage() {
                 <TabsContent value='addresses' className='mt-4 space-y-3'>
                   <div className='flex items-center justify-between'>
                     <div className='text-sm text-muted-foreground'>按地址类型维护企业办公地址与账单地址。</div>
-                    <Button type='button' onClick={openCreateAddressDialog} className='gap-2'>
-                      <Plus className='h-4 w-4' />
-                      新增地址
-                    </Button>
+                    {!isEstabReadOnly ? (
+                      <Button type='button' onClick={openCreateAddressDialog} className='gap-2'>
+                        <Plus className='h-4 w-4' />
+                        新增地址
+                      </Button>
+                    ) : null}
                   </div>
                   <Table>
                     <TableHeader>
@@ -1148,26 +1391,30 @@ export function EstabsPage() {
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              <div className='flex items-center justify-center gap-1'>
-                                <Button
-                                  type='button'
-                                  variant='ghost'
-                                  size='icon'
-                                  className='h-8 w-8'
-                                  onClick={() => openEditAddressDialog(item)}
-                                >
-                                  <Pencil className='h-4 w-4' />
-                                </Button>
-                                <Button
-                                  type='button'
-                                  variant='ghost'
-                                  size='icon'
-                                  className='h-8 w-8 text-destructive'
-                                  onClick={() => setDeletingAddress(item)}
-                                >
-                                  <Trash2 className='h-4 w-4' />
-                                </Button>
-                              </div>
+                              {isEstabReadOnly ? (
+                                <div className='text-center text-muted-foreground'>-</div>
+                              ) : (
+                                <div className='flex items-center justify-center gap-1'>
+                                  <Button
+                                    type='button'
+                                    variant='ghost'
+                                    size='icon'
+                                    className='h-8 w-8'
+                                    onClick={() => openEditAddressDialog(item)}
+                                  >
+                                    <Pencil className='h-4 w-4' />
+                                  </Button>
+                                  <Button
+                                    type='button'
+                                    variant='ghost'
+                                    size='icon'
+                                    className='h-8 w-8 text-destructive'
+                                    onClick={() => setDeletingAddress(item)}
+                                  >
+                                    <Trash2 className='h-4 w-4' />
+                                  </Button>
+                                </div>
+                              )}
                             </TableCell>
                           </TableRow>
                         ))
@@ -1189,10 +1436,12 @@ export function EstabsPage() {
                 <TabsContent value='members' className='mt-4 space-y-3'>
                   <div className='flex items-center justify-between'>
                     <div className='text-sm text-muted-foreground'>维护企业成员关系、管理员标记和在岗状态。</div>
-                    <Button type='button' onClick={openCreateMemberDialog} className='gap-2'>
-                      <Plus className='h-4 w-4' />
-                      新增成员
-                    </Button>
+                    {!isEstabReadOnly ? (
+                      <Button type='button' onClick={openCreateMemberDialog} className='gap-2'>
+                        <Plus className='h-4 w-4' />
+                        新增成员
+                      </Button>
+                    ) : null}
                   </div>
                   <Table>
                     <TableHeader>
@@ -1240,26 +1489,30 @@ export function EstabsPage() {
                             <TableCell>{item.positionTitle || '-'}</TableCell>
                             <TableCell>{formatDateTime(item.joinTime)}</TableCell>
                             <TableCell>
-                              <div className='flex items-center justify-center gap-1'>
-                                <Button
-                                  type='button'
-                                  variant='ghost'
-                                  size='icon'
-                                  className='h-8 w-8'
-                                  onClick={() => openEditMemberDialog(item)}
-                                >
-                                  <Pencil className='h-4 w-4' />
-                                </Button>
-                                <Button
-                                  type='button'
-                                  variant='ghost'
-                                  size='icon'
-                                  className='h-8 w-8 text-destructive'
-                                  onClick={() => setDeletingMember(item)}
-                                >
-                                  <Trash2 className='h-4 w-4' />
-                                </Button>
-                              </div>
+                              {isEstabReadOnly ? (
+                                <div className='text-center text-muted-foreground'>-</div>
+                              ) : (
+                                <div className='flex items-center justify-center gap-1'>
+                                  <Button
+                                    type='button'
+                                    variant='ghost'
+                                    size='icon'
+                                    className='h-8 w-8'
+                                    onClick={() => openEditMemberDialog(item)}
+                                  >
+                                    <Pencil className='h-4 w-4' />
+                                  </Button>
+                                  <Button
+                                    type='button'
+                                    variant='ghost'
+                                    size='icon'
+                                    className='h-8 w-8 text-destructive'
+                                    onClick={() => setDeletingMember(item)}
+                                  >
+                                    <Trash2 className='h-4 w-4' />
+                                  </Button>
+                                </div>
+                              )}
                             </TableCell>
                           </TableRow>
                         ))
@@ -1280,16 +1533,19 @@ export function EstabsPage() {
 
                 <TabsContent value='policy' className='mt-4'>
                   <Form {...policyForm}>
-                    <form className='grid gap-4 lg:grid-cols-2' onSubmit={policyForm.handleSubmit(submitPolicy)}>
+                    <form
+                      className={`grid gap-4 ${isEstabThreeColumnLayout ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}
+                      onSubmit={policyForm.handleSubmit(submitPolicy)}
+                    >
                       <FormField
                         control={policyForm.control}
                         name='passwordLoginEnabled'
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>密码登录</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value} disabled={isEstabReadOnly}>
                               <FormControl>
-                                <SelectTrigger>
+                                <SelectTrigger className='w-full'>
                                   <SelectValue />
                                 </SelectTrigger>
                               </FormControl>
@@ -1307,9 +1563,9 @@ export function EstabsPage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>短信登录</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value} disabled={isEstabReadOnly}>
                               <FormControl>
-                                <SelectTrigger>
+                                <SelectTrigger className='w-full'>
                                   <SelectValue />
                                 </SelectTrigger>
                               </FormControl>
@@ -1327,9 +1583,9 @@ export function EstabsPage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>邮箱登录</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value} disabled={isEstabReadOnly}>
                               <FormControl>
-                                <SelectTrigger>
+                                <SelectTrigger  className='w-full'>
                                   <SelectValue />
                                 </SelectTrigger>
                               </FormControl>
@@ -1347,9 +1603,9 @@ export function EstabsPage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>微信登录</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value} disabled={isEstabReadOnly}>
                               <FormControl>
-                                <SelectTrigger>
+                                <SelectTrigger className='w-full'>
                                   <SelectValue />
                                 </SelectTrigger>
                               </FormControl>
@@ -1367,9 +1623,9 @@ export function EstabsPage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>MFA 强制校验</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value} disabled={isEstabReadOnly}>
                               <FormControl>
-                                <SelectTrigger>
+                                <SelectTrigger className='w-full'>
                                   <SelectValue />
                                 </SelectTrigger>
                               </FormControl>
@@ -1381,7 +1637,22 @@ export function EstabsPage() {
                           </FormItem>
                         )}
                       />
-                      <div className='grid grid-cols-3 gap-3 lg:col-span-2'>
+                      <FormField
+                        control={policyForm.control}
+                        name='sessionTimeoutMinutes'
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>会话超时（分钟）</FormLabel>
+                            <FormControl>
+                              <Input {...field} disabled={isEstabReadOnly} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div
+                        className={`grid grid-cols-3 gap-3 ${isEstabThreeColumnLayout ? 'lg:col-span-3' : 'lg:col-span-2'}`}
+                      >
                         <FormField
                           control={policyForm.control}
                           name='passwordMinLen'
@@ -1389,7 +1660,7 @@ export function EstabsPage() {
                             <FormItem>
                               <FormLabel>密码最小长度</FormLabel>
                               <FormControl>
-                                <Input {...field} />
+                                <Input {...field} disabled={isEstabReadOnly} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -1402,7 +1673,7 @@ export function EstabsPage() {
                             <FormItem>
                               <FormLabel>失败阈值</FormLabel>
                               <FormControl>
-                                <Input {...field} />
+                                <Input {...field} disabled={isEstabReadOnly} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -1415,7 +1686,7 @@ export function EstabsPage() {
                             <FormItem>
                               <FormLabel>锁定分钟</FormLabel>
                               <FormControl>
-                                <Input {...field} />
+                                <Input {...field} disabled={isEstabReadOnly} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -1424,42 +1695,31 @@ export function EstabsPage() {
                       </div>
                       <FormField
                         control={policyForm.control}
-                        name='sessionTimeoutMinutes'
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>会话超时（分钟）</FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={policyForm.control}
                         name='remark'
                         render={({ field }) => (
-                          <FormItem className='lg:col-span-2'>
+                          <FormItem className={isEstabThreeColumnLayout ? 'lg:col-span-3' : 'lg:col-span-2'}>
                             <FormLabel>策略备注</FormLabel>
                             <FormControl>
-                              <Textarea rows={3} {...field} />
+                              <Textarea rows={3} {...field} disabled={isEstabReadOnly} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-                      <div className='lg:col-span-2'>
-                        <Button type='submit' disabled={policyLoading || policySaving || !selectedEstabId}>
-                          {policySaving ? (
-                            <>
-                              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                              保存中...
-                            </>
-                          ) : (
-                            '保存认证策略'
-                          )}
-                        </Button>
-                      </div>
+                      {!isEstabReadOnly ? (
+                        <div className={isEstabThreeColumnLayout ? 'lg:col-span-3' : 'lg:col-span-2'}>
+                          <Button type='submit' disabled={policyLoading || policySaving || !selectedEstabId}>
+                            {policySaving ? (
+                              <>
+                                <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                                保存中...
+                              </>
+                            ) : (
+                              '保存认证策略'
+                            )}
+                          </Button>
+                        </div>
+                      ) : null}
                     </form>
                   </Form>
                 </TabsContent>
@@ -1487,7 +1747,7 @@ export function EstabsPage() {
                     <FormLabel>地址类型</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className='w-full'>
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -1599,7 +1859,7 @@ export function EstabsPage() {
                     <FormLabel>是否默认</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className='w-full'>
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -1674,7 +1934,7 @@ export function EstabsPage() {
                     <FormLabel>成员类型</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className='w-full'>
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -1696,7 +1956,7 @@ export function EstabsPage() {
                     <FormLabel>管理员</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className='w-full'>
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -1717,7 +1977,7 @@ export function EstabsPage() {
                     <FormLabel>状态</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className='w-full'>
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>

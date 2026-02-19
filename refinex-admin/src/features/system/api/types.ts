@@ -497,6 +497,7 @@ export interface Estab {
   industryCode?: string
   sizeRange?: string
   ownerUserId?: number
+  ownerUsername?: string
   contactName?: string
   contactPhone?: string
   contactEmail?: string

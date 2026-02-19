@@ -14,6 +14,7 @@ import cn.refinex.system.domain.model.entity.*;
 import cn.refinex.system.domain.repository.OrganizationRepository;
 import cn.refinex.system.infrastructure.client.user.UserManageRemoteGateway;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,8 +48,8 @@ public class OrganizationApplicationService {
      */
     public PageResponse<EstabDTO> listEstabs(QueryEstabListCommand command) {
         int currentPage = PageUtils.normalizeCurrentPage(command == null ? null : command.getCurrentPage());
-        int pageSize = PageUtils.normalizePageSize(command == null ? null : command.getPageSize(),
-                PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE);
+        int pageSize = PageUtils.normalizePageSize(command == null ? null : command.getPageSize(), PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE);
+
         PageResponse<EstabEntity> entities = organizationRepository.listEstabs(
                 command == null ? null : command.getStatus(),
                 command == null ? null : command.getEstabType(),
@@ -56,10 +57,14 @@ public class OrganizationApplicationService {
                 currentPage,
                 pageSize
         );
+
         List<EstabDTO> result = new ArrayList<>();
         for (EstabEntity entity : entities.getData()) {
             result.add(systemDomainAssembler.toEstabDto(entity));
         }
+
+        enrichEstabs(result);
+
         return PageResponse.of(result, entities.getTotal(), entities.getPageSize(), entities.getCurrentPage());
     }
 
@@ -70,7 +75,45 @@ public class OrganizationApplicationService {
      * @return 企业详情
      */
     public EstabDTO getEstab(Long estabId) {
-        return systemDomainAssembler.toEstabDto(requireEstab(estabId));
+        EstabDTO estabDto = systemDomainAssembler.toEstabDto(requireEstab(estabId));
+        enrichEstabs(List.of(estabDto));
+        return estabDto;
+    }
+
+    /**
+     * 补充企业负责人展示信息
+     *
+     * @param estabDtos 企业列表
+     */
+    private void enrichEstabs(List<EstabDTO> estabDtos) {
+        if (CollectionUtils.isEmpty(estabDtos)) {
+            return;
+        }
+
+        List<Long> ownerUserIds = estabDtos.stream()
+                .map(EstabDTO::getOwnerUserId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Long, UserManageDTO> userMap = loadUserMapByIds(ownerUserIds);
+
+        for (EstabDTO estabDto : estabDtos) {
+            fillEstabOwnerDisplayFields(estabDto, userMap.get(estabDto.getOwnerUserId()));
+        }
+    }
+
+    /**
+     * 将负责人信息写入企业DTO
+     *
+     * @param estabDto 企业DTO
+     * @param user     用户信息
+     */
+    private void fillEstabOwnerDisplayFields(EstabDTO estabDto, UserManageDTO user) {
+        if (estabDto == null || user == null) {
+            return;
+        }
+
+        estabDto.setOwnerUsername(user.getUsername());
     }
 
     /**
@@ -693,6 +736,7 @@ public class OrganizationApplicationService {
         if (teams == null || teams.isEmpty()) {
             return;
         }
+
         List<Long> leaderUserIds = teams.stream()
                 .map(TeamDTO::getLeaderUserId)
                 .filter(Objects::nonNull)

@@ -56,6 +56,11 @@ public class EstabDTO {
     private Long ownerUserId;
 
     /**
+     * 负责人用户名称
+     */
+    private String ownerUsername;
+
+    /**
      * 联系人
      */
     private String contactName;
@@ -74,7 +79,7 @@ public class EstabDTO {
      * 官网地址
      */
     private String websiteUrl;
-    
+
     /**
      * Logo 地址
      */
