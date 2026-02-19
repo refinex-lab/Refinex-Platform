@@ -494,24 +494,27 @@ ON DUPLICATE KEY UPDATE
   deleted = 0,
   update_by = VALUES(update_by);
 
--- 平台操作员档案
+-- 内置操作码定义
 INSERT INTO def_op
 (
-  user_id, op_code, op_name, op_type, status, remark, ext_json,
+  op_code, op_name, op_desc, is_builtin, status, sort, remark, ext_json,
   create_by, update_by, deleted, lock_version
 )
 VALUES
-(
-  @super_user_id, 'OP_REFINEX_SUPER_ADMIN', 'Refinex 平台超管', 0, 1, '系统初始化超级管理员操作员档案',
-  JSON_OBJECT('seed', '002_user_rbac_seed'),
-  @super_user_id, @super_user_id, 0, 0
-)
+  ('VIEW', '查看', '查看详情或列表数据', 1, 1, 10, '系统初始化内置操作码', JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
+  ('CREATE', '新增', '新增业务数据', 1, 1, 20, '系统初始化内置操作码', JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
+  ('UPDATE', '编辑', '编辑已存在业务数据', 1, 1, 30, '系统初始化内置操作码', JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
+  ('DELETE', '删除', '删除业务数据', 1, 1, 40, '系统初始化内置操作码', JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
+  ('SUBMIT', '提交', '提交业务单据或流程', 1, 1, 50, '系统初始化内置操作码', JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
+  ('REEDIT', '重新编辑', '驳回后重新编辑', 1, 1, 60, '系统初始化内置操作码', JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0)
 ON DUPLICATE KEY UPDATE
-  user_id = VALUES(user_id),
   op_name = VALUES(op_name),
-  op_type = VALUES(op_type),
+  op_desc = VALUES(op_desc),
+  is_builtin = VALUES(is_builtin),
   status = VALUES(status),
+  sort = VALUES(sort),
   remark = VALUES(remark),
+  ext_json = VALUES(ext_json),
   deleted = 0,
   update_by = VALUES(update_by);
 

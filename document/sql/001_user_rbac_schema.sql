@@ -281,11 +281,12 @@ CREATE TABLE def_team_user (
 DROP TABLE IF EXISTS def_op;
 CREATE TABLE def_op (
   id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
-  user_id BIGINT NOT NULL COMMENT '用户ID',
-  op_code VARCHAR(64) NOT NULL COMMENT '操作员编码',
-  op_name VARCHAR(64) NOT NULL COMMENT '操作员名称',
-  op_type TINYINT NOT NULL DEFAULT 0 COMMENT '操作员类型 0平台运营 1客服 2审计',
+  op_code VARCHAR(64) NOT NULL COMMENT '操作编码（如 CREATE/DELETE/UPDATE/SUBMIT/REEDIT）',
+  op_name VARCHAR(64) NOT NULL COMMENT '操作名称',
+  op_desc VARCHAR(255) DEFAULT NULL COMMENT '操作说明',
+  is_builtin TINYINT NOT NULL DEFAULT 1 COMMENT '是否内置 1是 0否',
   status TINYINT NOT NULL DEFAULT 1 COMMENT '状态 1启用 2停用',
+  sort INT NOT NULL DEFAULT 0 COMMENT '排序(升序)',
   remark VARCHAR(255) DEFAULT NULL COMMENT '备注',
   ext_json JSON DEFAULT NULL COMMENT '扩展信息',
   create_by BIGINT DEFAULT NULL COMMENT '创建人用户ID',
@@ -296,8 +297,8 @@ CREATE TABLE def_op (
   gmt_create DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
   gmt_modified DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '修改时间',
   UNIQUE KEY uk_op_code (op_code),
-  KEY idx_op_user (user_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='平台操作员档案';
+  KEY idx_op_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='操作定义';
 
 -- ============================
 -- RBAC 权限体系
