@@ -167,6 +167,9 @@ public interface SystemDomainAssembler {
      * @param teamEntity 团队实体
      * @return 团队DTO
      */
+    @Mapping(target = "leaderUsername", ignore = true)
+    @Mapping(target = "leaderUserCode", ignore = true)
+    @Mapping(target = "leaderDisplayName", ignore = true)
     TeamDTO toTeamDto(TeamEntity teamEntity);
 
     /**

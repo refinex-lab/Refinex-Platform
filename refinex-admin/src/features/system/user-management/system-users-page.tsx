@@ -701,7 +701,7 @@ export function SystemUsersPage() {
                     <FormLabel>性别</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className='w-full'>
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -737,7 +737,7 @@ export function SystemUsersPage() {
                     <FormLabel>用户类型</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className='w-full'>
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -759,7 +759,7 @@ export function SystemUsersPage() {
                     <FormLabel>状态</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className='w-full'>
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -807,7 +807,7 @@ export function SystemUsersPage() {
                     <FormLabel>手机号已验证</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className='w-full'>
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -841,7 +841,7 @@ export function SystemUsersPage() {
                     <FormLabel>邮箱已验证</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className='w-full'>
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -861,7 +861,7 @@ export function SystemUsersPage() {
                   <FormItem className='md:col-span-2'>
                     <FormLabel>备注</FormLabel>
                     <FormControl>
-                      <Textarea rows={3} {...field} />
+                      <Textarea rows={3} {...field} placeholder='请输入备注说明（可选）'/>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

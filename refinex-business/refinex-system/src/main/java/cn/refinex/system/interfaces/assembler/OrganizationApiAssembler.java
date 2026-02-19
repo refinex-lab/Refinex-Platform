@@ -101,6 +101,7 @@ public interface OrganizationApiAssembler {
      * @param request 创建请求
      * @return 创建命令
      */
+    @Mapping(target = "estabId", ignore = true)
     CreateTeamCommand toCreateTeamCommand(TeamCreateRequest request);
 
     /**

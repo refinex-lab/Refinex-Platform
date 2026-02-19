@@ -16,11 +16,6 @@ public class CreateTeamCommand {
     private Long estabId;
 
     /**
-     * 团队编码
-     */
-    private String teamCode;
-
-    /**
      * 团队名称
      */
     private String teamName;

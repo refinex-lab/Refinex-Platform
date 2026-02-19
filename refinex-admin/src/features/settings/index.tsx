@@ -1,6 +1,5 @@
 import { Outlet } from '@tanstack/react-router'
 import { Monitor, Bell, Palette, Wrench, UserCog } from 'lucide-react'
-import { Separator } from '@/components/ui/separator'
 import { ConfigDrawer } from '@/components/config-drawer'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -51,7 +50,7 @@ export function Settings() {
       </Header>
 
       <Main fixed>
-        <div className='space-y-0.5'>
+        {/* <div className='space-y-0.5'>
           <h1 className='text-2xl font-bold tracking-tight md:text-3xl'>
             设置
           </h1>
@@ -59,7 +58,7 @@ export function Settings() {
             管理账号设置，并配置邮件偏好。
           </p>
         </div>
-        <Separator className='my-4 lg:my-6' />
+        <Separator className='my-4 lg:my-6' /> */}
         <div className='flex flex-1 flex-col space-y-2 overflow-hidden md:space-y-2 lg:flex-row lg:space-y-0 lg:space-x-12'>
           <aside className='top-0 lg:sticky lg:w-1/5'>
             <SidebarNav items={sidebarNavItems} />

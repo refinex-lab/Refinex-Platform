@@ -5,6 +5,7 @@ import cn.refinex.api.user.model.dto.UserManageListQuery;
 import cn.refinex.base.exception.BizException;
 import cn.refinex.base.response.PageResponse;
 import cn.refinex.base.utils.PageUtils;
+import cn.refinex.base.utils.UniqueCodeUtils;
 import cn.refinex.system.application.assembler.SystemDomainAssembler;
 import cn.refinex.system.application.command.*;
 import cn.refinex.system.application.dto.*;
@@ -29,6 +30,10 @@ import static cn.refinex.base.utils.ValueUtils.*;
 @Service
 @RequiredArgsConstructor
 public class OrganizationApplicationService {
+
+    private static final String TEAM_CODE_PREFIX = "TEAM_";
+    private static final int TEAM_CODE_RANDOM_LENGTH = 10;
+    private static final int TEAM_CODE_GENERATE_MAX_RETRY = 20;
 
     private final OrganizationRepository organizationRepository;
     private final SystemDomainAssembler systemDomainAssembler;
@@ -424,6 +429,7 @@ public class OrganizationApplicationService {
         for (TeamEntity entity : entities.getData()) {
             result.add(systemDomainAssembler.toTeamDto(entity));
         }
+        enrichTeams(result);
         return PageResponse.of(result, entities.getTotal(), entities.getPageSize(), entities.getCurrentPage());
     }
 
@@ -434,7 +440,9 @@ public class OrganizationApplicationService {
      * @return 团队详情
      */
     public TeamDTO getTeam(Long teamId) {
-        return systemDomainAssembler.toTeamDto(requireTeam(teamId));
+        TeamDTO dto = systemDomainAssembler.toTeamDto(requireTeam(teamId));
+        enrichTeam(dto);
+        return dto;
     }
 
     /**
@@ -445,15 +453,10 @@ public class OrganizationApplicationService {
      */
     @Transactional(rollbackFor = Exception.class)
     public TeamDTO createTeam(CreateTeamCommand command) {
-        if (command == null || command.getEstabId() == null || isBlank(command.getTeamCode()) || isBlank(command.getTeamName())) {
+        if (command == null || command.getEstabId() == null || isBlank(command.getTeamName())) {
             throw new BizException(SystemErrorCode.INVALID_PARAM);
         }
         requireEstab(command.getEstabId());
-
-        String teamCode = command.getTeamCode().trim();
-        if (organizationRepository.countTeamCode(command.getEstabId(), teamCode, null) > 0) {
-            throw new BizException(SystemErrorCode.TEAM_CODE_DUPLICATED);
-        }
 
         Long parentId = defaultIfNull(command.getParentId(), 0L);
         if (parentId > 0) {
@@ -463,6 +466,7 @@ public class OrganizationApplicationService {
             }
         }
 
+        String teamCode = generateUniqueTeamCode(command.getEstabId());
         TeamEntity team = new TeamEntity();
         team.setEstabId(command.getEstabId());
         team.setTeamCode(teamCode);
@@ -473,7 +477,9 @@ public class OrganizationApplicationService {
         team.setSort(defaultIfNull(command.getSort(), 0));
         team.setRemark(trimToNull(command.getRemark()));
 
-        return systemDomainAssembler.toTeamDto(organizationRepository.insertTeam(team));
+        TeamDTO dto = systemDomainAssembler.toTeamDto(organizationRepository.insertTeam(team));
+        enrichTeam(dto);
+        return dto;
     }
 
     /**
@@ -508,7 +514,9 @@ public class OrganizationApplicationService {
         existing.setRemark(trimToNull(command.getRemark()));
 
         organizationRepository.updateTeam(existing);
-        return systemDomainAssembler.toTeamDto(requireTeam(existing.getId()));
+        TeamDTO dto = systemDomainAssembler.toTeamDto(requireTeam(existing.getId()));
+        enrichTeam(dto);
+        return dto;
     }
 
     /**
@@ -526,6 +534,22 @@ public class OrganizationApplicationService {
             throw new BizException(SystemErrorCode.TEAM_HAS_USERS);
         }
         organizationRepository.deleteTeam(team.getId());
+    }
+
+    /**
+     * 生成团队唯一编码（大写）
+     *
+     * @param estabId 企业ID
+     * @return 唯一团队编码
+     */
+    private String generateUniqueTeamCode(Long estabId) {
+        for (int i = 0; i < TEAM_CODE_GENERATE_MAX_RETRY; i++) {
+            String code = UniqueCodeUtils.randomUpperCode(TEAM_CODE_PREFIX, TEAM_CODE_RANDOM_LENGTH);
+            if (organizationRepository.countTeamCode(estabId, code, null) == 0) {
+                return code;
+            }
+        }
+        throw new BizException(SystemErrorCode.TEAM_CODE_DUPLICATED);
     }
 
     /**
@@ -658,6 +682,61 @@ public class OrganizationApplicationService {
     public void deleteTeamUser(Long teamUserId) {
         TeamUserEntity teamUser = requireTeamUser(teamUserId);
         organizationRepository.deleteTeamUser(teamUser.getId());
+    }
+
+    /**
+     * 批量补充团队负责人展示信息
+     *
+     * @param teams 团队列表
+     */
+    private void enrichTeams(List<TeamDTO> teams) {
+        if (teams == null || teams.isEmpty()) {
+            return;
+        }
+        List<Long> leaderUserIds = teams.stream()
+                .map(TeamDTO::getLeaderUserId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Long, UserManageDTO> userMap = loadUserMapByIds(leaderUserIds);
+        for (TeamDTO team : teams) {
+            fillTeamLeaderDisplayFields(team, userMap.get(team.getLeaderUserId()));
+        }
+    }
+
+    /**
+     * 补充单个团队负责人展示信息
+     *
+     * @param team 团队
+     */
+    private void enrichTeam(TeamDTO team) {
+        if (team == null || team.getLeaderUserId() == null) {
+            fillTeamLeaderDisplayFields(team, null);
+            return;
+        }
+        Map<Long, UserManageDTO> userMap = loadUserMapByIds(List.of(team.getLeaderUserId()));
+        fillTeamLeaderDisplayFields(team, userMap.get(team.getLeaderUserId()));
+    }
+
+    /**
+     * 将负责人信息写入团队DTO
+     *
+     * @param team 团队DTO
+     * @param user 用户信息
+     */
+    private void fillTeamLeaderDisplayFields(TeamDTO team, UserManageDTO user) {
+        if (team == null) {
+            return;
+        }
+        if (user == null) {
+            team.setLeaderUsername(null);
+            team.setLeaderUserCode(null);
+            team.setLeaderDisplayName(null);
+            return;
+        }
+        team.setLeaderUsername(user.getUsername());
+        team.setLeaderUserCode(user.getUserCode());
+        team.setLeaderDisplayName(user.getDisplayName());
     }
 
     /**

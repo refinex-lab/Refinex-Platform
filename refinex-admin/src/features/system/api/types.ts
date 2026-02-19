@@ -680,6 +680,9 @@ export interface Team {
   teamName?: string
   parentId?: number
   leaderUserId?: number
+  leaderUsername?: string
+  leaderUserCode?: string
+  leaderDisplayName?: string
   status?: number
   sort?: number
   remark?: string
@@ -693,8 +696,6 @@ export interface TeamListQuery extends PaginationQuery {
 }
 
 export interface TeamCreateRequest {
-  estabId?: number
-  teamCode: string
   teamName: string
   parentId?: number
   leaderUserId?: number

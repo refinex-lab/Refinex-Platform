@@ -1,6 +1,7 @@
 package cn.refinex.system.interfaces.controller;
 
 import cn.refinex.base.response.PageResponse;
+import cn.refinex.api.user.context.CurrentUserProvider;
 import cn.refinex.system.application.command.*;
 import cn.refinex.system.application.dto.*;
 import cn.refinex.system.application.service.OrganizationApplicationService;
@@ -29,6 +30,7 @@ public class OrganizationController {
 
     private final OrganizationApplicationService organizationApplicationService;
     private final OrganizationApiAssembler organizationApiAssembler;
+    private final CurrentUserProvider currentUserProvider;
 
     /**
      * 查询企业列表
@@ -304,6 +306,7 @@ public class OrganizationController {
     @PostMapping("/teams")
     public Result<TeamVO> createTeam(@Valid @RequestBody TeamCreateRequest request) {
         CreateTeamCommand command = organizationApiAssembler.toCreateTeamCommand(request);
+        command.setEstabId(currentUserProvider.getCurrentEstabId());
         TeamDTO dto = organizationApplicationService.createTeam(command);
         return Result.success(organizationApiAssembler.toTeamVo(dto));
     }

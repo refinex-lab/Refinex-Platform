@@ -1,7 +1,6 @@
 package cn.refinex.system.interfaces.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 /**
@@ -11,18 +10,6 @@ import lombok.Data;
  */
 @Data
 public class TeamCreateRequest {
-
-    /**
-     * 企业ID
-     */
-    @NotNull(message = "企业ID不能为空")
-    private Long estabId;
-
-    /**
-     * 团队编码
-     */
-    @NotBlank(message = "团队编码不能为空")
-    private String teamCode;
 
     /**
      * 团队名称

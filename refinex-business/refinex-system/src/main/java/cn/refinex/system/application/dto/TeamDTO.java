@@ -41,6 +41,21 @@ public class TeamDTO {
     private Long leaderUserId;
 
     /**
+     * 负责人用户名
+     */
+    private String leaderUsername;
+
+    /**
+     * 负责人用户编码
+     */
+    private String leaderUserCode;
+
+    /**
+     * 负责人显示名称
+     */
+    private String leaderDisplayName;
+
+    /**
      * 状态
      */
     private Integer status;

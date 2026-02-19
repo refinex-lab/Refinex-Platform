@@ -292,7 +292,7 @@ export function ProfileForm() {
                   disabled={disabled}
                 >
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger className='w-full'>
                       <SelectValue placeholder='请选择性别' />
                     </SelectTrigger>
                   </FormControl>

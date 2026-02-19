@@ -201,18 +201,24 @@ export function AccountForm() {
           <div className='grid gap-4 md:grid-cols-2'>
             <div className='space-y-2'>
               <p className='text-sm font-medium'>主手机号</p>
-              <div className='flex items-center gap-2'>
-                <Input value={accountMeta.primaryPhone} disabled />
-                <Badge variant={account?.phoneVerified ? 'default' : 'outline'} className='shrink-0'>
+              <div className='relative'>
+                <Input value={accountMeta.primaryPhone} disabled className='pr-24' />
+                <Badge
+                  variant={account?.phoneVerified ? 'default' : 'outline'}
+                  className='pointer-events-none absolute right-2 top-1/2 -translate-y-1/2'
+                >
                   {boolLabel(account?.phoneVerified)}
                 </Badge>
               </div>
             </div>
             <div className='space-y-2'>
               <p className='text-sm font-medium'>主邮箱</p>
-              <div className='flex items-center gap-2'>
-                <Input value={accountMeta.primaryEmail} disabled />
-                <Badge variant={account?.emailVerified ? 'default' : 'outline'} className='shrink-0'>
+              <div className='relative'>
+                <Input value={accountMeta.primaryEmail} disabled className='pr-24' />
+                <Badge
+                  variant={account?.emailVerified ? 'default' : 'outline'}
+                  className='pointer-events-none absolute right-2 top-1/2 -translate-y-1/2'
+                >
                   {boolLabel(account?.emailVerified)}
                 </Badge>
               </div>

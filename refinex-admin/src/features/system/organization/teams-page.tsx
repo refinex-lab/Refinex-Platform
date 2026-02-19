@@ -10,7 +10,6 @@ import {
   Plus,
   RefreshCw,
   Trash2,
-  X,
 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -70,6 +69,7 @@ import {
   createTeamUser,
   deleteTeam,
   deleteTeamUser,
+  listSystemUsers,
   listTeams,
   listTeamUserCandidates,
   listTeamUsers,
@@ -82,6 +82,7 @@ import {
   type TeamUserCreateRequest,
   type TeamUserListQuery,
   type TeamUserUpdateRequest,
+  type SystemUser,
   updateTeam,
   updateTeamUser,
 } from '@/features/system/api'
@@ -100,10 +101,7 @@ const TEAM_TREE_PAGE_SIZE = 100
 const USER_CANDIDATE_LIMIT = 10
 
 const teamFormSchema = z.object({
-  estabId: z.string().trim().min(1, '企业ID不能为空').max(20, '企业ID格式非法'),
-  teamCode: z.string().trim().min(1, '团队编码不能为空').max(64, '团队编码最长 64 位'),
   teamName: z.string().trim().min(1, '团队名称不能为空').max(128, '团队名称最长 128 位'),
-  parentId: z.string().trim().max(20, '父团队ID格式非法').optional(),
   leaderUserId: z.string().trim().max(20, '负责人ID格式非法').optional(),
   status: z.enum(['1', '2']),
   sort: z.string().trim().max(6, '排序值过大').optional(),
@@ -120,12 +118,10 @@ const teamUserFormSchema = z.object({
 type TeamFormValues = z.infer<typeof teamFormSchema>
 type TeamUserFormValues = z.infer<typeof teamUserFormSchema>
 type TeamTreeNode = Team & { children: TeamTreeNode[] }
+type TeamDialogMode = 'create' | 'edit' | 'view'
 
 const DEFAULT_TEAM_FORM: TeamFormValues = {
-  estabId: '',
-  teamCode: '',
   teamName: '',
-  parentId: '',
   leaderUserId: '',
   status: '1',
   sort: '0',
@@ -191,6 +187,27 @@ function buildCandidateLabel(candidate?: TeamUserCandidate | null): string {
   return `${name}${code}`
 }
 
+function mapSystemUserToCandidate(user: SystemUser): TeamUserCandidate {
+  return {
+    userId: user.userId,
+    username: user.username,
+    userCode: user.userCode,
+    displayName: user.displayName,
+  }
+}
+
+function mapTeamLeaderToCandidate(team: Team): TeamUserCandidate | null {
+  if (team.leaderUserId == null) {
+    return null
+  }
+  return {
+    userId: team.leaderUserId,
+    username: team.leaderUsername,
+    userCode: team.leaderUserCode,
+    displayName: team.leaderDisplayName,
+  }
+}
+
 export function TeamsPage() {
   const currentLoginUser = useAuthStore((state) => state.auth.user)
   const currentEstabId = currentLoginUser?.estabId ?? currentLoginUser?.primaryEstabId
@@ -217,10 +234,16 @@ export function TeamsPage() {
   const [memberQuery, setMemberQuery] = useState<TeamUserListQuery>({ currentPage: 1, pageSize: 10 })
 
   const [teamDialogOpen, setTeamDialogOpen] = useState(false)
+  const [teamDialogMode, setTeamDialogMode] = useState<TeamDialogMode>('create')
   const [editingTeam, setEditingTeam] = useState<Team | null>(null)
+  const [teamDialogParentId, setTeamDialogParentId] = useState<number | undefined>(undefined)
   const [savingTeam, setSavingTeam] = useState(false)
   const [deletingTeam, setDeletingTeam] = useState<Team | null>(null)
   const [deletingTeamLoading, setDeletingTeamLoading] = useState(false)
+  const [teamLeaderKeyword, setTeamLeaderKeyword] = useState('')
+  const [teamLeaderCandidates, setTeamLeaderCandidates] = useState<TeamUserCandidate[]>([])
+  const [teamLeaderLoading, setTeamLeaderLoading] = useState(false)
+  const [selectedTeamLeader, setSelectedTeamLeader] = useState<TeamUserCandidate | null>(null)
 
   const [memberDialogOpen, setMemberDialogOpen] = useState(false)
   const [editingMember, setEditingMember] = useState<TeamUser | null>(null)
@@ -245,6 +268,7 @@ export function TeamsPage() {
   })
 
   const teamTree = useMemo(() => buildTeamTree(teams), [teams])
+  const isTeamViewMode = teamDialogMode === 'view'
   const rootTeamIds = useMemo(
     () => teamTree.map((item) => item.id).filter((item): item is number => Boolean(item)),
     [teamTree]
@@ -334,7 +358,47 @@ export function TeamsPage() {
   }, [selectedTeamId, memberQuery])
 
   useEffect(() => {
+    if (!teamDialogOpen || isTeamViewMode) {
+      return
+    }
+    if (selectedTeamLeader?.userId) {
+      return
+    }
+    const keyword = teamLeaderKeyword.trim()
+    if (!keyword || !currentEstabId) {
+      setTeamLeaderCandidates([])
+      return
+    }
+
+    const timer = window.setTimeout(async () => {
+      setTeamLeaderLoading(true)
+      try {
+        const pageData = await listSystemUsers({
+          primaryEstabId: currentEstabId,
+          status: 1,
+          keyword,
+          currentPage: 1,
+          pageSize: USER_CANDIDATE_LIMIT,
+        })
+        const candidates = (pageData.data ?? [])
+          .filter((item) => item.userId != null)
+          .map(mapSystemUserToCandidate)
+        setTeamLeaderCandidates(candidates)
+      } catch (error) {
+        handleServerError(error)
+      } finally {
+        setTeamLeaderLoading(false)
+      }
+    }, 300)
+
+    return () => window.clearTimeout(timer)
+  }, [teamDialogOpen, teamLeaderKeyword, currentEstabId, selectedTeamLeader, isTeamViewMode])
+
+  useEffect(() => {
     if (!memberDialogOpen || Boolean(editingMember) || !selectedTeamId) {
+      return
+    }
+    if (selectedCandidate?.userId) {
       return
     }
     const keyword = memberKeyword.trim()
@@ -359,7 +423,7 @@ export function TeamsPage() {
     }, 300)
 
     return () => window.clearTimeout(timer)
-  }, [memberDialogOpen, editingMember, memberKeyword, selectedTeamId])
+  }, [memberDialogOpen, editingMember, memberKeyword, selectedTeamId, selectedCandidate])
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -415,17 +479,35 @@ export function TeamsPage() {
     })
   }
 
+  function resetTeamLeaderCandidateState() {
+    setTeamLeaderKeyword('')
+    setTeamLeaderCandidates([])
+    setSelectedTeamLeader(null)
+  }
+
+  function selectTeamLeaderCandidate(
+    candidate: TeamUserCandidate,
+    onChange: (value: string) => void
+  ) {
+    if (!candidate.userId) return
+    onChange(String(candidate.userId))
+    setSelectedTeamLeader(candidate)
+    setTeamLeaderKeyword(buildCandidateLabel(candidate))
+    setTeamLeaderCandidates([])
+  }
+
   function openCreateTeamDialog() {
     if (!currentEstabId) {
       toast.error('未获取到当前登录企业，请重新登录或切换企业。')
       return
     }
+    setTeamDialogMode('create')
     setEditingTeam(null)
+    setTeamDialogParentId(undefined)
     teamForm.reset({
       ...DEFAULT_TEAM_FORM,
-      estabId: String(currentEstabId),
-      parentId: '',
     })
+    resetTeamLeaderCandidateState()
     setTeamDialogOpen(true)
   }
 
@@ -435,48 +517,70 @@ export function TeamsPage() {
       return
     }
     setSelectedTeam(parentTeam)
+    setTeamDialogMode('create')
     setEditingTeam(null)
+    setTeamDialogParentId(parentTeam.id)
     teamForm.reset({
       ...DEFAULT_TEAM_FORM,
-      estabId: String(parentTeam.estabId),
-      parentId: String(parentTeam.id),
     })
+    resetTeamLeaderCandidateState()
     setTeamDialogOpen(true)
   }
 
   function openEditTeamDialog(team: Team) {
+    setTeamDialogMode('edit')
     setEditingTeam(team)
+    setTeamDialogParentId(team.parentId == null || team.parentId <= 0 ? undefined : team.parentId)
     teamForm.reset({
-      estabId: team.estabId == null ? '' : String(team.estabId),
-      teamCode: team.teamCode ?? '',
       teamName: team.teamName ?? '',
-      parentId: team.parentId == null ? '' : String(team.parentId),
       leaderUserId: team.leaderUserId == null ? '' : String(team.leaderUserId),
       status: String(team.status ?? 1) as '1' | '2',
       sort: String(team.sort ?? 0),
       remark: team.remark ?? '',
     })
+    const leaderCandidate = mapTeamLeaderToCandidate(team)
+    setSelectedTeamLeader(leaderCandidate)
+    setTeamLeaderKeyword(buildCandidateLabel(leaderCandidate))
+    setTeamLeaderCandidates([])
+    setTeamDialogOpen(true)
+  }
+
+  function openViewTeamDialog(team: Team) {
+    setTeamDialogMode('view')
+    setEditingTeam(team)
+    setTeamDialogParentId(team.parentId == null || team.parentId <= 0 ? undefined : team.parentId)
+    teamForm.reset({
+      teamName: team.teamName ?? '',
+      leaderUserId: team.leaderUserId == null ? '' : String(team.leaderUserId),
+      status: String(team.status ?? 1) as '1' | '2',
+      sort: String(team.sort ?? 0),
+      remark: team.remark ?? '',
+    })
+    const leaderCandidate = mapTeamLeaderToCandidate(team)
+    setSelectedTeamLeader(leaderCandidate)
+    setTeamLeaderKeyword(buildCandidateLabel(leaderCandidate))
+    setTeamLeaderCandidates([])
     setTeamDialogOpen(true)
   }
 
   function closeTeamDialog() {
     setTeamDialogOpen(false)
+    setTeamDialogMode('create')
     setEditingTeam(null)
+    setTeamDialogParentId(undefined)
     teamForm.reset(DEFAULT_TEAM_FORM)
+    resetTeamLeaderCandidateState()
   }
 
   async function submitTeam(values: TeamFormValues) {
-    const estabId = parsePositiveInteger(values.estabId)
-    if (!estabId) {
-      toast.error('请输入有效的企业ID。')
+    if (isTeamViewMode) {
       return
     }
-
     setSavingTeam(true)
     try {
       const payload: TeamUpdateRequest = {
         teamName: values.teamName.trim(),
-        parentId: parsePositiveInteger(values.parentId),
+        parentId: teamDialogParentId,
         leaderUserId: parsePositiveInteger(values.leaderUserId),
         status: Number(values.status),
         sort: toOptionalNumber(values.sort),
@@ -487,12 +591,7 @@ export function TeamsPage() {
         await updateTeam(editingTeam.id, payload)
         toast.success('团队已更新。')
       } else {
-        await createTeam({
-          ...(payload as TeamCreateRequest),
-          estabId,
-          teamCode: values.teamCode.trim(),
-          teamName: values.teamName.trim(),
-        })
+        await createTeam(payload as TeamCreateRequest)
         toast.success('团队已创建。')
       }
 
@@ -571,7 +670,7 @@ export function TeamsPage() {
     if (!candidate.userId) return
     onChange(String(candidate.userId))
     setSelectedCandidate(candidate)
-    setMemberKeyword(candidate.username || candidate.displayName || '')
+    setMemberKeyword(buildCandidateLabel(candidate))
     setMemberCandidates([])
   }
 
@@ -639,6 +738,8 @@ export function TeamsPage() {
       const hasChildren = node.children.length > 0
       const isExpanded = expandedNodeIds.has(nodeId)
       const isSelected = selectedTeamId === nodeId
+      const leaderLabel =
+        node.leaderDisplayName || node.leaderUsername || (node.leaderUserId ? `用户 #${node.leaderUserId}` : '-')
 
       return (
         <div key={nodeId} className='space-y-1'>
@@ -673,6 +774,7 @@ export function TeamsPage() {
               onClick={() => setSelectedTeam(node)}
             >
               <span className='truncate text-sm font-medium'>{node.teamName || '-'}</span>
+              <span className='truncate text-xs text-muted-foreground'>负责人：{leaderLabel}</span>
             </button>
 
             <DropdownMenu modal={false}>
@@ -688,7 +790,7 @@ export function TeamsPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align='end' onClick={(event) => event.stopPropagation()}>
-                <DropdownMenuItem onClick={() => setSelectedTeam(node)} className='gap-2'>
+                <DropdownMenuItem onClick={() => openViewTeamDialog(node)} className='gap-2'>
                   <Eye className='h-3.5 w-3.5' />
                   查看
                 </DropdownMenuItem>
@@ -893,39 +995,24 @@ export function TeamsPage() {
         </div>
       </Main>
 
-      <Dialog open={teamDialogOpen} onOpenChange={setTeamDialogOpen}>
+      <Dialog
+        open={teamDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeTeamDialog()
+            return
+          }
+          setTeamDialogOpen(true)
+        }}
+      >
         <DialogContent className='max-h-[92vh] overflow-y-auto sm:max-w-2xl'>
           <DialogHeader>
-            <DialogTitle>{editingTeam ? '编辑团队' : '新建团队'}</DialogTitle>
+            <DialogTitle>
+              {isTeamViewMode ? '查看团队' : editingTeam ? '编辑团队' : '新建团队'}
+            </DialogTitle>
           </DialogHeader>
           <Form {...teamForm}>
             <form className='grid gap-4 md:grid-cols-2' onSubmit={teamForm.handleSubmit(submitTeam)}>
-              <FormField
-                control={teamForm.control}
-                name='estabId'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>企业ID</FormLabel>
-                    <FormControl>
-                      <Input {...field} disabled={Boolean(editingTeam)} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={teamForm.control}
-                name='teamCode'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>团队编码</FormLabel>
-                    <FormControl>
-                      <Input {...field} disabled={Boolean(editingTeam)} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <FormField
                 control={teamForm.control}
                 name='teamName'
@@ -933,20 +1020,7 @@ export function TeamsPage() {
                   <FormItem>
                     <FormLabel>团队名称</FormLabel>
                     <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={teamForm.control}
-                name='parentId'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>父团队ID</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
+                      <Input {...field} disabled={isTeamViewMode} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -957,10 +1031,69 @@ export function TeamsPage() {
                 name='leaderUserId'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>负责人用户ID</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
+                    <FormLabel>负责人用户</FormLabel>
+                    {isTeamViewMode ? (
+                      <FormControl>
+                        <Input
+                          value={buildCandidateLabel(selectedTeamLeader) || (field.value ? `用户 #${field.value}` : '-')}
+                          disabled
+                        />
+                      </FormControl>
+                    ) : (
+                      <div className='space-y-2'>
+                        <FormControl>
+                          <Input
+                            value={teamLeaderKeyword}
+                            placeholder='输入用户名进行联想，例如：refinex'
+                            onChange={(event) => {
+                              setTeamLeaderKeyword(event.target.value)
+                              setSelectedTeamLeader(null)
+                              setTeamLeaderCandidates([])
+                              field.onChange('')
+                            }}
+                          />
+                        </FormControl>
+
+                        {teamLeaderLoading ? (
+                          <div className='flex items-center gap-2 rounded-md border px-3 py-2 text-sm text-muted-foreground'>
+                            <Loader2 className='h-3.5 w-3.5 animate-spin' />
+                            正在检索用户...
+                          </div>
+                        ) : null}
+
+                        {!teamLeaderLoading &&
+                        !selectedTeamLeader &&
+                        !field.value &&
+                        teamLeaderKeyword.trim().length > 0 &&
+                        teamLeaderCandidates.length === 0 ? (
+                          <div className='rounded-md border px-3 py-2 text-sm text-muted-foreground'>
+                            未找到可选负责人
+                          </div>
+                        ) : null}
+
+                        {!teamLeaderLoading && teamLeaderCandidates.length > 0 ? (
+                          <div className='max-h-48 overflow-auto rounded-md border'>
+                            {teamLeaderCandidates.map((candidate) => (
+                              <button
+                                key={candidate.userId}
+                                type='button'
+                                className='flex w-full items-center justify-between border-b px-3 py-2 text-left text-sm last:border-b-0 hover:bg-muted/40'
+                                onClick={() => selectTeamLeaderCandidate(candidate, field.onChange)}
+                              >
+                                <span className='truncate'>
+                                  {candidate.username ||
+                                    candidate.displayName ||
+                                    `用户 #${candidate.userId ?? '-'}`}
+                                </span>
+                                <span className='ml-2 text-xs text-muted-foreground'>
+                                  {candidate.userCode || '-'}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -971,7 +1104,7 @@ export function TeamsPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>状态</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isTeamViewMode}>
                       <FormControl>
                         <SelectTrigger className='w-full'>
                           <SelectValue />
@@ -993,7 +1126,7 @@ export function TeamsPage() {
                   <FormItem>
                     <FormLabel>排序</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input {...field} disabled={isTeamViewMode} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1006,7 +1139,12 @@ export function TeamsPage() {
                   <FormItem className='md:col-span-2'>
                     <FormLabel>备注</FormLabel>
                     <FormControl>
-                      <Textarea rows={3} {...field} placeholder='请输入备注信息' />
+                      <Textarea
+                        rows={3}
+                        {...field}
+                        disabled={isTeamViewMode}
+                        placeholder='请输入备注信息'
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1014,18 +1152,20 @@ export function TeamsPage() {
               />
               <DialogFooter className='md:col-span-2'>
                 <Button type='button' variant='outline' onClick={closeTeamDialog}>
-                  取消
+                  {isTeamViewMode ? '关闭' : '取消'}
                 </Button>
-                <Button type='submit' disabled={savingTeam}>
-                  {savingTeam ? (
-                    <>
-                      <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                      保存中...
-                    </>
-                  ) : (
-                    '保存团队'
-                  )}
-                </Button>
+                {!isTeamViewMode ? (
+                  <Button type='submit' disabled={savingTeam}>
+                    {savingTeam ? (
+                      <>
+                        <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                        保存中...
+                      </>
+                    ) : (
+                      '保存团队'
+                    )}
+                  </Button>
+                ) : null}
               </DialogFooter>
             </form>
           </Form>
@@ -1068,26 +1208,6 @@ export function TeamsPage() {
                           />
                         </FormControl>
 
-                        {selectedCandidate ? (
-                          <div className='flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2 text-sm'>
-                            <span className='truncate'>已选择：{buildCandidateLabel(selectedCandidate)}</span>
-                            <Button
-                              type='button'
-                              variant='ghost'
-                              size='icon'
-                              className='h-6 w-6'
-                              onClick={() => {
-                                setSelectedCandidate(null)
-                                setMemberKeyword('')
-                                setMemberCandidates([])
-                                field.onChange('')
-                              }}
-                            >
-                              <X className='h-3.5 w-3.5' />
-                            </Button>
-                          </div>
-                        ) : null}
-
                         {memberCandidateLoading ? (
                           <div className='flex items-center gap-2 rounded-md border px-3 py-2 text-sm text-muted-foreground'>
                             <Loader2 className='h-3.5 w-3.5 animate-spin' />
@@ -1096,6 +1216,8 @@ export function TeamsPage() {
                         ) : null}
 
                         {!memberCandidateLoading &&
+                        !selectedCandidate &&
+                        !field.value &&
                         memberKeyword.trim().length > 0 &&
                         memberCandidates.length === 0 ? (
                           <div className='rounded-md border px-3 py-2 text-sm text-muted-foreground'>
