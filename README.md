@@ -16,7 +16,7 @@
 - [总体架构](#总体架构)
 - [仓库结构](#仓库结构)
 - [快速开始](#快速开始)
-- [refinex-business 模块规划（讨论结论）](#refinex-business-模块规划讨论结论)
+- [refinex-business 模块规划](#refinex-business-模块规划)
 - [系统能力路线图（TODO）](#系统能力路线图todo)
 - [技术选型原则](#技术选型原则)
 - [贡献指南](#贡献指南)
