@@ -1,5 +1,6 @@
 package cn.refinex.system.infrastructure.persistence.repository;
 
+import cn.refinex.base.response.PageResponse;
 import cn.refinex.system.domain.model.entity.MenuEntity;
 import cn.refinex.system.domain.model.entity.MenuOpEntity;
 import cn.refinex.system.domain.model.entity.RoleEntity;
@@ -13,6 +14,7 @@ import cn.refinex.system.infrastructure.persistence.dataobject.*;
 import cn.refinex.system.infrastructure.persistence.mapper.*;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -49,7 +51,7 @@ public class SystemRepositoryImpl implements SystemRepository {
      * @return 系统列表
      */
     @Override
-    public List<SystemEntity> listSystems(Integer status, String keyword) {
+    public PageResponse<SystemEntity> listSystems(Integer status, String keyword, int currentPage, int pageSize) {
         LambdaQueryWrapper<ScrSystemDo> query = Wrappers.lambdaQuery(ScrSystemDo.class)
                 .eq(ScrSystemDo::getDeleted, 0)
                 .orderByAsc(ScrSystemDo::getSort, ScrSystemDo::getId);
@@ -61,12 +63,14 @@ public class SystemRepositoryImpl implements SystemRepository {
             query.and(w -> w.like(ScrSystemDo::getSystemCode, trimmed).or().like(ScrSystemDo::getSystemName, trimmed));
         }
 
-        List<ScrSystemDo> rows = scrSystemMapper.selectList(query);
+        Page<ScrSystemDo> page = new Page<>(currentPage, pageSize);
+        Page<ScrSystemDo> rowsPage = scrSystemMapper.selectPage(page, query);
+        List<ScrSystemDo> rows = rowsPage.getRecords();
         List<SystemEntity> result = new ArrayList<>();
         for (ScrSystemDo row : rows) {
             result.add(systemDoConverter.toEntity(row));
         }
-        return result;
+        return PageResponse.of(result, rowsPage.getTotal(), (int) rowsPage.getSize(), (int) rowsPage.getCurrent());
     }
 
     /**
@@ -134,7 +138,8 @@ public class SystemRepositoryImpl implements SystemRepository {
      * @return 角色列表
      */
     @Override
-    public List<RoleEntity> listRoles(Long systemId, Long estabId, Integer status, String keyword) {
+    public PageResponse<RoleEntity> listRoles(Long systemId, Long estabId, Integer status, String keyword,
+                                              int currentPage, int pageSize) {
         LambdaQueryWrapper<ScrRoleDo> query = Wrappers.lambdaQuery(ScrRoleDo.class)
                 .eq(ScrRoleDo::getDeleted, 0)
                 .eq(ScrRoleDo::getSystemId, systemId)
@@ -150,12 +155,14 @@ public class SystemRepositoryImpl implements SystemRepository {
             query.and(w -> w.like(ScrRoleDo::getRoleCode, trimmed).or().like(ScrRoleDo::getRoleName, trimmed));
         }
 
-        List<ScrRoleDo> rows = scrRoleMapper.selectList(query);
+        Page<ScrRoleDo> page = new Page<>(currentPage, pageSize);
+        Page<ScrRoleDo> rowsPage = scrRoleMapper.selectPage(page, query);
+        List<ScrRoleDo> rows = rowsPage.getRecords();
         List<RoleEntity> result = new ArrayList<>();
         for (ScrRoleDo row : rows) {
             result.add(roleDoConverter.toEntity(row));
         }
-        return result;
+        return PageResponse.of(result, rowsPage.getTotal(), (int) rowsPage.getSize(), (int) rowsPage.getCurrent());
     }
 
     /**
@@ -478,18 +485,19 @@ public class SystemRepositoryImpl implements SystemRepository {
      * @return 菜单操作列表
      */
     @Override
-    public List<MenuOpEntity> listMenuOpsByMenuId(Long menuId) {
-        List<ScrMenuOpDo> rows = scrMenuOpMapper.selectList(
-                Wrappers.lambdaQuery(ScrMenuOpDo.class)
-                        .eq(ScrMenuOpDo::getMenuId, menuId)
-                        .eq(ScrMenuOpDo::getDeleted, 0)
-                        .orderByAsc(ScrMenuOpDo::getSort, ScrMenuOpDo::getId)
-        );
+    public PageResponse<MenuOpEntity> listMenuOpsByMenuId(Long menuId, int currentPage, int pageSize) {
+        LambdaQueryWrapper<ScrMenuOpDo> query = Wrappers.lambdaQuery(ScrMenuOpDo.class)
+                .eq(ScrMenuOpDo::getMenuId, menuId)
+                .eq(ScrMenuOpDo::getDeleted, 0)
+                .orderByAsc(ScrMenuOpDo::getSort, ScrMenuOpDo::getId);
+        Page<ScrMenuOpDo> page = new Page<>(currentPage, pageSize);
+        Page<ScrMenuOpDo> rowsPage = scrMenuOpMapper.selectPage(page, query);
+        List<ScrMenuOpDo> rows = rowsPage.getRecords();
         List<MenuOpEntity> result = new ArrayList<>();
         for (ScrMenuOpDo row : rows) {
             result.add(menuOpDoConverter.toEntity(row));
         }
-        return result;
+        return PageResponse.of(result, rowsPage.getTotal(), (int) rowsPage.getSize(), (int) rowsPage.getCurrent());
     }
 
     /**

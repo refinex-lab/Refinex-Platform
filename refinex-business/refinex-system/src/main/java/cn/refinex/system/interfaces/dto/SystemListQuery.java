@@ -1,9 +1,11 @@
 package cn.refinex.system.interfaces.dto;
 
+import cn.refinex.base.request.PageRequest;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * 查询系统列表参数
@@ -11,7 +13,8 @@ import lombok.Data;
  * @author refinex
  */
 @Data
-public class SystemListQuery {
+@EqualsAndHashCode(callSuper = true)
+public class SystemListQuery extends PageRequest {
 
     /**
      * 状态 1启用 2停用

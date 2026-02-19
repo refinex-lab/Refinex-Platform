@@ -1,6 +1,8 @@
 package cn.refinex.system.application.command;
 
+import cn.refinex.base.request.PageRequest;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.time.LocalDateTime;
 
@@ -10,7 +12,8 @@ import java.time.LocalDateTime;
  * @author refinex
  */
 @Data
-public class QueryNotifyLogListCommand {
+@EqualsAndHashCode(callSuper = true)
+public class QueryNotifyLogListCommand extends PageRequest {
 
     /**
      * 通知通道 1短信 2邮件 3站内信
@@ -42,8 +45,4 @@ public class QueryNotifyLogListCommand {
      */
     private LocalDateTime endTime;
 
-    /**
-     * 限制条数
-     */
-    private Integer limit;
 }

@@ -3,6 +3,7 @@ import { buildSystemPath } from './client'
 import type {
   AssignRolePermissionsRequest,
   AssignRoleUsersRequest,
+  PageData,
   Role,
   RoleBinding,
   RoleCreateRequest,
@@ -10,11 +11,11 @@ import type {
   RoleUpdateRequest,
 } from './types'
 
-export async function listRoles(query?: RoleListQuery): Promise<Role[]> {
-  const response = await http.get<Role[]>(buildSystemPath('/roles'), {
+export async function listRoles(query?: RoleListQuery): Promise<PageData<Role>> {
+  const response = await http.get<PageData<Role>>(buildSystemPath('/roles'), {
     params: query,
   })
-  return response.data ?? []
+  return response.data ?? { data: [] }
 }
 
 export async function getRole(roleId: number): Promise<Role> {

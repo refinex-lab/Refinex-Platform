@@ -1,6 +1,8 @@
 package cn.refinex.system.application.command;
 
+import cn.refinex.base.request.PageRequest;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * 企业列表查询命令
@@ -8,7 +10,8 @@ import lombok.Data;
  * @author refinex
  */
 @Data
-public class QueryEstabListCommand {
+@EqualsAndHashCode(callSuper = true)
+public class QueryEstabListCommand extends PageRequest {
 
     /**
      * 状态

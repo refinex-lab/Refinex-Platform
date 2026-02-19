@@ -1,5 +1,6 @@
 package cn.refinex.system.domain.repository;
 
+import cn.refinex.base.response.PageResponse;
 import cn.refinex.system.domain.model.entity.*;
 
 import java.util.List;
@@ -19,7 +20,7 @@ public interface OrganizationRepository {
      * @param keyword   关键字
      * @return 企业列表
      */
-    List<EstabEntity> listEstabs(Integer status, Integer estabType, String keyword);
+    PageResponse<EstabEntity> listEstabs(Integer status, Integer estabType, String keyword, int currentPage, int pageSize);
 
     /**
      * 查询企业
@@ -83,7 +84,7 @@ public interface OrganizationRepository {
      * @param addrType 地址类型
      * @return 地址列表
      */
-    List<EstabAddressEntity> listEstabAddresses(Long estabId, Integer addrType);
+    PageResponse<EstabAddressEntity> listEstabAddresses(Long estabId, Integer addrType, int currentPage, int pageSize);
 
     /**
      * 查询企业地址
@@ -146,7 +147,7 @@ public interface OrganizationRepository {
      * @param status  状态
      * @return 成员列表
      */
-    List<EstabUserEntity> listEstabUsers(Long estabId, Integer status);
+    PageResponse<EstabUserEntity> listEstabUsers(Long estabId, Integer status, int currentPage, int pageSize);
 
     /**
      * 查询企业成员关系
@@ -197,7 +198,7 @@ public interface OrganizationRepository {
      * @param keyword   关键字
      * @return 团队列表
      */
-    List<TeamEntity> listTeams(Long estabId, Long parentId, Integer status, String keyword);
+    PageResponse<TeamEntity> listTeams(Long estabId, Long parentId, Integer status, String keyword, int currentPage, int pageSize);
 
     /**
      * 查询团队
@@ -262,7 +263,7 @@ public interface OrganizationRepository {
      * @param status 状态
      * @return 团队成员列表
      */
-    List<TeamUserEntity> listTeamUsers(Long teamId, Integer status);
+    PageResponse<TeamUserEntity> listTeamUsers(Long teamId, Integer status, int currentPage, int pageSize);
 
     /**
      * 查询团队成员关系

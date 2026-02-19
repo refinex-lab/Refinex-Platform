@@ -26,6 +26,7 @@ import {
   type NotifyLog,
   type NotifyLogListQuery,
 } from '@/features/system/api'
+import { PageToolbar } from '@/features/system/components/page-toolbar'
 import { handleServerError } from '@/lib/handle-server-error'
 import { formatDateTime, toOptionalString } from './common'
 
@@ -44,6 +45,7 @@ const SEND_STATUS_LABEL: Record<number, string> = {
 
 export function NotifyLogsPage() {
   const [logs, setLogs] = useState<NotifyLog[]>([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
 
   const [channelInput, setChannelInput] = useState<'all' | '1' | '2' | '3' | '4'>('all')
@@ -52,7 +54,7 @@ export function NotifyLogsPage() {
   const [receiverInput, setReceiverInput] = useState('')
   const [startTimeInput, setStartTimeInput] = useState('')
   const [endTimeInput, setEndTimeInput] = useState('')
-  const [query, setQuery] = useState<NotifyLogListQuery>({ limit: 200 })
+  const [query, setQuery] = useState<NotifyLogListQuery>({ currentPage: 1, pageSize: 10 })
 
   const [detailOpen, setDetailOpen] = useState(false)
   const [detailLoading, setDetailLoading] = useState(false)
@@ -61,8 +63,9 @@ export function NotifyLogsPage() {
   async function loadLogs(activeQuery: NotifyLogListQuery = query) {
     setLoading(true)
     try {
-      const data = await listNotifyLogs(activeQuery)
-      setLogs(data)
+      const pageData = await listNotifyLogs(activeQuery)
+      setLogs(pageData.data ?? [])
+      setTotal(pageData.total ?? 0)
     } catch (error) {
       handleServerError(error)
     } finally {
@@ -83,7 +86,8 @@ export function NotifyLogsPage() {
       receiver: toOptionalString(receiverInput),
       startTime: startTimeInput || undefined,
       endTime: endTimeInput || undefined,
-      limit: 200,
+      currentPage: 1,
+      pageSize: query.pageSize ?? 10,
     })
   }
 
@@ -94,7 +98,15 @@ export function NotifyLogsPage() {
     setReceiverInput('')
     setStartTimeInput('')
     setEndTimeInput('')
-    setQuery({ limit: 200 })
+    setQuery({ currentPage: 1, pageSize: query.pageSize ?? 10 })
+  }
+
+  function handlePageChange(page: number) {
+    setQuery((prev) => ({ ...prev, currentPage: page }))
+  }
+
+  function handlePageSizeChange(size: number) {
+    setQuery((prev) => ({ ...prev, pageSize: size, currentPage: 1 }))
   }
 
   async function openDetail(logId?: number) {
@@ -220,6 +232,14 @@ export function NotifyLogsPage() {
               )}
             </TableBody>
           </Table>
+          <PageToolbar
+            page={query.currentPage ?? 1}
+            size={query.pageSize ?? 10}
+            total={total}
+            loading={loading}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+          />
         </CardContent>
       </Card>
 

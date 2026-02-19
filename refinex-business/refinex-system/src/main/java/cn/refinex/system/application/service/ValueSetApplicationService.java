@@ -1,6 +1,8 @@
 package cn.refinex.system.application.service;
 
 import cn.refinex.base.exception.BizException;
+import cn.refinex.base.response.PageResponse;
+import cn.refinex.base.utils.PageUtils;
 import cn.refinex.system.application.assembler.SystemDomainAssembler;
 import cn.refinex.system.application.command.*;
 import cn.refinex.system.application.dto.ValueDTO;
@@ -36,16 +38,21 @@ public class ValueSetApplicationService {
      * @param command 查询命令
      * @return 值集列表
      */
-    public List<ValueSetDTO> listValueSets(QueryValueSetListCommand command) {
-        List<ValueSetEntity> entities = valueSetRepository.listValueSets(
+    public PageResponse<ValueSetDTO> listValueSets(QueryValueSetListCommand command) {
+        int currentPage = PageUtils.normalizeCurrentPage(command == null ? null : command.getCurrentPage());
+        int pageSize = PageUtils.normalizePageSize(command == null ? null : command.getPageSize(),
+                PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE);
+        PageResponse<ValueSetEntity> entities = valueSetRepository.listValueSets(
                 command == null ? null : command.getStatus(),
-                command == null ? null : command.getKeyword()
+                command == null ? null : command.getKeyword(),
+                currentPage,
+                pageSize
         );
         List<ValueSetDTO> result = new ArrayList<>();
-        for (ValueSetEntity entity : entities) {
+        for (ValueSetEntity entity : entities.getData()) {
             result.add(systemDomainAssembler.toValueSetDto(entity));
         }
-        return result;
+        return PageResponse.of(result, entities.getTotal(), entities.getPageSize(), entities.getCurrentPage());
     }
 
     /**
@@ -123,7 +130,7 @@ public class ValueSetApplicationService {
      * @param command 查询命令
      * @return 值集明细列表
      */
-    public List<ValueDTO> listValues(QueryValueListCommand command) {
+    public PageResponse<ValueDTO> listValues(QueryValueListCommand command) {
         if (command == null || isBlank(command.getSetCode())) {
             throw new BizException(SystemErrorCode.INVALID_PARAM);
         }
@@ -132,12 +139,21 @@ public class ValueSetApplicationService {
         if (valueSet == null || (valueSet.getDeleted() != null && valueSet.getDeleted() == 1)) {
             throw new BizException(SystemErrorCode.VALUESET_NOT_FOUND);
         }
-        List<ValueEntity> entities = valueSetRepository.listValues(setCode, command.getStatus(), command.getKeyword());
+        int currentPage = PageUtils.normalizeCurrentPage(command.getCurrentPage());
+        int pageSize = PageUtils.normalizePageSize(command.getPageSize(),
+                PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE);
+        PageResponse<ValueEntity> entities = valueSetRepository.listValues(
+                setCode,
+                command.getStatus(),
+                command.getKeyword(),
+                currentPage,
+                pageSize
+        );
         List<ValueDTO> result = new ArrayList<>();
-        for (ValueEntity entity : entities) {
+        for (ValueEntity entity : entities.getData()) {
             result.add(systemDomainAssembler.toValueDto(entity));
         }
-        return result;
+        return PageResponse.of(result, entities.getTotal(), entities.getPageSize(), entities.getCurrentPage());
     }
 
     /**

@@ -10,7 +10,7 @@ import cn.refinex.auth.domain.enums.LoginSource;
 import cn.refinex.auth.domain.model.LoginContext;
 import cn.refinex.auth.application.service.AuthService;
 import cn.refinex.base.utils.RequestUtils;
-import cn.refinex.base.response.SingleResponse;
+import cn.refinex.web.vo.Result;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -33,12 +33,12 @@ public class AuthController {
      *
      * @param request 短信验证码请求
      * @param httpRequest HTTP请求
-     * @return 单一结果
+     * @return 操作结果
      */
     @PostMapping("/sms/send")
-    public SingleResponse<Void> sendSms(@Valid @RequestBody SmsSendRequest request, HttpServletRequest httpRequest) {
+    public Result<Void> sendSms(@Valid @RequestBody SmsSendRequest request, HttpServletRequest httpRequest) {
         authService.sendSmsCode(request, buildContext(null, httpRequest));
-        return SingleResponse.of(null);
+        return Result.success();
     }
 
     /**
@@ -46,12 +46,12 @@ public class AuthController {
      *
      * @param request 邮箱验证码请求
      * @param httpRequest HTTP请求
-     * @return 单一结果
+     * @return 操作结果
      */
     @PostMapping("/email/send")
-    public SingleResponse<Void> sendEmail(@Valid @RequestBody EmailSendRequest request, HttpServletRequest httpRequest) {
+    public Result<Void> sendEmail(@Valid @RequestBody EmailSendRequest request, HttpServletRequest httpRequest) {
         authService.sendEmailCode(request, buildContext(null, httpRequest));
-        return SingleResponse.of(null);
+        return Result.success();
     }
 
     /**
@@ -59,12 +59,12 @@ public class AuthController {
      *
      * @param request 注册请求
      * @param httpRequest HTTP请求
-     * @return 单一结果
+     * @return 注册结果
      */
     @PostMapping("/register")
-    public SingleResponse<Long> register(@Valid @RequestBody RegisterRequest request, HttpServletRequest httpRequest) {
+    public Result<Long> register(@Valid @RequestBody RegisterRequest request, HttpServletRequest httpRequest) {
         Long userId = authService.register(request, buildContext(null, httpRequest));
-        return SingleResponse.of(userId);
+        return Result.success(userId);
     }
 
     /**
@@ -72,12 +72,12 @@ public class AuthController {
      *
      * @param request 重置密码请求
      * @param httpRequest HTTP请求
-     * @return 单一结果
+     * @return 操作结果
      */
     @PostMapping("/password/reset")
-    public SingleResponse<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request, HttpServletRequest httpRequest) {
+    public Result<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request, HttpServletRequest httpRequest) {
         authService.resetPassword(request, buildContext(null, httpRequest));
-        return SingleResponse.of(null);
+        return Result.success();
     }
 
     /**
@@ -85,23 +85,23 @@ public class AuthController {
      *
      * @param request 登录请求
      * @param httpRequest HTTP请求
-     * @return 单一结果
+     * @return 登录结果
      */
     @PostMapping("/login")
-    public SingleResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+    public Result<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
         LoginResponse response = authService.login(request, buildContext(request, httpRequest));
-        return SingleResponse.of(response);
+        return Result.success(response);
     }
 
     /**
      * 登出
      *
-     * @return 单一结果
+     * @return 操作结果
      */
     @PostMapping("/logout")
-    public SingleResponse<Void> logout() {
+    public Result<Void> logout() {
         authService.logout();
-        return SingleResponse.of(null);
+        return Result.success();
     }
 
     /**

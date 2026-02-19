@@ -1,6 +1,7 @@
 package cn.refinex.system.infrastructure.client.user;
 
 import cn.refinex.api.user.model.dto.*;
+import cn.refinex.base.response.PageResponse;
 import cn.refinex.base.response.MultiResponse;
 import cn.refinex.base.response.SingleResponse;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,7 +23,7 @@ public interface UserManageHttpClient {
      * @return 用户列表
      */
     @PostExchange("/manage/list")
-    MultiResponse<UserManageDTO> listUsers(@RequestBody UserManageListQuery query);
+    PageResponse<UserManageDTO> listUsers(@RequestBody UserManageListQuery query);
 
     /**
      * 用户管理详情

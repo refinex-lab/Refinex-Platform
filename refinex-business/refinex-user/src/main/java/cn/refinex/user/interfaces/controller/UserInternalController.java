@@ -17,6 +17,7 @@ import cn.refinex.api.user.model.dto.UserRegisterCommand;
 import cn.refinex.api.user.model.dto.UserRegisterResult;
 import cn.refinex.api.user.model.dto.UserResetPasswordCommand;
 import cn.refinex.api.user.model.vo.UserInfo;
+import cn.refinex.base.response.PageResponse;
 import cn.refinex.base.response.MultiResponse;
 import cn.refinex.base.response.SingleResponse;
 import cn.refinex.user.application.dto.AuthSubjectDTO;
@@ -34,8 +35,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 /**
  * 用户内部接口
@@ -141,9 +140,8 @@ public class UserInternalController {
      * @return 用户管理列表
      */
     @PostMapping("/manage/list")
-    public MultiResponse<UserManageDTO> listManageUsers(@RequestBody(required = false) UserManageListQuery query) {
-        List<UserManageDTO> users = userApplicationService.listManageUsers(query);
-        return MultiResponse.of(users);
+    public PageResponse<UserManageDTO> listManageUsers(@RequestBody(required = false) UserManageListQuery query) {
+        return userApplicationService.listManageUsers(query);
     }
 
     /**

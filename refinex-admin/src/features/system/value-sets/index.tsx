@@ -66,6 +66,7 @@ import {
   type ValueSetUpdateRequest,
   updateValueSet,
 } from '@/features/system/api'
+import { PageToolbar } from '@/features/system/components/page-toolbar'
 import { handleServerError } from '@/lib/handle-server-error'
 
 const valueSetFormSchema = z.object({
@@ -125,10 +126,11 @@ export function ValueSetsPage() {
   }
 
   const [valueSets, setValueSets] = useState<ValueSet[]>([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
   const [keywordInput, setKeywordInput] = useState('')
   const [statusInput, setStatusInput] = useState<'all' | '1' | '0'>('all')
-  const [query, setQuery] = useState<ValueSetListQuery>({})
+  const [query, setQuery] = useState<ValueSetListQuery>({ currentPage: 1, pageSize: 10 })
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -145,8 +147,9 @@ export function ValueSetsPage() {
   async function loadValueSets(activeQuery: ValueSetListQuery = query) {
     setLoading(true)
     try {
-      const data = await listValueSets(activeQuery)
-      setValueSets(data)
+      const pageData = await listValueSets(activeQuery)
+      setValueSets(pageData.data ?? [])
+      setTotal(pageData.total ?? 0)
     } catch (error) {
       handleServerError(error)
     } finally {
@@ -163,13 +166,26 @@ export function ValueSetsPage() {
     setQuery({
       keyword: toOptionalString(keywordInput),
       status: statusInput === 'all' ? undefined : Number(statusInput),
+      currentPage: 1,
+      pageSize: query.pageSize ?? 10,
     })
   }
 
   function resetFilter() {
     setKeywordInput('')
     setStatusInput('all')
-    setQuery({})
+    setQuery({
+      currentPage: 1,
+      pageSize: query.pageSize ?? 10,
+    })
+  }
+
+  function handlePageChange(page: number) {
+    setQuery((prev) => ({ ...prev, currentPage: page }))
+  }
+
+  function handlePageSizeChange(size: number) {
+    setQuery((prev) => ({ ...prev, pageSize: size, currentPage: 1 }))
   }
 
   function openCreateDialog() {
@@ -388,6 +404,14 @@ export function ValueSetsPage() {
                 )}
               </TableBody>
             </Table>
+            <PageToolbar
+              page={query.currentPage ?? 1}
+              size={query.pageSize ?? 10}
+              total={total}
+              loading={loading}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+            />
           </CardContent>
         </Card>
       </Main>

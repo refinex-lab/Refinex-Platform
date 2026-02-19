@@ -1,6 +1,8 @@
 package cn.refinex.system.application.service;
 
 import cn.refinex.base.exception.BizException;
+import cn.refinex.base.response.PageResponse;
+import cn.refinex.base.utils.PageUtils;
 import cn.refinex.system.application.assembler.SystemDomainAssembler;
 import cn.refinex.system.application.command.*;
 import cn.refinex.system.application.dto.*;
@@ -38,18 +40,22 @@ public class SystemApplicationService {
      * @param command 查询命令
      * @return 系统列表
      */
-    public List<SystemDTO> listSystems(QuerySystemListCommand command) {
-        List<SystemEntity> entities = systemRepository.listSystems(
+    public PageResponse<SystemDTO> listSystems(QuerySystemListCommand command) {
+        int currentPage = PageUtils.normalizeCurrentPage(command == null ? null : command.getCurrentPage());
+        int pageSize = PageUtils.normalizePageSize(command == null ? null : command.getPageSize(),
+                PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE);
+        PageResponse<SystemEntity> entities = systemRepository.listSystems(
                 command == null ? null : command.getStatus(),
-                command == null ? null : command.getKeyword()
+                command == null ? null : command.getKeyword(),
+                currentPage,
+                pageSize
         );
 
         List<SystemDTO> result = new ArrayList<>();
-        for (SystemEntity entity : entities) {
+        for (SystemEntity entity : entities.getData()) {
             result.add(systemDomainAssembler.toSystemDto(entity));
         }
-
-        return result;
+        return PageResponse.of(result, entities.getTotal(), entities.getPageSize(), entities.getCurrentPage());
     }
 
     /**
@@ -131,23 +137,29 @@ public class SystemApplicationService {
      * @param command 查询命令
      * @return 角色列表
      */
-    public List<RoleDTO> listRoles(QueryRoleListCommand command) {
+    public PageResponse<RoleDTO> listRoles(QueryRoleListCommand command) {
         if (command == null || command.getSystemId() == null) {
             throw new BizException(SystemErrorCode.INVALID_PARAM);
         }
         requireSystem(command.getSystemId());
 
-        List<RoleEntity> entities = systemRepository.listRoles(
+        int currentPage = PageUtils.normalizeCurrentPage(command.getCurrentPage());
+        int pageSize = PageUtils.normalizePageSize(command.getPageSize(),
+                PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE);
+
+        PageResponse<RoleEntity> entities = systemRepository.listRoles(
                 command.getSystemId(),
                 command.getEstabId(),
                 command.getStatus(),
-                command.getKeyword()
+                command.getKeyword(),
+                currentPage,
+                pageSize
         );
         List<RoleDTO> result = new ArrayList<>();
-        for (RoleEntity entity : entities) {
+        for (RoleEntity entity : entities.getData()) {
             result.add(systemDomainAssembler.toRoleDto(entity));
         }
-        return result;
+        return PageResponse.of(result, entities.getTotal(), entities.getPageSize(), entities.getCurrentPage());
     }
 
     /**
@@ -424,14 +436,18 @@ public class SystemApplicationService {
      * @param menuId 菜单ID
      * @return 菜单操作列表
      */
-    public List<MenuOpManageDTO> listMenuOps(Long menuId) {
+    public PageResponse<MenuOpManageDTO> listMenuOps(Long menuId, int currentPage, int pageSize) {
         requireMenu(menuId);
-        List<MenuOpEntity> entities = systemRepository.listMenuOpsByMenuId(menuId);
+        PageResponse<MenuOpEntity> entities = systemRepository.listMenuOpsByMenuId(
+                menuId,
+                PageUtils.normalizeCurrentPage(currentPage),
+                PageUtils.normalizePageSize(pageSize, PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE)
+        );
         List<MenuOpManageDTO> result = new ArrayList<>();
-        for (MenuOpEntity entity : entities) {
+        for (MenuOpEntity entity : entities.getData()) {
             result.add(systemDomainAssembler.toMenuOpManageDto(entity));
         }
-        return result;
+        return PageResponse.of(result, entities.getTotal(), entities.getPageSize(), entities.getCurrentPage());
     }
 
     /**

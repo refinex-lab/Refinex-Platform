@@ -1,6 +1,8 @@
 package cn.refinex.system.application.service;
 
 import cn.refinex.base.exception.BizException;
+import cn.refinex.base.response.PageResponse;
+import cn.refinex.base.utils.PageUtils;
 import cn.refinex.system.application.assembler.SystemDomainAssembler;
 import cn.refinex.system.application.command.*;
 import cn.refinex.system.application.dto.DrsDTO;
@@ -39,22 +41,27 @@ public class DataResourceApplicationService {
      * @param command 查询命令
      * @return 数据资源列表
      */
-    public List<DrsDTO> listDrs(QueryDrsListCommand command) {
+    public PageResponse<DrsDTO> listDrs(QueryDrsListCommand command) {
         if (command != null && command.getSystemId() != null) {
             requireSystem(command.getSystemId());
         }
-        List<DrsEntity> entities = dataResourceRepository.listDrs(
+        int currentPage = PageUtils.normalizeCurrentPage(command == null ? null : command.getCurrentPage());
+        int pageSize = PageUtils.normalizePageSize(command == null ? null : command.getPageSize(),
+                PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE);
+        PageResponse<DrsEntity> entities = dataResourceRepository.listDrs(
                 command == null ? null : command.getSystemId(),
                 command == null ? null : command.getStatus(),
                 command == null ? null : command.getDrsType(),
                 command == null ? null : command.getOwnerEstabId(),
-                command == null ? null : command.getKeyword()
+                command == null ? null : command.getKeyword(),
+                currentPage,
+                pageSize
         );
         List<DrsDTO> result = new ArrayList<>();
-        for (DrsEntity entity : entities) {
+        for (DrsEntity entity : entities.getData()) {
             result.add(systemDomainAssembler.toDrsDto(entity));
         }
-        return result;
+        return PageResponse.of(result, entities.getTotal(), entities.getPageSize(), entities.getCurrentPage());
     }
 
     /**
@@ -143,21 +150,26 @@ public class DataResourceApplicationService {
      * @param command 查询命令
      * @return 数据资源接口列表
      */
-    public List<DrsInterfaceDTO> listDrsInterfaces(QueryDrsInterfaceListCommand command) {
+    public PageResponse<DrsInterfaceDTO> listDrsInterfaces(QueryDrsInterfaceListCommand command) {
         if (command == null || command.getDrsId() == null) {
             throw new BizException(SystemErrorCode.INVALID_PARAM);
         }
         requireDrs(command.getDrsId());
-        List<DrsInterfaceEntity> entities = dataResourceRepository.listDrsInterfaces(
+        int currentPage = PageUtils.normalizeCurrentPage(command.getCurrentPage());
+        int pageSize = PageUtils.normalizePageSize(command.getPageSize(),
+                PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE);
+        PageResponse<DrsInterfaceEntity> entities = dataResourceRepository.listDrsInterfaces(
                 command.getDrsId(),
                 command.getStatus(),
-                command.getKeyword()
+                command.getKeyword(),
+                currentPage,
+                pageSize
         );
         List<DrsInterfaceDTO> result = new ArrayList<>();
-        for (DrsInterfaceEntity entity : entities) {
+        for (DrsInterfaceEntity entity : entities.getData()) {
             result.add(systemDomainAssembler.toDrsInterfaceDto(entity));
         }
-        return result;
+        return PageResponse.of(result, entities.getTotal(), entities.getPageSize(), entities.getCurrentPage());
     }
 
     /**

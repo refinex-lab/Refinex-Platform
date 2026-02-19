@@ -1,6 +1,8 @@
 package cn.refinex.system.interfaces.dto;
 
+import cn.refinex.base.request.PageRequest;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * 系统用户列表查询参数
@@ -8,7 +10,8 @@ import lombok.Data;
  * @author refinex
  */
 @Data
-public class SystemUserListQuery {
+@EqualsAndHashCode(callSuper = true)
+public class SystemUserListQuery extends PageRequest {
 
     /**
      * 主要组织ID
@@ -30,8 +33,4 @@ public class SystemUserListQuery {
      */
     private String keyword;
 
-    /**
-     * 限制条数
-     */
-    private Integer limit;
 }

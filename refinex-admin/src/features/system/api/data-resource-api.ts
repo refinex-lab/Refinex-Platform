@@ -9,13 +9,14 @@ import type {
   DataResourceInterfaceUpdateRequest,
   DataResourceListQuery,
   DataResourceUpdateRequest,
+  PageData,
 } from './types'
 
-export async function listDataResources(query?: DataResourceListQuery): Promise<DataResource[]> {
-  const response = await http.get<DataResource[]>(buildSystemPath('/drs'), {
+export async function listDataResources(query?: DataResourceListQuery): Promise<PageData<DataResource>> {
+  const response = await http.get<PageData<DataResource>>(buildSystemPath('/drs'), {
     params: query,
   })
-  return response.data ?? []
+  return response.data ?? { data: [] }
 }
 
 export async function getDataResource(drsId: number): Promise<DataResource> {
@@ -44,11 +45,11 @@ export async function deleteDataResource(drsId: number): Promise<void> {
 
 export async function listDataResourceInterfaces(
   query?: DataResourceInterfaceListQuery
-): Promise<DataResourceInterface[]> {
-  const response = await http.get<DataResourceInterface[]>(buildSystemPath('/drs/interfaces'), {
+): Promise<PageData<DataResourceInterface>> {
+  const response = await http.get<PageData<DataResourceInterface>>(buildSystemPath('/drs/interfaces'), {
     params: query,
   })
-  return response.data ?? []
+  return response.data ?? { data: [] }
 }
 
 export async function getDataResourceInterface(

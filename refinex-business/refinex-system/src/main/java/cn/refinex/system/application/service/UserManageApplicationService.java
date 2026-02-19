@@ -1,6 +1,8 @@
 package cn.refinex.system.application.service;
 
 import cn.refinex.api.user.model.dto.*;
+import cn.refinex.base.response.PageResponse;
+import cn.refinex.base.utils.PageUtils;
 import cn.refinex.system.infrastructure.client.user.UserManageRemoteGateway;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,7 +26,16 @@ public class UserManageApplicationService {
      * @param query 查询条件
      * @return 用户列表
      */
-    public List<UserManageDTO> listUsers(UserManageListQuery query) {
+    public PageResponse<UserManageDTO> listUsers(UserManageListQuery query) {
+        if (query == null) {
+            query = new UserManageListQuery();
+        }
+        query.setCurrentPage(PageUtils.normalizeCurrentPage(query.getCurrentPage()));
+        query.setPageSize(PageUtils.normalizePageSize(
+                query.getPageSize(),
+                PageUtils.DEFAULT_PAGE_SIZE,
+                PageUtils.DEFAULT_MAX_PAGE_SIZE
+        ));
         return userManageRemoteGateway.listUsers(query);
     }
 
@@ -65,8 +76,13 @@ public class UserManageApplicationService {
      * @param userId 用户ID
      * @return 用户身份列表
      */
-    public List<UserIdentityManageDTO> listIdentities(Long userId) {
-        return userManageRemoteGateway.listIdentities(userId);
+    public PageResponse<UserIdentityManageDTO> listIdentities(Long userId, int currentPage, int pageSize) {
+        List<UserIdentityManageDTO> identities = userManageRemoteGateway.listIdentities(userId);
+        return PageUtils.slice(
+                identities,
+                PageUtils.normalizeCurrentPage(currentPage),
+                PageUtils.normalizePageSize(pageSize, PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE)
+        );
     }
 
     /**

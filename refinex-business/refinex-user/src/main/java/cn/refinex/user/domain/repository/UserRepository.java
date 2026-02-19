@@ -1,5 +1,6 @@
 package cn.refinex.user.domain.repository;
 
+import cn.refinex.base.response.PageResponse;
 import cn.refinex.user.domain.model.entity.UserEntity;
 import cn.refinex.user.domain.model.entity.UserEstabEntity;
 import cn.refinex.user.domain.model.entity.UserIdentityEntity;
@@ -54,10 +55,12 @@ public interface UserRepository {
      * @param status         用户状态
      * @param userType       用户类型
      * @param keyword        关键字
-     * @param limit          限制条数
-     * @return 用户列表
+     * @param currentPage    当前页
+     * @param pageSize       每页条数
+     * @return 用户分页列表
      */
-    List<UserEntity> listUsersForManage(Long primaryEstabId, Integer status, Integer userType, String keyword, Integer limit);
+    PageResponse<UserEntity> listUsersForManage(Long primaryEstabId, Integer status, Integer userType, String keyword,
+                                                int currentPage, int pageSize);
 
     /**
      * 根据用户编码统计用户数量

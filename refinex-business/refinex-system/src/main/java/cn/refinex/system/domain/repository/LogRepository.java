@@ -1,12 +1,12 @@
 package cn.refinex.system.domain.repository;
 
+import cn.refinex.base.response.PageResponse;
 import cn.refinex.system.domain.model.entity.ErrorLogEntity;
 import cn.refinex.system.domain.model.entity.LoginLogEntity;
 import cn.refinex.system.domain.model.entity.NotifyLogEntity;
 import cn.refinex.system.domain.model.entity.OperateLogEntity;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 /**
  * 日志仓储
@@ -18,18 +18,19 @@ public interface LogRepository {
     /**
      * 查询登录日志列表
      *
-     * @param userId     用户ID
-     * @param estabId    企业ID
-     * @param success    登录是否成功
-     * @param loginType  登录类型
-     * @param sourceType 登录来源
-     * @param startTime  开始时间
-     * @param endTime    结束时间
-     * @param limit      限制条数
+     * @param userId      用户ID
+     * @param estabId     企业ID
+     * @param success     登录是否成功
+     * @param loginType   登录类型
+     * @param sourceType  登录来源
+     * @param startTime   开始时间
+     * @param endTime     结束时间
+     * @param currentPage 当前页
+     * @param pageSize    页大小
      * @return 登录日志列表
      */
-    List<LoginLogEntity> listLoginLogs(Long userId, Long estabId, Integer success, Integer loginType, Integer sourceType,
-                                       LocalDateTime startTime, LocalDateTime endTime, Integer limit);
+    PageResponse<LoginLogEntity> listLoginLogs(Long userId, Long estabId, Integer success, Integer loginType, Integer sourceType,
+                                               LocalDateTime startTime, LocalDateTime endTime, int currentPage, int pageSize);
 
     /**
      * 根据日志ID查询登录日志
@@ -49,11 +50,12 @@ public interface LogRepository {
      * @param requestPath 请求路径
      * @param startTime   开始时间
      * @param endTime     结束时间
-     * @param limit       限制条数
+     * @param currentPage 当前页
+     * @param pageSize    页大小
      * @return 操作日志列表
      */
-    List<OperateLogEntity> listOperateLogs(Long userId, Long estabId, Integer success, String moduleCode, String requestPath,
-                                           LocalDateTime startTime, LocalDateTime endTime, Integer limit);
+    PageResponse<OperateLogEntity> listOperateLogs(Long userId, Long estabId, Integer success, String moduleCode, String requestPath,
+                                                   LocalDateTime startTime, LocalDateTime endTime, int currentPage, int pageSize);
 
     /**
      * 根据日志ID查询操作日志
@@ -71,11 +73,12 @@ public interface LogRepository {
      * @param requestPath 请求路径
      * @param startTime   开始时间
      * @param endTime     结束时间
-     * @param limit       限制条数
+     * @param currentPage 当前页
+     * @param pageSize    页大小
      * @return 错误日志列表
      */
-    List<ErrorLogEntity> listErrorLogs(String serviceName, Integer errorLevel, String requestPath,
-                                       LocalDateTime startTime, LocalDateTime endTime, Integer limit);
+    PageResponse<ErrorLogEntity> listErrorLogs(String serviceName, Integer errorLevel, String requestPath,
+                                               LocalDateTime startTime, LocalDateTime endTime, int currentPage, int pageSize);
 
     /**
      * 根据日志ID查询错误日志
@@ -94,11 +97,12 @@ public interface LogRepository {
      * @param sendStatus  发送状态
      * @param startTime   开始时间
      * @param endTime     结束时间
-     * @param limit       限制条数
+     * @param currentPage 当前页
+     * @param pageSize    页大小
      * @return 通知日志列表
      */
-    List<NotifyLogEntity> listNotifyLogs(Integer channelType, String sceneCode, String receiver, Integer sendStatus,
-                                         LocalDateTime startTime, LocalDateTime endTime, Integer limit);
+    PageResponse<NotifyLogEntity> listNotifyLogs(Integer channelType, String sceneCode, String receiver, Integer sendStatus,
+                                                 LocalDateTime startTime, LocalDateTime endTime, int currentPage, int pageSize);
 
     /**
      * 根据日志ID查询通知日志

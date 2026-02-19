@@ -1,7 +1,9 @@
 package cn.refinex.system.interfaces.dto;
 
+import cn.refinex.base.request.PageRequest;
 import jakarta.validation.constraints.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * 查询数据资源列表参数
@@ -9,7 +11,8 @@ import lombok.Data;
  * @author refinex
  */
 @Data
-public class DrsListQuery {
+@EqualsAndHashCode(callSuper = true)
+public class DrsListQuery extends PageRequest {
 
     /**
      * 系统ID

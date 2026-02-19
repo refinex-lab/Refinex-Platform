@@ -1,5 +1,6 @@
 package cn.refinex.system.infrastructure.persistence.repository;
 
+import cn.refinex.base.response.PageResponse;
 import cn.refinex.system.domain.model.entity.ValueEntity;
 import cn.refinex.system.domain.model.entity.ValueSetEntity;
 import cn.refinex.system.domain.repository.ValueSetRepository;
@@ -11,6 +12,7 @@ import cn.refinex.system.infrastructure.persistence.mapper.AppValueMapper;
 import cn.refinex.system.infrastructure.persistence.mapper.AppValueSetMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -39,7 +41,7 @@ public class ValueSetRepositoryImpl implements ValueSetRepository {
      * @return 值集列表
      */
     @Override
-    public List<ValueSetEntity> listValueSets(Integer status, String keyword) {
+    public PageResponse<ValueSetEntity> listValueSets(Integer status, String keyword, int currentPage, int pageSize) {
         LambdaQueryWrapper<AppValueSetDo> query = Wrappers.lambdaQuery(AppValueSetDo.class)
                 .eq(AppValueSetDo::getDeleted, 0)
                 .orderByAsc(AppValueSetDo::getSort, AppValueSetDo::getId);
@@ -50,12 +52,14 @@ public class ValueSetRepositoryImpl implements ValueSetRepository {
             String trimmed = keyword.trim();
             query.and(w -> w.like(AppValueSetDo::getSetCode, trimmed).or().like(AppValueSetDo::getSetName, trimmed));
         }
-        List<AppValueSetDo> rows = appValueSetMapper.selectList(query);
+        Page<AppValueSetDo> page = new Page<>(currentPage, pageSize);
+        Page<AppValueSetDo> rowsPage = appValueSetMapper.selectPage(page, query);
+        List<AppValueSetDo> rows = rowsPage.getRecords();
         List<ValueSetEntity> result = new ArrayList<>();
         for (AppValueSetDo row : rows) {
             result.add(valueSetDoConverter.toEntity(row));
         }
-        return result;
+        return PageResponse.of(result, rowsPage.getTotal(), (int) rowsPage.getSize(), (int) rowsPage.getCurrent());
     }
 
     /**
@@ -165,7 +169,8 @@ public class ValueSetRepositoryImpl implements ValueSetRepository {
      * @return 值集明细列表
      */
     @Override
-    public List<ValueEntity> listValues(String setCode, Integer status, String keyword) {
+    public PageResponse<ValueEntity> listValues(String setCode, Integer status, String keyword,
+                                                int currentPage, int pageSize) {
         LambdaQueryWrapper<AppValueDo> query = Wrappers.lambdaQuery(AppValueDo.class)
                 .eq(AppValueDo::getSetCode, setCode)
                 .eq(AppValueDo::getDeleted, 0)
@@ -177,12 +182,14 @@ public class ValueSetRepositoryImpl implements ValueSetRepository {
             String trimmed = keyword.trim();
             query.and(w -> w.like(AppValueDo::getValueCode, trimmed).or().like(AppValueDo::getValueName, trimmed));
         }
-        List<AppValueDo> rows = appValueMapper.selectList(query);
+        Page<AppValueDo> page = new Page<>(currentPage, pageSize);
+        Page<AppValueDo> rowsPage = appValueMapper.selectPage(page, query);
+        List<AppValueDo> rows = rowsPage.getRecords();
         List<ValueEntity> result = new ArrayList<>();
         for (AppValueDo row : rows) {
             result.add(valueDoConverter.toEntity(row));
         }
-        return result;
+        return PageResponse.of(result, rowsPage.getTotal(), (int) rowsPage.getSize(), (int) rowsPage.getCurrent());
     }
 
     /**

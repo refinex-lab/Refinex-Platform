@@ -1,12 +1,9 @@
 package cn.refinex.system.interfaces.dto;
 
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.PositiveOrZero;
-import jakarta.validation.constraints.Size;
+import cn.refinex.base.request.PageRequest;
+import jakarta.validation.constraints.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * 查询角色列表参数
@@ -14,7 +11,8 @@ import lombok.Data;
  * @author refinex
  */
 @Data
-public class RoleListQuery {
+@EqualsAndHashCode(callSuper = true)
+public class RoleListQuery extends PageRequest {
 
     /**
      * 系统ID

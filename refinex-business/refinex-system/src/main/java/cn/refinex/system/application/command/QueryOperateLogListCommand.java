@@ -1,6 +1,8 @@
 package cn.refinex.system.application.command;
 
+import cn.refinex.base.request.PageRequest;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.time.LocalDateTime;
 
@@ -10,7 +12,8 @@ import java.time.LocalDateTime;
  * @author refinex
  */
 @Data
-public class QueryOperateLogListCommand {
+@EqualsAndHashCode(callSuper = true)
+public class QueryOperateLogListCommand extends PageRequest {
 
     /**
      * 用户ID
@@ -47,8 +50,4 @@ public class QueryOperateLogListCommand {
      */
     private LocalDateTime endTime;
 
-    /**
-     * 限制条数
-     */
-    private Integer limit;
 }

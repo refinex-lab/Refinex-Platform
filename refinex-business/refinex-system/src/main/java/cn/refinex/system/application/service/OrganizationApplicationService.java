@@ -1,6 +1,8 @@
 package cn.refinex.system.application.service;
 
 import cn.refinex.base.exception.BizException;
+import cn.refinex.base.response.PageResponse;
+import cn.refinex.base.utils.PageUtils;
 import cn.refinex.system.application.command.*;
 import cn.refinex.system.application.dto.*;
 import cn.refinex.system.domain.error.SystemErrorCode;
@@ -35,17 +37,22 @@ public class OrganizationApplicationService {
      * @param command 查询命令
      * @return 企业列表
      */
-    public List<EstabDTO> listEstabs(QueryEstabListCommand command) {
-        List<EstabEntity> entities = organizationRepository.listEstabs(
+    public PageResponse<EstabDTO> listEstabs(QueryEstabListCommand command) {
+        int currentPage = PageUtils.normalizeCurrentPage(command == null ? null : command.getCurrentPage());
+        int pageSize = PageUtils.normalizePageSize(command == null ? null : command.getPageSize(),
+                PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE);
+        PageResponse<EstabEntity> entities = organizationRepository.listEstabs(
                 command == null ? null : command.getStatus(),
                 command == null ? null : command.getEstabType(),
-                command == null ? null : command.getKeyword()
+                command == null ? null : command.getKeyword(),
+                currentPage,
+                pageSize
         );
         List<EstabDTO> result = new ArrayList<>();
-        for (EstabEntity entity : entities) {
+        for (EstabEntity entity : entities.getData()) {
             result.add(toEstabDto(entity));
         }
-        return result;
+        return PageResponse.of(result, entities.getTotal(), entities.getPageSize(), entities.getCurrentPage());
     }
 
     /**
@@ -150,14 +157,19 @@ public class OrganizationApplicationService {
      * @param addrType 地址类型
      * @return 地址列表
      */
-    public List<EstabAddressDTO> listEstabAddresses(Long estabId, Integer addrType) {
+    public PageResponse<EstabAddressDTO> listEstabAddresses(Long estabId, Integer addrType, int currentPage, int pageSize) {
         requireEstab(estabId);
-        List<EstabAddressEntity> entities = organizationRepository.listEstabAddresses(estabId, addrType);
+        PageResponse<EstabAddressEntity> entities = organizationRepository.listEstabAddresses(
+                estabId,
+                addrType,
+                PageUtils.normalizeCurrentPage(currentPage),
+                PageUtils.normalizePageSize(pageSize, PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE)
+        );
         List<EstabAddressDTO> result = new ArrayList<>();
-        for (EstabAddressEntity entity : entities) {
+        for (EstabAddressEntity entity : entities.getData()) {
             result.add(toEstabAddressDto(entity));
         }
-        return result;
+        return PageResponse.of(result, entities.getTotal(), entities.getPageSize(), entities.getCurrentPage());
     }
 
     /**
@@ -303,14 +315,19 @@ public class OrganizationApplicationService {
      * @param status  状态
      * @return 成员列表
      */
-    public List<EstabUserDTO> listEstabUsers(Long estabId, Integer status) {
+    public PageResponse<EstabUserDTO> listEstabUsers(Long estabId, Integer status, int currentPage, int pageSize) {
         requireEstab(estabId);
-        List<EstabUserEntity> entities = organizationRepository.listEstabUsers(estabId, status);
+        PageResponse<EstabUserEntity> entities = organizationRepository.listEstabUsers(
+                estabId,
+                status,
+                PageUtils.normalizeCurrentPage(currentPage),
+                PageUtils.normalizePageSize(pageSize, PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE)
+        );
         List<EstabUserDTO> result = new ArrayList<>();
-        for (EstabUserEntity entity : entities) {
+        for (EstabUserEntity entity : entities.getData()) {
             result.add(toEstabUserDto(entity));
         }
-        return result;
+        return PageResponse.of(result, entities.getTotal(), entities.getPageSize(), entities.getCurrentPage());
     }
 
     /**
@@ -382,22 +399,27 @@ public class OrganizationApplicationService {
      * @param command 查询命令
      * @return 团队列表
      */
-    public List<TeamDTO> listTeams(QueryTeamListCommand command) {
+    public PageResponse<TeamDTO> listTeams(QueryTeamListCommand command) {
         if (command == null || command.getEstabId() == null) {
             throw new BizException(SystemErrorCode.INVALID_PARAM);
         }
         requireEstab(command.getEstabId());
-        List<TeamEntity> entities = organizationRepository.listTeams(
+        int currentPage = PageUtils.normalizeCurrentPage(command.getCurrentPage());
+        int pageSize = PageUtils.normalizePageSize(command.getPageSize(),
+                PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE);
+        PageResponse<TeamEntity> entities = organizationRepository.listTeams(
                 command.getEstabId(),
                 command.getParentId(),
                 command.getStatus(),
-                command.getKeyword()
+                command.getKeyword(),
+                currentPage,
+                pageSize
         );
         List<TeamDTO> result = new ArrayList<>();
-        for (TeamEntity entity : entities) {
+        for (TeamEntity entity : entities.getData()) {
             result.add(toTeamDto(entity));
         }
-        return result;
+        return PageResponse.of(result, entities.getTotal(), entities.getPageSize(), entities.getCurrentPage());
     }
 
     /**
@@ -508,14 +530,19 @@ public class OrganizationApplicationService {
      * @param status 状态
      * @return 团队成员列表
      */
-    public List<TeamUserDTO> listTeamUsers(Long teamId, Integer status) {
+    public PageResponse<TeamUserDTO> listTeamUsers(Long teamId, Integer status, int currentPage, int pageSize) {
         requireTeam(teamId);
-        List<TeamUserEntity> entities = organizationRepository.listTeamUsers(teamId, status);
+        PageResponse<TeamUserEntity> entities = organizationRepository.listTeamUsers(
+                teamId,
+                status,
+                PageUtils.normalizeCurrentPage(currentPage),
+                PageUtils.normalizePageSize(pageSize, PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE)
+        );
         List<TeamUserDTO> result = new ArrayList<>();
-        for (TeamUserEntity entity : entities) {
+        for (TeamUserEntity entity : entities.getData()) {
             result.add(toTeamUserDto(entity));
         }
-        return result;
+        return PageResponse.of(result, entities.getTotal(), entities.getPageSize(), entities.getCurrentPage());
     }
 
     /**

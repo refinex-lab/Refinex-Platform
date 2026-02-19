@@ -1,5 +1,6 @@
 package cn.refinex.system.domain.repository;
 
+import cn.refinex.base.response.PageResponse;
 import cn.refinex.system.domain.model.entity.DrsEntity;
 import cn.refinex.system.domain.model.entity.DrsInterfaceEntity;
 
@@ -22,7 +23,8 @@ public interface DataResourceRepository {
      * @param keyword      关键字
      * @return 数据资源列表
      */
-    List<DrsEntity> listDrs(Long systemId, Integer status, Integer drsType, Long ownerEstabId, String keyword);
+    PageResponse<DrsEntity> listDrs(Long systemId, Integer status, Integer drsType, Long ownerEstabId, String keyword,
+                                    int currentPage, int pageSize);
 
     /**
      * 根据数据资源ID查询数据资源
@@ -80,7 +82,8 @@ public interface DataResourceRepository {
      * @param keyword 关键字
      * @return 数据资源接口列表
      */
-    List<DrsInterfaceEntity> listDrsInterfaces(Long drsId, Integer status, String keyword);
+    PageResponse<DrsInterfaceEntity> listDrsInterfaces(Long drsId, Integer status, String keyword,
+                                                       int currentPage, int pageSize);
 
     /**
      * 根据接口ID查询数据资源接口

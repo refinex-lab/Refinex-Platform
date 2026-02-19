@@ -5,8 +5,6 @@ import cn.refinex.api.user.model.vo.UserInfo;
 import cn.refinex.base.exception.BizException;
 import cn.refinex.base.exception.SystemException;
 import cn.refinex.base.exception.code.BizErrorCode;
-import cn.refinex.base.response.MultiResponse;
-import cn.refinex.base.response.SingleResponse;
 import cn.refinex.user.application.command.ChangePasswordCommand;
 import cn.refinex.user.application.command.QueryUserInfoCommand;
 import cn.refinex.user.application.command.UploadUserAvatarCommand;
@@ -21,6 +19,7 @@ import cn.refinex.user.interfaces.dto.UserPasswordChangeRequest;
 import cn.refinex.user.interfaces.dto.UserProfileUpdateRequest;
 import cn.refinex.user.interfaces.vo.UserAccountVO;
 import cn.refinex.user.interfaces.vo.UserEstabVO;
+import cn.refinex.web.vo.Result;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -53,13 +52,13 @@ public class UserController {
      * @return 用户信息
      */
     @GetMapping("/me/info")
-    public SingleResponse<UserInfo> currentUserInfo() {
+    public Result<UserInfo> currentUserInfo() {
         QueryUserInfoCommand command = new QueryUserInfoCommand();
         command.setUserId(requireCurrentUserId());
         command.setEstabId(currentUserProvider.getCurrentEstabId());
 
         UserInfoDTO userInfoDto = userApplicationService.queryUserInfo(command);
-        return SingleResponse.of(userApiAssembler.toUserInfo(userInfoDto));
+        return Result.success(userApiAssembler.toUserInfo(userInfoDto));
     }
 
     /**
@@ -68,11 +67,11 @@ public class UserController {
      * @return 企业列表
      */
     @GetMapping("/me/estabs")
-    public MultiResponse<UserEstabVO> currentUserEstabs() {
+    public Result<List<UserEstabVO>> currentUserEstabs() {
         Long userId = requireCurrentUserId();
         Long currentEstabId = currentUserProvider.getCurrentEstabId();
         List<UserEstabDTO> estabs = userApplicationService.listUserEstabs(userId, currentEstabId);
-        return MultiResponse.of(userApiAssembler.toUserEstabVoList(estabs));
+        return Result.success(userApiAssembler.toUserEstabVoList(estabs));
     }
 
     /**
@@ -81,9 +80,9 @@ public class UserController {
      * @return 账号信息
      */
     @GetMapping("/me/account")
-    public SingleResponse<UserAccountVO> currentUserAccount() {
+    public Result<UserAccountVO> currentUserAccount() {
         UserAccountDTO accountDto = userApplicationService.queryUserAccountInfo(requireCurrentUserId());
-        return SingleResponse.of(userApiAssembler.toUserAccountVo(accountDto));
+        return Result.success(userApiAssembler.toUserAccountVo(accountDto));
     }
 
     /**
@@ -93,7 +92,7 @@ public class UserController {
      * @return 用户信息
      */
     @PostMapping(value = "/me/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public SingleResponse<UserInfo> uploadAvatar(@RequestPart("file") MultipartFile file) {
+    public Result<UserInfo> uploadAvatar(@RequestPart("file") MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new BizException("头像文件不能为空", UserErrorCode.INVALID_PARAM);
         }
@@ -110,7 +109,7 @@ public class UserController {
 
         try (InputStream inputStream = file.getInputStream()) {
             UserInfoDTO userInfoDto = userApplicationService.uploadUserAvatar(command, inputStream);
-            return SingleResponse.of(userApiAssembler.toUserInfo(userInfoDto));
+            return Result.success(userApiAssembler.toUserInfo(userInfoDto));
         } catch (IOException e) {
             throw new SystemException("头像文件读取失败", e, BizErrorCode.HTTP_SERVER_ERROR);
         }
@@ -123,7 +122,7 @@ public class UserController {
      * @return 用户信息
      */
     @PutMapping("/me/profile")
-    public SingleResponse<UserInfo> updateProfile(@Valid @RequestBody UserProfileUpdateRequest request) {
+    public Result<UserInfo> updateProfile(@Valid @RequestBody UserProfileUpdateRequest request) {
         UpdateUserProfileCommand command = new UpdateUserProfileCommand();
         command.setUserId(requireCurrentUserId());
         command.setEstabId(currentUserProvider.getCurrentEstabId());
@@ -134,7 +133,7 @@ public class UserController {
         command.setBirthday(request.getBirthday());
 
         UserInfoDTO userInfoDto = userApplicationService.updateUserProfile(command);
-        return SingleResponse.of(userApiAssembler.toUserInfo(userInfoDto));
+        return Result.success(userApiAssembler.toUserInfo(userInfoDto));
     }
 
     /**
@@ -144,13 +143,13 @@ public class UserController {
      * @return 操作结果
      */
     @PostMapping("/me/password/change")
-    public SingleResponse<Void> changePassword(@Valid @RequestBody UserPasswordChangeRequest request) {
+    public Result<Void> changePassword(@Valid @RequestBody UserPasswordChangeRequest request) {
         ChangePasswordCommand command = new ChangePasswordCommand();
         command.setUserId(requireCurrentUserId());
         command.setOldPassword(request.getOldPassword());
         command.setNewPassword(request.getNewPassword());
         userApplicationService.changePassword(command);
-        return SingleResponse.of(null);
+        return Result.success();
     }
 
     /**

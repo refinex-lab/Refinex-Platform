@@ -1,20 +1,19 @@
 package cn.refinex.system.interfaces.controller;
 
 import cn.refinex.api.user.model.dto.*;
-import cn.refinex.base.response.MultiResponse;
-import cn.refinex.base.response.SingleResponse;
+import cn.refinex.base.response.PageResponse;
 import cn.refinex.system.application.service.UserManageApplicationService;
 import cn.refinex.system.interfaces.assembler.UserManageApiAssembler;
 import cn.refinex.system.interfaces.dto.*;
 import cn.refinex.system.interfaces.vo.SystemUserIdentityVO;
 import cn.refinex.system.interfaces.vo.SystemUserVO;
+import cn.refinex.web.vo.PageResult;
+import cn.refinex.web.vo.Result;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 /**
  * 系统用户管理接口
@@ -37,10 +36,15 @@ public class UserManageController {
      * @return 用户列表
      */
     @GetMapping
-    public MultiResponse<SystemUserVO> listUsers(@Valid SystemUserListQuery query) {
+    public PageResult<SystemUserVO> listUsers(@Valid SystemUserListQuery query) {
         UserManageListQuery command = userManageApiAssembler.toUserManageListQuery(query);
-        List<UserManageDTO> users = userManageApplicationService.listUsers(command);
-        return MultiResponse.of(userManageApiAssembler.toSystemUserVoList(users));
+        PageResponse<UserManageDTO> users = userManageApplicationService.listUsers(command);
+        return PageResult.success(
+                userManageApiAssembler.toSystemUserVoList(users.getData()),
+                users.getTotal(),
+                users.getCurrentPage(),
+                users.getPageSize()
+        );
     }
 
     /**
@@ -50,9 +54,9 @@ public class UserManageController {
      * @return 用户详情
      */
     @GetMapping("/{userId}")
-    public SingleResponse<SystemUserVO> getUser(@PathVariable @Positive(message = "用户ID必须大于0") Long userId) {
+    public Result<SystemUserVO> getUser(@PathVariable @Positive(message = "用户ID必须大于0") Long userId) {
         UserManageDTO dto = userManageApplicationService.getUser(userId);
-        return SingleResponse.of(userManageApiAssembler.toSystemUserVo(dto));
+        return Result.success(userManageApiAssembler.toSystemUserVo(dto));
     }
 
     /**
@@ -62,10 +66,10 @@ public class UserManageController {
      * @return 用户详情
      */
     @PostMapping
-    public SingleResponse<SystemUserVO> createUser(@Valid @RequestBody SystemUserCreateRequest request) {
+    public Result<SystemUserVO> createUser(@Valid @RequestBody SystemUserCreateRequest request) {
         UserManageCreateCommand command = userManageApiAssembler.toUserManageCreateCommand(request);
         UserManageDTO dto = userManageApplicationService.createUser(command);
-        return SingleResponse.of(userManageApiAssembler.toSystemUserVo(dto));
+        return Result.success(userManageApiAssembler.toSystemUserVo(dto));
     }
 
     /**
@@ -76,11 +80,11 @@ public class UserManageController {
      * @return 用户详情
      */
     @PutMapping("/{userId}")
-    public SingleResponse<SystemUserVO> updateUser(@PathVariable @Positive(message = "用户ID必须大于0") Long userId,
-                                                   @Valid @RequestBody SystemUserUpdateRequest request) {
+    public Result<SystemUserVO> updateUser(@PathVariable @Positive(message = "用户ID必须大于0") Long userId,
+                                           @Valid @RequestBody SystemUserUpdateRequest request) {
         UserManageUpdateCommand command = userManageApiAssembler.toUserManageUpdateCommand(request);
         UserManageDTO dto = userManageApplicationService.updateUser(userId, command);
-        return SingleResponse.of(userManageApiAssembler.toSystemUserVo(dto));
+        return Result.success(userManageApiAssembler.toSystemUserVo(dto));
     }
 
     /**
@@ -90,9 +94,19 @@ public class UserManageController {
      * @return 用户身份列表
      */
     @GetMapping("/{userId}/identities")
-    public MultiResponse<SystemUserIdentityVO> listIdentities(@PathVariable @Positive(message = "用户ID必须大于0") Long userId) {
-        List<UserIdentityManageDTO> identities = userManageApplicationService.listIdentities(userId);
-        return MultiResponse.of(userManageApiAssembler.toSystemUserIdentityVoList(identities));
+    public PageResult<SystemUserIdentityVO> listIdentities(@PathVariable @Positive(message = "用户ID必须大于0") Long userId,
+                                                           @Valid SystemUserIdentityListQuery query) {
+        PageResponse<UserIdentityManageDTO> identities = userManageApplicationService.listIdentities(
+                userId,
+                query.getCurrentPage(),
+                query.getPageSize()
+        );
+        return PageResult.success(
+                userManageApiAssembler.toSystemUserIdentityVoList(identities.getData()),
+                identities.getTotal(),
+                identities.getCurrentPage(),
+                identities.getPageSize()
+        );
     }
 
     /**
@@ -103,11 +117,11 @@ public class UserManageController {
      * @return 用户身份
      */
     @PostMapping("/{userId}/identities")
-    public SingleResponse<SystemUserIdentityVO> createIdentity(@PathVariable @Positive(message = "用户ID必须大于0") Long userId,
-                                                               @Valid @RequestBody SystemUserIdentityCreateRequest request) {
+    public Result<SystemUserIdentityVO> createIdentity(@PathVariable @Positive(message = "用户ID必须大于0") Long userId,
+                                                       @Valid @RequestBody SystemUserIdentityCreateRequest request) {
         UserIdentityManageCreateCommand command = userManageApiAssembler.toUserIdentityManageCreateCommand(request);
         UserIdentityManageDTO dto = userManageApplicationService.createIdentity(userId, command);
-        return SingleResponse.of(userManageApiAssembler.toSystemUserIdentityVo(dto));
+        return Result.success(userManageApiAssembler.toSystemUserIdentityVo(dto));
     }
 
     /**
@@ -118,11 +132,11 @@ public class UserManageController {
      * @return 用户身份
      */
     @PutMapping("/identities/{identityId}")
-    public SingleResponse<SystemUserIdentityVO> updateIdentity(@PathVariable @Positive(message = "身份ID必须大于0") Long identityId,
-                                                               @Valid @RequestBody SystemUserIdentityUpdateRequest request) {
+    public Result<SystemUserIdentityVO> updateIdentity(@PathVariable @Positive(message = "身份ID必须大于0") Long identityId,
+                                                       @Valid @RequestBody SystemUserIdentityUpdateRequest request) {
         UserIdentityManageUpdateCommand command = userManageApiAssembler.toUserIdentityManageUpdateCommand(request);
         UserIdentityManageDTO dto = userManageApplicationService.updateIdentity(identityId, command);
-        return SingleResponse.of(userManageApiAssembler.toSystemUserIdentityVo(dto));
+        return Result.success(userManageApiAssembler.toSystemUserIdentityVo(dto));
     }
 
     /**
@@ -132,8 +146,8 @@ public class UserManageController {
      * @return 操作结果
      */
     @DeleteMapping("/identities/{identityId}")
-    public SingleResponse<Void> deleteIdentity(@PathVariable @Positive(message = "身份ID必须大于0") Long identityId) {
+    public Result<Void> deleteIdentity(@PathVariable @Positive(message = "身份ID必须大于0") Long identityId) {
         userManageApplicationService.deleteIdentity(identityId);
-        return SingleResponse.of(null);
+        return Result.success();
     }
 }

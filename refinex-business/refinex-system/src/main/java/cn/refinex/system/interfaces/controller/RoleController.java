@@ -1,8 +1,7 @@
 package cn.refinex.system.interfaces.controller;
 
 import cn.refinex.api.user.context.CurrentUserProvider;
-import cn.refinex.base.response.MultiResponse;
-import cn.refinex.base.response.SingleResponse;
+import cn.refinex.base.response.PageResponse;
 import cn.refinex.system.application.command.AssignRolePermissionsCommand;
 import cn.refinex.system.application.command.AssignRoleUsersCommand;
 import cn.refinex.system.application.command.CreateRoleCommand;
@@ -19,6 +18,8 @@ import cn.refinex.system.interfaces.dto.RoleListQuery;
 import cn.refinex.system.interfaces.dto.RoleUpdateRequest;
 import cn.refinex.system.interfaces.vo.RoleBindingVO;
 import cn.refinex.system.interfaces.vo.RoleVO;
+import cn.refinex.web.vo.PageResult;
+import cn.refinex.web.vo.Result;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
@@ -30,8 +31,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 /**
  * 角色管理接口
@@ -55,10 +54,15 @@ public class RoleController {
      * @return 角色列表
      */
     @GetMapping
-    public MultiResponse<RoleVO> listRoles(@Valid RoleListQuery query) {
+    public PageResult<RoleVO> listRoles(@Valid RoleListQuery query) {
         QueryRoleListCommand command = systemApiAssembler.toQueryRoleListCommand(query);
-        List<RoleDTO> roles = systemApplicationService.listRoles(command);
-        return MultiResponse.of(systemApiAssembler.toRoleVoList(roles));
+        PageResponse<RoleDTO> roles = systemApplicationService.listRoles(command);
+        return PageResult.success(
+                systemApiAssembler.toRoleVoList(roles.getData()),
+                roles.getTotal(),
+                roles.getCurrentPage(),
+                roles.getPageSize()
+        );
     }
 
     /**
@@ -68,9 +72,9 @@ public class RoleController {
      * @return 角色详情
      */
     @GetMapping("/{roleId}")
-    public SingleResponse<RoleVO> getRole(@PathVariable @Positive(message = "角色ID必须大于0") Long roleId) {
+    public Result<RoleVO> getRole(@PathVariable @Positive(message = "角色ID必须大于0") Long roleId) {
         RoleDTO role = systemApplicationService.getRole(roleId);
-        return SingleResponse.of(systemApiAssembler.toRoleVo(role));
+        return Result.success(systemApiAssembler.toRoleVo(role));
     }
 
     /**
@@ -80,10 +84,10 @@ public class RoleController {
      * @return 角色详情
      */
     @PostMapping
-    public SingleResponse<RoleVO> createRole(@Valid @RequestBody RoleCreateRequest request) {
+    public Result<RoleVO> createRole(@Valid @RequestBody RoleCreateRequest request) {
         CreateRoleCommand command = systemApiAssembler.toCreateRoleCommand(request);
         RoleDTO created = systemApplicationService.createRole(command);
-        return SingleResponse.of(systemApiAssembler.toRoleVo(created));
+        return Result.success(systemApiAssembler.toRoleVo(created));
     }
 
     /**
@@ -94,12 +98,12 @@ public class RoleController {
      * @return 角色详情
      */
     @PutMapping("/{roleId}")
-    public SingleResponse<RoleVO> updateRole(@PathVariable @Positive(message = "角色ID必须大于0") Long roleId,
-                                             @Valid @RequestBody RoleUpdateRequest request) {
+    public Result<RoleVO> updateRole(@PathVariable @Positive(message = "角色ID必须大于0") Long roleId,
+                                     @Valid @RequestBody RoleUpdateRequest request) {
         UpdateRoleCommand command = systemApiAssembler.toUpdateRoleCommand(request);
         command.setRoleId(roleId);
         RoleDTO updated = systemApplicationService.updateRole(command);
-        return SingleResponse.of(systemApiAssembler.toRoleVo(updated));
+        return Result.success(systemApiAssembler.toRoleVo(updated));
     }
 
     /**
@@ -109,9 +113,9 @@ public class RoleController {
      * @return 授权信息
      */
     @GetMapping("/{roleId}/bindings")
-    public SingleResponse<RoleBindingVO> getRoleBindings(@PathVariable @Positive(message = "角色ID必须大于0") Long roleId) {
+    public Result<RoleBindingVO> getRoleBindings(@PathVariable @Positive(message = "角色ID必须大于0") Long roleId) {
         RoleBindingDTO binding = systemApplicationService.getRoleBindings(roleId);
-        return SingleResponse.of(systemApiAssembler.toRoleBindingVo(binding));
+        return Result.success(systemApiAssembler.toRoleBindingVo(binding));
     }
 
     /**
@@ -122,13 +126,13 @@ public class RoleController {
      * @return 操作结果
      */
     @PutMapping("/{roleId}/users")
-    public SingleResponse<Void> assignRoleUsers(@PathVariable @Positive(message = "角色ID必须大于0") Long roleId,
-                                                 @Valid @RequestBody AssignRoleUsersRequest request) {
+    public Result<Void> assignRoleUsers(@PathVariable @Positive(message = "角色ID必须大于0") Long roleId,
+                                        @Valid @RequestBody AssignRoleUsersRequest request) {
         AssignRoleUsersCommand command = systemApiAssembler.toAssignRoleUsersCommand(request);
         command.setRoleId(roleId);
         command.setOperatorUserId(currentUserProvider.getCurrentUserId());
         systemApplicationService.assignRoleUsers(command);
-        return SingleResponse.of(null);
+        return Result.success();
     }
 
     /**
@@ -139,12 +143,12 @@ public class RoleController {
      * @return 操作结果
      */
     @PutMapping("/{roleId}/permissions")
-    public SingleResponse<Void> assignRolePermissions(@PathVariable @Positive(message = "角色ID必须大于0") Long roleId,
-                                                       @Valid @RequestBody AssignRolePermissionsRequest request) {
+    public Result<Void> assignRolePermissions(@PathVariable @Positive(message = "角色ID必须大于0") Long roleId,
+                                              @Valid @RequestBody AssignRolePermissionsRequest request) {
         AssignRolePermissionsCommand command = systemApiAssembler.toAssignRolePermissionsCommand(request);
         command.setRoleId(roleId);
         command.setOperatorUserId(currentUserProvider.getCurrentUserId());
         systemApplicationService.assignRolePermissions(command);
-        return SingleResponse.of(null);
+        return Result.success();
     }
 }

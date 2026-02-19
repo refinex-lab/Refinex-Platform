@@ -26,6 +26,7 @@ import {
   type ErrorLog,
   type ErrorLogListQuery,
 } from '@/features/system/api'
+import { PageToolbar } from '@/features/system/components/page-toolbar'
 import { handleServerError } from '@/lib/handle-server-error'
 import { formatDateTime, toOptionalString } from './common'
 
@@ -38,6 +39,7 @@ const ERROR_LEVEL_LABEL: Record<number, string> = {
 
 export function ErrorLogsPage() {
   const [logs, setLogs] = useState<ErrorLog[]>([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
 
   const [serviceInput, setServiceInput] = useState('')
@@ -45,7 +47,7 @@ export function ErrorLogsPage() {
   const [requestPathInput, setRequestPathInput] = useState('')
   const [startTimeInput, setStartTimeInput] = useState('')
   const [endTimeInput, setEndTimeInput] = useState('')
-  const [query, setQuery] = useState<ErrorLogListQuery>({ limit: 200 })
+  const [query, setQuery] = useState<ErrorLogListQuery>({ currentPage: 1, pageSize: 10 })
 
   const [detailOpen, setDetailOpen] = useState(false)
   const [detailLoading, setDetailLoading] = useState(false)
@@ -54,8 +56,9 @@ export function ErrorLogsPage() {
   async function loadLogs(activeQuery: ErrorLogListQuery = query) {
     setLoading(true)
     try {
-      const data = await listErrorLogs(activeQuery)
-      setLogs(data)
+      const pageData = await listErrorLogs(activeQuery)
+      setLogs(pageData.data ?? [])
+      setTotal(pageData.total ?? 0)
     } catch (error) {
       handleServerError(error)
     } finally {
@@ -75,7 +78,8 @@ export function ErrorLogsPage() {
       requestPath: toOptionalString(requestPathInput),
       startTime: startTimeInput || undefined,
       endTime: endTimeInput || undefined,
-      limit: 200,
+      currentPage: 1,
+      pageSize: query.pageSize ?? 10,
     })
   }
 
@@ -85,7 +89,15 @@ export function ErrorLogsPage() {
     setRequestPathInput('')
     setStartTimeInput('')
     setEndTimeInput('')
-    setQuery({ limit: 200 })
+    setQuery({ currentPage: 1, pageSize: query.pageSize ?? 10 })
+  }
+
+  function handlePageChange(page: number) {
+    setQuery((prev) => ({ ...prev, currentPage: page }))
+  }
+
+  function handlePageSizeChange(size: number) {
+    setQuery((prev) => ({ ...prev, pageSize: size, currentPage: 1 }))
   }
 
   async function openDetail(logId?: number) {
@@ -192,6 +204,14 @@ export function ErrorLogsPage() {
               )}
             </TableBody>
           </Table>
+          <PageToolbar
+            page={query.currentPage ?? 1}
+            size={query.pageSize ?? 10}
+            total={total}
+            loading={loading}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+          />
         </CardContent>
       </Card>
 

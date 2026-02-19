@@ -1,5 +1,6 @@
 package cn.refinex.user.infrastructure.persistence.repository;
 
+import cn.refinex.base.response.PageResponse;
 import cn.refinex.user.domain.model.entity.UserEntity;
 import cn.refinex.user.domain.model.entity.UserEstabEntity;
 import cn.refinex.user.domain.model.entity.UserIdentityEntity;
@@ -17,6 +18,7 @@ import cn.refinex.user.infrastructure.persistence.mapper.DefTeamUserMapper;
 import cn.refinex.user.infrastructure.persistence.mapper.DefUserIdentityMapper;
 import cn.refinex.user.infrastructure.persistence.mapper.DefUserMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -111,11 +113,13 @@ public class UserRepositoryImpl implements UserRepository {
      * @param status         用户状态
      * @param userType       用户类型
      * @param keyword        关键字
-     * @param limit          限制条数
-     * @return 用户列表
+     * @param currentPage    当前页
+     * @param pageSize       每页条数
+     * @return 用户分页列表
      */
     @Override
-    public List<UserEntity> listUsersForManage(Long primaryEstabId, Integer status, Integer userType, String keyword, Integer limit) {
+    public PageResponse<UserEntity> listUsersForManage(Long primaryEstabId, Integer status, Integer userType,
+                                                       String keyword, int currentPage, int pageSize) {
         var query = Wrappers.lambdaQuery(DefUserDo.class)
                 .eq(DefUserDo::getDeleted, 0)
                 .orderByDesc(DefUserDo::getId);
@@ -143,12 +147,11 @@ public class UserRepositoryImpl implements UserRepository {
                     .or()
                     .like(DefUserDo::getUserCode, trimmed));
         }
-        if (limit != null && limit > 0) {
-            query.last("LIMIT " + limit);
-        }
 
-        List<DefUserDo> rows = defUserMapper.selectList(query);
-        return rows.stream().map(userDoConverter::toEntity).collect(Collectors.toList());
+        Page<DefUserDo> page = new Page<>(currentPage, pageSize);
+        Page<DefUserDo> rows = defUserMapper.selectPage(page, query);
+        List<UserEntity> data = rows.getRecords().stream().map(userDoConverter::toEntity).collect(Collectors.toList());
+        return PageResponse.of(data, rows.getTotal(), pageSize, currentPage);
     }
 
     /**

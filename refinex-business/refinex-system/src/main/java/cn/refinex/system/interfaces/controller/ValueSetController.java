@@ -1,7 +1,6 @@
 package cn.refinex.system.interfaces.controller;
 
-import cn.refinex.base.response.MultiResponse;
-import cn.refinex.base.response.SingleResponse;
+import cn.refinex.base.response.PageResponse;
 import cn.refinex.system.application.command.*;
 import cn.refinex.system.application.dto.ValueDTO;
 import cn.refinex.system.application.dto.ValueSetDTO;
@@ -10,13 +9,13 @@ import cn.refinex.system.interfaces.assembler.SystemApiAssembler;
 import cn.refinex.system.interfaces.dto.*;
 import cn.refinex.system.interfaces.vo.ValueSetVO;
 import cn.refinex.system.interfaces.vo.ValueVO;
+import cn.refinex.web.vo.PageResult;
+import cn.refinex.web.vo.Result;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 /**
  * 值集管理接口
@@ -39,10 +38,15 @@ public class ValueSetController {
      * @return 值集列表
      */
     @GetMapping
-    public MultiResponse<ValueSetVO> listValueSets(@Valid ValueSetListQuery query) {
+    public PageResult<ValueSetVO> listValueSets(@Valid ValueSetListQuery query) {
         QueryValueSetListCommand command = systemApiAssembler.toQueryValueSetListCommand(query);
-        List<ValueSetDTO> list = valueSetApplicationService.listValueSets(command);
-        return MultiResponse.of(systemApiAssembler.toValueSetVoList(list));
+        PageResponse<ValueSetDTO> list = valueSetApplicationService.listValueSets(command);
+        return PageResult.success(
+                systemApiAssembler.toValueSetVoList(list.getData()),
+                list.getTotal(),
+                list.getCurrentPage(),
+                list.getPageSize()
+        );
     }
 
     /**
@@ -52,9 +56,9 @@ public class ValueSetController {
      * @return 值集详情
      */
     @GetMapping("/{valueSetId}")
-    public SingleResponse<ValueSetVO> getValueSet(@PathVariable @Positive(message = "值集ID必须大于0") Long valueSetId) {
+    public Result<ValueSetVO> getValueSet(@PathVariable @Positive(message = "值集ID必须大于0") Long valueSetId) {
         ValueSetDTO dto = valueSetApplicationService.getValueSet(valueSetId);
-        return SingleResponse.of(systemApiAssembler.toValueSetVo(dto));
+        return Result.success(systemApiAssembler.toValueSetVo(dto));
     }
 
     /**
@@ -64,10 +68,10 @@ public class ValueSetController {
      * @return 值集详情
      */
     @PostMapping
-    public SingleResponse<ValueSetVO> createValueSet(@Valid @RequestBody ValueSetCreateRequest request) {
+    public Result<ValueSetVO> createValueSet(@Valid @RequestBody ValueSetCreateRequest request) {
         CreateValueSetCommand command = systemApiAssembler.toCreateValueSetCommand(request);
         ValueSetDTO dto = valueSetApplicationService.createValueSet(command);
-        return SingleResponse.of(systemApiAssembler.toValueSetVo(dto));
+        return Result.success(systemApiAssembler.toValueSetVo(dto));
     }
 
     /**
@@ -78,12 +82,12 @@ public class ValueSetController {
      * @return 值集详情
      */
     @PutMapping("/{valueSetId}")
-    public SingleResponse<ValueSetVO> updateValueSet(@PathVariable @Positive(message = "值集ID必须大于0") Long valueSetId,
-                                                     @Valid @RequestBody ValueSetUpdateRequest request) {
+    public Result<ValueSetVO> updateValueSet(@PathVariable @Positive(message = "值集ID必须大于0") Long valueSetId,
+                                             @Valid @RequestBody ValueSetUpdateRequest request) {
         UpdateValueSetCommand command = systemApiAssembler.toUpdateValueSetCommand(request);
         command.setValueSetId(valueSetId);
         ValueSetDTO dto = valueSetApplicationService.updateValueSet(command);
-        return SingleResponse.of(systemApiAssembler.toValueSetVo(dto));
+        return Result.success(systemApiAssembler.toValueSetVo(dto));
     }
 
     /**
@@ -93,9 +97,9 @@ public class ValueSetController {
      * @return 操作结果
      */
     @DeleteMapping("/{valueSetId}")
-    public SingleResponse<Void> deleteValueSet(@PathVariable @Positive(message = "值集ID必须大于0") Long valueSetId) {
+    public Result<Void> deleteValueSet(@PathVariable @Positive(message = "值集ID必须大于0") Long valueSetId) {
         valueSetApplicationService.deleteValueSet(valueSetId);
-        return SingleResponse.of(null);
+        return Result.success();
     }
 
     /**
@@ -105,10 +109,15 @@ public class ValueSetController {
      * @return 值集明细列表
      */
     @GetMapping("/values")
-    public MultiResponse<ValueVO> listValues(@Valid ValueListQuery query) {
+    public PageResult<ValueVO> listValues(@Valid ValueListQuery query) {
         QueryValueListCommand command = systemApiAssembler.toQueryValueListCommand(query);
-        List<ValueDTO> list = valueSetApplicationService.listValues(command);
-        return MultiResponse.of(systemApiAssembler.toValueVoList(list));
+        PageResponse<ValueDTO> list = valueSetApplicationService.listValues(command);
+        return PageResult.success(
+                systemApiAssembler.toValueVoList(list.getData()),
+                list.getTotal(),
+                list.getCurrentPage(),
+                list.getPageSize()
+        );
     }
 
     /**
@@ -118,9 +127,9 @@ public class ValueSetController {
      * @return 值集明细详情
      */
     @GetMapping("/values/{valueId}")
-    public SingleResponse<ValueVO> getValue(@PathVariable @Positive(message = "值ID必须大于0") Long valueId) {
+    public Result<ValueVO> getValue(@PathVariable @Positive(message = "值ID必须大于0") Long valueId) {
         ValueDTO dto = valueSetApplicationService.getValue(valueId);
-        return SingleResponse.of(systemApiAssembler.toValueVo(dto));
+        return Result.success(systemApiAssembler.toValueVo(dto));
     }
 
     /**
@@ -131,12 +140,12 @@ public class ValueSetController {
      * @return 值集明细详情
      */
     @PostMapping("/{setCode}/values")
-    public SingleResponse<ValueVO> createValue(@PathVariable String setCode,
-                                               @Valid @RequestBody ValueCreateRequest request) {
+    public Result<ValueVO> createValue(@PathVariable String setCode,
+                                       @Valid @RequestBody ValueCreateRequest request) {
         CreateValueCommand command = systemApiAssembler.toCreateValueCommand(request);
         command.setSetCode(setCode);
         ValueDTO dto = valueSetApplicationService.createValue(command);
-        return SingleResponse.of(systemApiAssembler.toValueVo(dto));
+        return Result.success(systemApiAssembler.toValueVo(dto));
     }
 
     /**
@@ -147,12 +156,12 @@ public class ValueSetController {
      * @return 值集明细详情
      */
     @PutMapping("/values/{valueId}")
-    public SingleResponse<ValueVO> updateValue(@PathVariable @Positive(message = "值ID必须大于0") Long valueId,
-                                               @Valid @RequestBody ValueUpdateRequest request) {
+    public Result<ValueVO> updateValue(@PathVariable @Positive(message = "值ID必须大于0") Long valueId,
+                                       @Valid @RequestBody ValueUpdateRequest request) {
         UpdateValueCommand command = systemApiAssembler.toUpdateValueCommand(request);
         command.setValueId(valueId);
         ValueDTO dto = valueSetApplicationService.updateValue(command);
-        return SingleResponse.of(systemApiAssembler.toValueVo(dto));
+        return Result.success(systemApiAssembler.toValueVo(dto));
     }
 
     /**
@@ -162,8 +171,8 @@ public class ValueSetController {
      * @return 操作结果
      */
     @DeleteMapping("/values/{valueId}")
-    public SingleResponse<Void> deleteValue(@PathVariable @Positive(message = "值ID必须大于0") Long valueId) {
+    public Result<Void> deleteValue(@PathVariable @Positive(message = "值ID必须大于0") Long valueId) {
         valueSetApplicationService.deleteValue(valueId);
-        return SingleResponse.of(null);
+        return Result.success();
     }
 }

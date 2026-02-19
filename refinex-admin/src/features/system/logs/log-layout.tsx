@@ -6,12 +6,10 @@ import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
 
 type LogLayoutProps = {
-  title: string
-  desc: string
   children: React.ReactNode
 }
 
-export function LogLayout({ title, desc, children }: LogLayoutProps) {
+export function LogLayout({ children }: LogLayoutProps) {
   return (
     <>
       <Header>
@@ -24,10 +22,6 @@ export function LogLayout({ title, desc, children }: LogLayoutProps) {
       </Header>
 
       <Main fixed fluid>
-        <div className='mb-4'>
-          <h1 className='text-2xl font-bold tracking-tight'>{title}</h1>
-          <p className='text-sm text-muted-foreground'>{desc}</p>
-        </div>
         {children}
       </Main>
     </>

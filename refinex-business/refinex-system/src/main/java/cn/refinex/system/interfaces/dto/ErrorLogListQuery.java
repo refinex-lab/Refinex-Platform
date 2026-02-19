@@ -1,9 +1,11 @@
 package cn.refinex.system.interfaces.dto;
 
+import cn.refinex.base.request.PageRequest;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDateTime;
@@ -14,7 +16,8 @@ import java.time.LocalDateTime;
  * @author refinex
  */
 @Data
-public class ErrorLogListQuery {
+@EqualsAndHashCode(callSuper = true)
+public class ErrorLogListQuery extends PageRequest {
 
     /**
      * 服务名
@@ -26,7 +29,7 @@ public class ErrorLogListQuery {
      * 错误级别
      */
     @Min(value = 1, message = "错误级别取值非法")
-    @Max(value = 3, message = "错误级别取值非法")
+    @Max(value = 4, message = "错误级别取值非法")
     private Integer errorLevel;
 
     /**
@@ -47,10 +50,4 @@ public class ErrorLogListQuery {
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
     private LocalDateTime endTime;
 
-    /**
-     * 限制条数
-     */
-    @Min(value = 1, message = "limit 最小为1")
-    @Max(value = 200, message = "limit 最大为200")
-    private Integer limit;
 }

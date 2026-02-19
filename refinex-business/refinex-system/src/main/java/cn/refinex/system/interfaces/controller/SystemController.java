@@ -1,7 +1,6 @@
 package cn.refinex.system.interfaces.controller;
 
-import cn.refinex.base.response.MultiResponse;
-import cn.refinex.base.response.SingleResponse;
+import cn.refinex.base.response.PageResponse;
 import cn.refinex.system.application.command.CreateSystemCommand;
 import cn.refinex.system.application.command.QuerySystemListCommand;
 import cn.refinex.system.application.command.UpdateSystemCommand;
@@ -12,6 +11,8 @@ import cn.refinex.system.interfaces.dto.SystemCreateRequest;
 import cn.refinex.system.interfaces.dto.SystemListQuery;
 import cn.refinex.system.interfaces.dto.SystemUpdateRequest;
 import cn.refinex.system.interfaces.vo.SystemVO;
+import cn.refinex.web.vo.PageResult;
+import cn.refinex.web.vo.Result;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
@@ -23,8 +24,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 /**
  * 系统定义管理接口
@@ -47,10 +46,15 @@ public class SystemController {
      * @return 系统列表
      */
     @GetMapping
-    public MultiResponse<SystemVO> listSystems(@Valid SystemListQuery query) {
+    public PageResult<SystemVO> listSystems(@Valid SystemListQuery query) {
         QuerySystemListCommand command = systemApiAssembler.toQuerySystemListCommand(query);
-        List<SystemDTO> systems = systemApplicationService.listSystems(command);
-        return MultiResponse.of(systemApiAssembler.toSystemVoList(systems));
+        PageResponse<SystemDTO> systems = systemApplicationService.listSystems(command);
+        return PageResult.success(
+                systemApiAssembler.toSystemVoList(systems.getData()),
+                systems.getTotal(),
+                systems.getCurrentPage(),
+                systems.getPageSize()
+        );
     }
 
     /**
@@ -60,9 +64,9 @@ public class SystemController {
      * @return 系统详情
      */
     @GetMapping("/{systemId}")
-    public SingleResponse<SystemVO> getSystem(@PathVariable @Positive(message = "系统ID必须大于0") Long systemId) {
+    public Result<SystemVO> getSystem(@PathVariable @Positive(message = "系统ID必须大于0") Long systemId) {
         SystemDTO system = systemApplicationService.getSystem(systemId);
-        return SingleResponse.of(systemApiAssembler.toSystemVo(system));
+        return Result.success(systemApiAssembler.toSystemVo(system));
     }
 
     /**
@@ -72,10 +76,10 @@ public class SystemController {
      * @return 系统详情
      */
     @PostMapping
-    public SingleResponse<SystemVO> createSystem(@Valid @RequestBody SystemCreateRequest request) {
+    public Result<SystemVO> createSystem(@Valid @RequestBody SystemCreateRequest request) {
         CreateSystemCommand command = systemApiAssembler.toCreateSystemCommand(request);
         SystemDTO created = systemApplicationService.createSystem(command);
-        return SingleResponse.of(systemApiAssembler.toSystemVo(created));
+        return Result.success(systemApiAssembler.toSystemVo(created));
     }
 
     /**
@@ -86,11 +90,11 @@ public class SystemController {
      * @return 系统详情
      */
     @PutMapping("/{systemId}")
-    public SingleResponse<SystemVO> updateSystem(@PathVariable @Positive(message = "系统ID必须大于0") Long systemId,
-                                                 @Valid @RequestBody SystemUpdateRequest request) {
+    public Result<SystemVO> updateSystem(@PathVariable @Positive(message = "系统ID必须大于0") Long systemId,
+                                         @Valid @RequestBody SystemUpdateRequest request) {
         UpdateSystemCommand command = systemApiAssembler.toUpdateSystemCommand(request);
         command.setSystemId(systemId);
         SystemDTO updated = systemApplicationService.updateSystem(command);
-        return SingleResponse.of(systemApiAssembler.toSystemVo(updated));
+        return Result.success(systemApiAssembler.toSystemVo(updated));
     }
 }

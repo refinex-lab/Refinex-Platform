@@ -1,9 +1,7 @@
 package cn.refinex.api.user.model.dto;
 
+import cn.refinex.base.request.PageRequest;
 import lombok.Data;
-
-import java.io.Serial;
-import java.io.Serializable;
 
 /**
  * 用户管理列表查询参数
@@ -11,10 +9,7 @@ import java.io.Serializable;
  * @author refinex
  */
 @Data
-public class UserManageListQuery implements Serializable {
-
-    @Serial
-    private static final long serialVersionUID = 1L;
+public class UserManageListQuery extends PageRequest {
 
     /**
      * 主组织ID
@@ -36,8 +31,4 @@ public class UserManageListQuery implements Serializable {
      */
     private String keyword;
 
-    /**
-     * 限制条数
-     */
-    private Integer limit;
 }

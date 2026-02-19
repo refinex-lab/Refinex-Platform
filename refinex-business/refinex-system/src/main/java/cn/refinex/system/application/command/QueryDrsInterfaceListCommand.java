@@ -1,6 +1,8 @@
 package cn.refinex.system.application.command;
 
+import cn.refinex.base.request.PageRequest;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * 查询数据资源接口列表命令
@@ -8,7 +10,8 @@ import lombok.Data;
  * @author refinex
  */
 @Data
-public class QueryDrsInterfaceListCommand {
+@EqualsAndHashCode(callSuper = true)
+public class QueryDrsInterfaceListCommand extends PageRequest {
 
     /**
      * 数据资源ID

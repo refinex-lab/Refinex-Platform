@@ -8,7 +8,7 @@ export const Route = createFileRoute('/_authenticated/system-management/logs/not
 
 function RouteComponent() {
   return (
-    <LogLayout title='通知日志' desc='追踪短信、邮件等通知发送状态，定位通知链路异常。'>
+    <LogLayout>
       <NotifyLogsPage />
     </LogLayout>
   )

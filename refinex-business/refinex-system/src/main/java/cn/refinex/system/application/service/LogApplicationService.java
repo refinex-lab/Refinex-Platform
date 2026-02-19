@@ -1,6 +1,8 @@
 package cn.refinex.system.application.service;
 
 import cn.refinex.base.exception.BizException;
+import cn.refinex.base.response.PageResponse;
+import cn.refinex.base.utils.PageUtils;
 import cn.refinex.system.application.assembler.SystemDomainAssembler;
 import cn.refinex.system.application.command.QueryErrorLogListCommand;
 import cn.refinex.system.application.command.QueryLoginLogListCommand;
@@ -31,9 +33,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class LogApplicationService {
 
-    private static final int DEFAULT_LIMIT = 50;
-    private static final int MAX_LIMIT = 200;
-
     private final LogRepository logRepository;
     private final SystemDomainAssembler systemDomainAssembler;
 
@@ -43,8 +42,11 @@ public class LogApplicationService {
      * @param command 查询命令
      * @return 登录日志列表
      */
-    public List<LoginLogDTO> listLoginLogs(QueryLoginLogListCommand command) {
-        List<LoginLogEntity> entities = logRepository.listLoginLogs(
+    public PageResponse<LoginLogDTO> listLoginLogs(QueryLoginLogListCommand command) {
+        int currentPage = PageUtils.normalizeCurrentPage(command == null ? null : command.getCurrentPage());
+        int pageSize = PageUtils.normalizePageSize(command == null ? null : command.getPageSize(),
+                PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE);
+        PageResponse<LoginLogEntity> entities = logRepository.listLoginLogs(
                 command == null ? null : command.getUserId(),
                 command == null ? null : command.getEstabId(),
                 command == null ? null : command.getSuccess(),
@@ -52,13 +54,14 @@ public class LogApplicationService {
                 command == null ? null : command.getSourceType(),
                 command == null ? null : command.getStartTime(),
                 command == null ? null : command.getEndTime(),
-                normalizeLimit(command == null ? null : command.getLimit())
+                currentPage,
+                pageSize
         );
         List<LoginLogDTO> result = new ArrayList<>();
-        for (LoginLogEntity entity : entities) {
+        for (LoginLogEntity entity : entities.getData()) {
             result.add(systemDomainAssembler.toLoginLogDto(entity));
         }
-        return result;
+        return PageResponse.of(result, entities.getTotal(), entities.getPageSize(), entities.getCurrentPage());
     }
 
     /**
@@ -81,8 +84,11 @@ public class LogApplicationService {
      * @param command 查询命令
      * @return 操作日志列表
      */
-    public List<OperateLogDTO> listOperateLogs(QueryOperateLogListCommand command) {
-        List<OperateLogEntity> entities = logRepository.listOperateLogs(
+    public PageResponse<OperateLogDTO> listOperateLogs(QueryOperateLogListCommand command) {
+        int currentPage = PageUtils.normalizeCurrentPage(command == null ? null : command.getCurrentPage());
+        int pageSize = PageUtils.normalizePageSize(command == null ? null : command.getPageSize(),
+                PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE);
+        PageResponse<OperateLogEntity> entities = logRepository.listOperateLogs(
                 command == null ? null : command.getUserId(),
                 command == null ? null : command.getEstabId(),
                 command == null ? null : command.getSuccess(),
@@ -90,13 +96,14 @@ public class LogApplicationService {
                 command == null ? null : command.getRequestPath(),
                 command == null ? null : command.getStartTime(),
                 command == null ? null : command.getEndTime(),
-                normalizeLimit(command == null ? null : command.getLimit())
+                currentPage,
+                pageSize
         );
         List<OperateLogDTO> result = new ArrayList<>();
-        for (OperateLogEntity entity : entities) {
+        for (OperateLogEntity entity : entities.getData()) {
             result.add(systemDomainAssembler.toOperateLogDto(entity));
         }
-        return result;
+        return PageResponse.of(result, entities.getTotal(), entities.getPageSize(), entities.getCurrentPage());
     }
 
     /**
@@ -119,20 +126,24 @@ public class LogApplicationService {
      * @param command 查询命令
      * @return 错误日志列表
      */
-    public List<ErrorLogDTO> listErrorLogs(QueryErrorLogListCommand command) {
-        List<ErrorLogEntity> entities = logRepository.listErrorLogs(
+    public PageResponse<ErrorLogDTO> listErrorLogs(QueryErrorLogListCommand command) {
+        int currentPage = PageUtils.normalizeCurrentPage(command == null ? null : command.getCurrentPage());
+        int pageSize = PageUtils.normalizePageSize(command == null ? null : command.getPageSize(),
+                PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE);
+        PageResponse<ErrorLogEntity> entities = logRepository.listErrorLogs(
                 command == null ? null : command.getServiceName(),
                 command == null ? null : command.getErrorLevel(),
                 command == null ? null : command.getRequestPath(),
                 command == null ? null : command.getStartTime(),
                 command == null ? null : command.getEndTime(),
-                normalizeLimit(command == null ? null : command.getLimit())
+                currentPage,
+                pageSize
         );
         List<ErrorLogDTO> result = new ArrayList<>();
-        for (ErrorLogEntity entity : entities) {
+        for (ErrorLogEntity entity : entities.getData()) {
             result.add(systemDomainAssembler.toErrorLogDto(entity));
         }
-        return result;
+        return PageResponse.of(result, entities.getTotal(), entities.getPageSize(), entities.getCurrentPage());
     }
 
     /**
@@ -155,21 +166,25 @@ public class LogApplicationService {
      * @param command 查询命令
      * @return 通知日志列表
      */
-    public List<NotifyLogDTO> listNotifyLogs(QueryNotifyLogListCommand command) {
-        List<NotifyLogEntity> entities = logRepository.listNotifyLogs(
+    public PageResponse<NotifyLogDTO> listNotifyLogs(QueryNotifyLogListCommand command) {
+        int currentPage = PageUtils.normalizeCurrentPage(command == null ? null : command.getCurrentPage());
+        int pageSize = PageUtils.normalizePageSize(command == null ? null : command.getPageSize(),
+                PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE);
+        PageResponse<NotifyLogEntity> entities = logRepository.listNotifyLogs(
                 command == null ? null : command.getChannelType(),
                 command == null ? null : command.getSceneCode(),
                 command == null ? null : command.getReceiver(),
                 command == null ? null : command.getSendStatus(),
                 command == null ? null : command.getStartTime(),
                 command == null ? null : command.getEndTime(),
-                normalizeLimit(command == null ? null : command.getLimit())
+                currentPage,
+                pageSize
         );
         List<NotifyLogDTO> result = new ArrayList<>();
-        for (NotifyLogEntity entity : entities) {
+        for (NotifyLogEntity entity : entities.getData()) {
             result.add(systemDomainAssembler.toNotifyLogDto(entity));
         }
-        return result;
+        return PageResponse.of(result, entities.getTotal(), entities.getPageSize(), entities.getCurrentPage());
     }
 
     /**
@@ -186,19 +201,4 @@ public class LogApplicationService {
         return systemDomainAssembler.toNotifyLogDto(entity);
     }
 
-    /**
-     * 规范化限制条数
-     *
-     * @param limit 限制条数
-     * @return 规范化后的限制条数
-     */
-    private int normalizeLimit(Integer limit) {
-        if (limit == null) {
-            return DEFAULT_LIMIT;
-        }
-        if (limit <= 0) {
-            return DEFAULT_LIMIT;
-        }
-        return Math.min(limit, MAX_LIMIT);
-    }
 }

@@ -66,6 +66,7 @@ import {
   type ValueItem,
   type ValueUpdateRequest,
 } from '@/features/system/api'
+import { PageToolbar } from '@/features/system/components/page-toolbar'
 import { handleServerError } from '@/lib/handle-server-error'
 
 const valueItemFormSchema = z.object({
@@ -125,12 +126,18 @@ type ValueSetValuesPageProps = {
 export function ValueSetValuesPage({ setCode, setName }: ValueSetValuesPageProps) {
   const navigate = useNavigate()
   const [values, setValues] = useState<ValueItem[]>([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
   const [setDisplayName, setSetDisplayName] = useState(setName || '')
 
   const [keywordInput, setKeywordInput] = useState('')
   const [statusInput, setStatusInput] = useState<'all' | '1' | '0'>('all')
-  const [query, setQuery] = useState<{ keyword?: string; status?: number }>({})
+  const [query, setQuery] = useState<{
+    keyword?: string
+    status?: number
+    currentPage?: number
+    pageSize?: number
+  }>({ currentPage: 1, pageSize: 10 })
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -153,8 +160,8 @@ export function ValueSetValuesPage({ setCode, setName }: ValueSetValuesPageProps
 
   async function loadSetMeta() {
     try {
-      const list = await listValueSets({ keyword: setCode })
-      const matched = list.find((item) => item.setCode === setCode)
+      const list = await listValueSets({ keyword: setCode, currentPage: 1, pageSize: 20 })
+      const matched = (list.data ?? []).find((item) => item.setCode === setCode)
       if (matched?.setName) {
         setSetDisplayName(matched.setName)
       }
@@ -163,15 +170,23 @@ export function ValueSetValuesPage({ setCode, setName }: ValueSetValuesPageProps
     }
   }
 
-  async function loadValues(activeQuery: { keyword?: string; status?: number } = query) {
+  async function loadValues(activeQuery: {
+    keyword?: string
+    status?: number
+    currentPage?: number
+    pageSize?: number
+  } = query) {
     setLoading(true)
     try {
       const data = await listValues({
         setCode,
         keyword: activeQuery.keyword,
         status: activeQuery.status,
+        currentPage: activeQuery.currentPage,
+        pageSize: activeQuery.pageSize,
       })
-      setValues(data)
+      setValues(data.data ?? [])
+      setTotal(data.total ?? 0)
     } catch (error) {
       handleServerError(error)
     } finally {
@@ -193,13 +208,26 @@ export function ValueSetValuesPage({ setCode, setName }: ValueSetValuesPageProps
     setQuery({
       keyword: toOptionalString(keywordInput),
       status: statusInput === 'all' ? undefined : Number(statusInput),
+      currentPage: 1,
+      pageSize: query.pageSize ?? 10,
     })
   }
 
   function resetFilter() {
     setKeywordInput('')
     setStatusInput('all')
-    setQuery({})
+    setQuery({
+      currentPage: 1,
+      pageSize: query.pageSize ?? 10,
+    })
+  }
+
+  function handlePageChange(page: number) {
+    setQuery((prev) => ({ ...prev, currentPage: page }))
+  }
+
+  function handlePageSizeChange(size: number) {
+    setQuery((prev) => ({ ...prev, pageSize: size, currentPage: 1 }))
   }
 
   function openCreateDialog() {
@@ -418,6 +446,14 @@ export function ValueSetValuesPage({ setCode, setName }: ValueSetValuesPageProps
                 )}
               </TableBody>
             </Table>
+            <PageToolbar
+              page={query.currentPage ?? 1}
+              size={query.pageSize ?? 10}
+              total={total}
+              loading={loading}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+            />
           </CardContent>
         </Card>
       </Main>

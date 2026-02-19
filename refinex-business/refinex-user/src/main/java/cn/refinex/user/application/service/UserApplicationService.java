@@ -10,6 +10,8 @@ import cn.refinex.api.user.model.dto.UserManageUpdateCommand;
 import cn.refinex.api.user.enums.UserStatus;
 import cn.refinex.api.user.enums.UserType;
 import cn.refinex.base.exception.BizException;
+import cn.refinex.base.response.PageResponse;
+import cn.refinex.base.utils.PageUtils;
 import cn.refinex.file.api.FileService;
 import cn.refinex.user.application.assembler.UserDomainAssembler;
 import cn.refinex.user.application.command.*;
@@ -333,26 +335,29 @@ public class UserApplicationService {
      * @param query 查询条件
      * @return 用户管理列表
      */
-    public List<UserManageDTO> listManageUsers(UserManageListQuery query) {
-        Integer resolvedLimit = query == null ? null : query.getLimit();
-        if (resolvedLimit == null || resolvedLimit <= 0) {
-            resolvedLimit = 50;
-        }
-        resolvedLimit = Math.min(resolvedLimit, 200);
+    public PageResponse<UserManageDTO> listManageUsers(UserManageListQuery query) {
+        UserManageListQuery safeQuery = query == null ? new UserManageListQuery() : query;
+        int currentPage = PageUtils.normalizeCurrentPage(safeQuery.getCurrentPage());
+        int pageSize = PageUtils.normalizePageSize(
+                safeQuery.getPageSize(),
+                PageUtils.DEFAULT_PAGE_SIZE,
+                PageUtils.DEFAULT_MAX_PAGE_SIZE
+        );
 
-        List<UserEntity> users = userRepository.listUsersForManage(
-                query == null ? null : query.getPrimaryEstabId(),
-                query == null ? null : query.getStatus(),
-                query == null ? null : query.getUserType(),
-                query == null ? null : normalizeNullableText(query.getKeyword()),
-                resolvedLimit
+        PageResponse<UserEntity> page = userRepository.listUsersForManage(
+                safeQuery.getPrimaryEstabId(),
+                safeQuery.getStatus(),
+                safeQuery.getUserType(),
+                normalizeNullableText(safeQuery.getKeyword()),
+                currentPage,
+                pageSize
         );
 
         List<UserManageDTO> result = new ArrayList<>();
-        for (UserEntity user : users) {
+        for (UserEntity user : page.getData()) {
             result.add(toUserManageDto(user));
         }
-        return result;
+        return PageResponse.of(result, page.getTotal(), page.getPageSize(), page.getCurrentPage());
     }
 
     /**

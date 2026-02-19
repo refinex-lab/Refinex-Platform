@@ -1,5 +1,6 @@
 package cn.refinex.system.domain.repository;
 
+import cn.refinex.base.response.PageResponse;
 import cn.refinex.system.domain.model.entity.MenuEntity;
 import cn.refinex.system.domain.model.entity.MenuOpEntity;
 import cn.refinex.system.domain.model.entity.RoleEntity;
@@ -21,7 +22,7 @@ public interface SystemRepository {
      * @param keyword 关键字
      * @return 系统列表
      */
-    List<SystemEntity> listSystems(Integer status, String keyword);
+    PageResponse<SystemEntity> listSystems(Integer status, String keyword, int currentPage, int pageSize);
 
     /**
      * 根据系统ID查询系统
@@ -64,7 +65,7 @@ public interface SystemRepository {
      * @param keyword  关键字
      * @return 角色列表
      */
-    List<RoleEntity> listRoles(Long systemId, Long estabId, Integer status, String keyword);
+    PageResponse<RoleEntity> listRoles(Long systemId, Long estabId, Integer status, String keyword, int currentPage, int pageSize);
 
     /**
      * 根据角色ID查询角色
@@ -221,7 +222,7 @@ public interface SystemRepository {
      * @param menuId 菜单ID
      * @return 菜单操作列表
      */
-    List<MenuOpEntity> listMenuOpsByMenuId(Long menuId);
+    PageResponse<MenuOpEntity> listMenuOpsByMenuId(Long menuId, int currentPage, int pageSize);
 
     /**
      * 根据系统ID查询系统菜单操作列表

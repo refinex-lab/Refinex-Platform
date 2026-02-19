@@ -9,13 +9,14 @@ import type {
   NotifyLogListQuery,
   OperateLog,
   OperateLogListQuery,
+  PageData,
 } from './types'
 
-export async function listLoginLogs(query?: LoginLogListQuery): Promise<LoginLog[]> {
-  const response = await http.get<LoginLog[]>(buildSystemPath('/logs/login'), {
+export async function listLoginLogs(query?: LoginLogListQuery): Promise<PageData<LoginLog>> {
+  const response = await http.get<PageData<LoginLog>>(buildSystemPath('/logs/login'), {
     params: query,
   })
-  return response.data ?? []
+  return response.data ?? { data: [] }
 }
 
 export async function getLoginLog(logId: number): Promise<LoginLog> {
@@ -23,11 +24,11 @@ export async function getLoginLog(logId: number): Promise<LoginLog> {
   return response.data
 }
 
-export async function listOperateLogs(query?: OperateLogListQuery): Promise<OperateLog[]> {
-  const response = await http.get<OperateLog[]>(buildSystemPath('/logs/operate'), {
+export async function listOperateLogs(query?: OperateLogListQuery): Promise<PageData<OperateLog>> {
+  const response = await http.get<PageData<OperateLog>>(buildSystemPath('/logs/operate'), {
     params: query,
   })
-  return response.data ?? []
+  return response.data ?? { data: [] }
 }
 
 export async function getOperateLog(logId: number): Promise<OperateLog> {
@@ -35,11 +36,11 @@ export async function getOperateLog(logId: number): Promise<OperateLog> {
   return response.data
 }
 
-export async function listErrorLogs(query?: ErrorLogListQuery): Promise<ErrorLog[]> {
-  const response = await http.get<ErrorLog[]>(buildSystemPath('/logs/error'), {
+export async function listErrorLogs(query?: ErrorLogListQuery): Promise<PageData<ErrorLog>> {
+  const response = await http.get<PageData<ErrorLog>>(buildSystemPath('/logs/error'), {
     params: query,
   })
-  return response.data ?? []
+  return response.data ?? { data: [] }
 }
 
 export async function getErrorLog(logId: number): Promise<ErrorLog> {
@@ -47,11 +48,11 @@ export async function getErrorLog(logId: number): Promise<ErrorLog> {
   return response.data
 }
 
-export async function listNotifyLogs(query?: NotifyLogListQuery): Promise<NotifyLog[]> {
-  const response = await http.get<NotifyLog[]>(buildSystemPath('/logs/notify'), {
+export async function listNotifyLogs(query?: NotifyLogListQuery): Promise<PageData<NotifyLog>> {
+  const response = await http.get<PageData<NotifyLog>>(buildSystemPath('/logs/notify'), {
     params: query,
   })
-  return response.data ?? []
+  return response.data ?? { data: [] }
 }
 
 export async function getNotifyLog(logId: number): Promise<NotifyLog> {

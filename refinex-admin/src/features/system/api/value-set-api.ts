@@ -1,6 +1,7 @@
 import { http } from '@/lib/http'
 import { buildSystemPath } from './client'
 import type {
+  PageData,
   ValueCreateRequest,
   ValueItem,
   ValueListQuery,
@@ -11,11 +12,11 @@ import type {
   ValueUpdateRequest,
 } from './types'
 
-export async function listValueSets(query?: ValueSetListQuery): Promise<ValueSet[]> {
-  const response = await http.get<ValueSet[]>(buildSystemPath('/valuesets'), {
+export async function listValueSets(query?: ValueSetListQuery): Promise<PageData<ValueSet>> {
+  const response = await http.get<PageData<ValueSet>>(buildSystemPath('/valuesets'), {
     params: query,
   })
-  return response.data ?? []
+  return response.data ?? { data: [] }
 }
 
 export async function getValueSet(valueSetId: number): Promise<ValueSet> {
@@ -43,11 +44,11 @@ export async function deleteValueSet(valueSetId: number): Promise<void> {
   await http.delete<void>(buildSystemPath(`/valuesets/${valueSetId}`))
 }
 
-export async function listValues(query?: ValueListQuery): Promise<ValueItem[]> {
-  const response = await http.get<ValueItem[]>(buildSystemPath('/valuesets/values'), {
+export async function listValues(query?: ValueListQuery): Promise<PageData<ValueItem>> {
+  const response = await http.get<PageData<ValueItem>>(buildSystemPath('/valuesets/values'), {
     params: query,
   })
-  return response.data ?? []
+  return response.data ?? { data: [] }
 }
 
 export async function getValue(valueId: number): Promise<ValueItem> {

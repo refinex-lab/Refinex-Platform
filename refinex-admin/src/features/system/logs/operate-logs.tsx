@@ -26,11 +26,13 @@ import {
   type OperateLog,
   type OperateLogListQuery,
 } from '@/features/system/api'
+import { PageToolbar } from '@/features/system/components/page-toolbar'
 import { handleServerError } from '@/lib/handle-server-error'
 import { formatDateTime, toOptionalNumber, toOptionalString } from './common'
 
 export function OperateLogsPage() {
   const [logs, setLogs] = useState<OperateLog[]>([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
 
   const [userIdInput, setUserIdInput] = useState('')
@@ -39,7 +41,7 @@ export function OperateLogsPage() {
   const [requestPathInput, setRequestPathInput] = useState('')
   const [startTimeInput, setStartTimeInput] = useState('')
   const [endTimeInput, setEndTimeInput] = useState('')
-  const [query, setQuery] = useState<OperateLogListQuery>({ limit: 200 })
+  const [query, setQuery] = useState<OperateLogListQuery>({ currentPage: 1, pageSize: 10 })
 
   const [detailOpen, setDetailOpen] = useState(false)
   const [detailLoading, setDetailLoading] = useState(false)
@@ -48,8 +50,9 @@ export function OperateLogsPage() {
   async function loadLogs(activeQuery: OperateLogListQuery = query) {
     setLoading(true)
     try {
-      const data = await listOperateLogs(activeQuery)
-      setLogs(data)
+      const pageData = await listOperateLogs(activeQuery)
+      setLogs(pageData.data ?? [])
+      setTotal(pageData.total ?? 0)
     } catch (error) {
       handleServerError(error)
     } finally {
@@ -70,7 +73,8 @@ export function OperateLogsPage() {
       requestPath: toOptionalString(requestPathInput),
       startTime: startTimeInput || undefined,
       endTime: endTimeInput || undefined,
-      limit: 200,
+      currentPage: 1,
+      pageSize: query.pageSize ?? 10,
     })
   }
 
@@ -81,7 +85,15 @@ export function OperateLogsPage() {
     setRequestPathInput('')
     setStartTimeInput('')
     setEndTimeInput('')
-    setQuery({ limit: 200 })
+    setQuery({ currentPage: 1, pageSize: query.pageSize ?? 10 })
+  }
+
+  function handlePageChange(page: number) {
+    setQuery((prev) => ({ ...prev, currentPage: page }))
+  }
+
+  function handlePageSizeChange(size: number) {
+    setQuery((prev) => ({ ...prev, pageSize: size, currentPage: 1 }))
   }
 
   async function openDetail(logId?: number) {
@@ -189,6 +201,14 @@ export function OperateLogsPage() {
               )}
             </TableBody>
           </Table>
+          <PageToolbar
+            page={query.currentPage ?? 1}
+            size={query.pageSize ?? 10}
+            total={total}
+            loading={loading}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+          />
         </CardContent>
       </Card>
 

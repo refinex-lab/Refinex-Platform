@@ -5,14 +5,15 @@ import {useForm} from 'react-hook-form'
 import {toast} from 'sonner'
 import {z} from 'zod'
 import {
-  createSystem,
-  listSystems,
+    createSystem,
+    listSystems,
   type SystemCreateRequest,
   type SystemDefinition,
   type SystemListQuery,
   type SystemUpdateRequest,
   updateSystem,
 } from '@/features/system/api'
+import { PageToolbar } from '@/features/system/components/page-toolbar'
 import {handleServerError} from '@/lib/handle-server-error'
 import {Badge} from '@/components/ui/badge'
 import {Button} from '@/components/ui/button'
@@ -95,8 +96,9 @@ function toStatusLabel(value?: number): string {
 
 export function SystemDefinitionsPage() {
     const [systems, setSystems] = useState<SystemDefinition[]>([])
+    const [total, setTotal] = useState(0)
     const [loading, setLoading] = useState(false)
-    const [query, setQuery] = useState<SystemListQuery>({})
+    const [query, setQuery] = useState<SystemListQuery>({ currentPage: 1, pageSize: 10 })
     const [keywordInput, setKeywordInput] = useState('')
     const [statusInput, setStatusInput] = useState<'all' | '1' | '2'>('all')
     const [dialogOpen, setDialogOpen] = useState(false)
@@ -112,8 +114,9 @@ export function SystemDefinitionsPage() {
     async function loadSystems(activeQuery: SystemListQuery = query) {
         setLoading(true)
         try {
-            const data = await listSystems(activeQuery)
-            setSystems(data)
+            const pageData = await listSystems(activeQuery)
+            setSystems(pageData.data ?? [])
+            setTotal(pageData.total ?? 0)
         } catch (error) {
             handleServerError(error)
         } finally {
@@ -190,6 +193,8 @@ export function SystemDefinitionsPage() {
         const nextQuery: SystemListQuery = {
             keyword: toOptionalString(keywordInput),
             status: statusInput === 'all' ? undefined : Number(statusInput),
+            currentPage: 1,
+            pageSize: query.pageSize ?? 10,
         }
         setQuery(nextQuery)
     }
@@ -197,7 +202,18 @@ export function SystemDefinitionsPage() {
     function resetFilter() {
         setKeywordInput('')
         setStatusInput('all')
-        setQuery({})
+        setQuery({
+            currentPage: 1,
+            pageSize: query.pageSize ?? 10,
+        })
+    }
+
+    function handlePageChange(page: number) {
+        setQuery((prev) => ({ ...prev, currentPage: page }))
+    }
+
+    function handlePageSizeChange(size: number) {
+        setQuery((prev) => ({ ...prev, pageSize: size, currentPage: 1 }))
     }
 
     return (
@@ -321,6 +337,14 @@ export function SystemDefinitionsPage() {
                                 )}
                             </TableBody>
                         </Table>
+                        <PageToolbar
+                            page={query.currentPage ?? 1}
+                            size={query.pageSize ?? 10}
+                            total={total}
+                            loading={loading}
+                            onPageChange={handlePageChange}
+                            onPageSizeChange={handlePageSizeChange}
+                        />
                     </CardContent>
                 </Card>
             </Main>

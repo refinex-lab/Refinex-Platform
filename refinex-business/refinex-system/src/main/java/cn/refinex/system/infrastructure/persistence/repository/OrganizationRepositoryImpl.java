@@ -1,10 +1,12 @@
 package cn.refinex.system.infrastructure.persistence.repository;
 
+import cn.refinex.base.response.PageResponse;
 import cn.refinex.system.domain.model.entity.*;
 import cn.refinex.system.domain.repository.OrganizationRepository;
 import cn.refinex.system.infrastructure.persistence.dataobject.*;
 import cn.refinex.system.infrastructure.persistence.mapper.*;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -36,7 +38,8 @@ public class OrganizationRepositoryImpl implements OrganizationRepository {
      * @return 企业列表
      */
     @Override
-    public List<EstabEntity> listEstabs(Integer status, Integer estabType, String keyword) {
+    public PageResponse<EstabEntity> listEstabs(Integer status, Integer estabType, String keyword,
+                                                int currentPage, int pageSize) {
         var query = Wrappers.lambdaQuery(DefEstabDo.class)
                 .eq(DefEstabDo::getDeleted, 0)
                 .orderByAsc(DefEstabDo::getId);
@@ -55,7 +58,10 @@ public class OrganizationRepositoryImpl implements OrganizationRepository {
                     .or()
                     .like(DefEstabDo::getEstabShortName, trimmed));
         }
-        return defEstabMapper.selectList(query).stream().map(this::toEstabEntity).collect(Collectors.toList());
+        Page<DefEstabDo> page = new Page<>(currentPage, pageSize);
+        Page<DefEstabDo> rowsPage = defEstabMapper.selectPage(page, query);
+        List<EstabEntity> list = rowsPage.getRecords().stream().map(this::toEstabEntity).collect(Collectors.toList());
+        return PageResponse.of(list, rowsPage.getTotal(), (int) rowsPage.getSize(), (int) rowsPage.getCurrent());
     }
 
     /**
@@ -163,7 +169,8 @@ public class OrganizationRepositoryImpl implements OrganizationRepository {
      * @return 地址列表
      */
     @Override
-    public List<EstabAddressEntity> listEstabAddresses(Long estabId, Integer addrType) {
+    public PageResponse<EstabAddressEntity> listEstabAddresses(Long estabId, Integer addrType,
+                                                               int currentPage, int pageSize) {
         var query = Wrappers.lambdaQuery(DefEstabAddressDo.class)
                 .eq(DefEstabAddressDo::getEstabId, estabId)
                 .eq(DefEstabAddressDo::getDeleted, 0)
@@ -172,7 +179,10 @@ public class OrganizationRepositoryImpl implements OrganizationRepository {
         if (addrType != null) {
             query.eq(DefEstabAddressDo::getAddrType, addrType);
         }
-        return defEstabAddressMapper.selectList(query).stream().map(this::toEstabAddressEntity).collect(Collectors.toList());
+        Page<DefEstabAddressDo> page = new Page<>(currentPage, pageSize);
+        Page<DefEstabAddressDo> rowsPage = defEstabAddressMapper.selectPage(page, query);
+        List<EstabAddressEntity> list = rowsPage.getRecords().stream().map(this::toEstabAddressEntity).collect(Collectors.toList());
+        return PageResponse.of(list, rowsPage.getTotal(), (int) rowsPage.getSize(), (int) rowsPage.getCurrent());
     }
 
     /**
@@ -282,7 +292,7 @@ public class OrganizationRepositoryImpl implements OrganizationRepository {
      * @return 成员列表
      */
     @Override
-    public List<EstabUserEntity> listEstabUsers(Long estabId, Integer status) {
+    public PageResponse<EstabUserEntity> listEstabUsers(Long estabId, Integer status, int currentPage, int pageSize) {
         var query = Wrappers.lambdaQuery(DefEstabUserDo.class)
                 .eq(DefEstabUserDo::getEstabId, estabId)
                 .eq(DefEstabUserDo::getDeleted, 0)
@@ -291,7 +301,10 @@ public class OrganizationRepositoryImpl implements OrganizationRepository {
         if (status != null) {
             query.eq(DefEstabUserDo::getStatus, status);
         }
-        return defEstabUserMapper.selectList(query).stream().map(this::toEstabUserEntity).collect(Collectors.toList());
+        Page<DefEstabUserDo> page = new Page<>(currentPage, pageSize);
+        Page<DefEstabUserDo> rowsPage = defEstabUserMapper.selectPage(page, query);
+        List<EstabUserEntity> list = rowsPage.getRecords().stream().map(this::toEstabUserEntity).collect(Collectors.toList());
+        return PageResponse.of(list, rowsPage.getTotal(), (int) rowsPage.getSize(), (int) rowsPage.getCurrent());
     }
 
     /**
@@ -371,7 +384,8 @@ public class OrganizationRepositoryImpl implements OrganizationRepository {
      * @return 团队列表
      */
     @Override
-    public List<TeamEntity> listTeams(Long estabId, Long parentId, Integer status, String keyword) {
+    public PageResponse<TeamEntity> listTeams(Long estabId, Long parentId, Integer status, String keyword,
+                                              int currentPage, int pageSize) {
         var query = Wrappers.lambdaQuery(DefTeamDo.class)
                 .eq(DefTeamDo::getDeleted, 0)
                 .orderByAsc(DefTeamDo::getSort, DefTeamDo::getId);
@@ -391,7 +405,10 @@ public class OrganizationRepositoryImpl implements OrganizationRepository {
                     .or()
                     .like(DefTeamDo::getTeamName, trimmed));
         }
-        return defTeamMapper.selectList(query).stream().map(this::toTeamEntity).collect(Collectors.toList());
+        Page<DefTeamDo> page = new Page<>(currentPage, pageSize);
+        Page<DefTeamDo> rowsPage = defTeamMapper.selectPage(page, query);
+        List<TeamEntity> list = rowsPage.getRecords().stream().map(this::toTeamEntity).collect(Collectors.toList());
+        return PageResponse.of(list, rowsPage.getTotal(), (int) rowsPage.getSize(), (int) rowsPage.getCurrent());
     }
 
     /**
@@ -501,7 +518,7 @@ public class OrganizationRepositoryImpl implements OrganizationRepository {
      * @return 团队成员列表
      */
     @Override
-    public List<TeamUserEntity> listTeamUsers(Long teamId, Integer status) {
+    public PageResponse<TeamUserEntity> listTeamUsers(Long teamId, Integer status, int currentPage, int pageSize) {
         var query = Wrappers.lambdaQuery(DefTeamUserDo.class)
                 .eq(DefTeamUserDo::getTeamId, teamId)
                 .eq(DefTeamUserDo::getDeleted, 0)
@@ -510,7 +527,10 @@ public class OrganizationRepositoryImpl implements OrganizationRepository {
         if (status != null) {
             query.eq(DefTeamUserDo::getStatus, status);
         }
-        return defTeamUserMapper.selectList(query).stream().map(this::toTeamUserEntity).collect(Collectors.toList());
+        Page<DefTeamUserDo> page = new Page<>(currentPage, pageSize);
+        Page<DefTeamUserDo> rowsPage = defTeamUserMapper.selectPage(page, query);
+        List<TeamUserEntity> list = rowsPage.getRecords().stream().map(this::toTeamUserEntity).collect(Collectors.toList());
+        return PageResponse.of(list, rowsPage.getTotal(), (int) rowsPage.getSize(), (int) rowsPage.getCurrent());
     }
 
     /**

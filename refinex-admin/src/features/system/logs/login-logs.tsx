@@ -26,6 +26,7 @@ import {
   type LoginLog,
   type LoginLogListQuery,
 } from '@/features/system/api'
+import { PageToolbar } from '@/features/system/components/page-toolbar'
 import { handleServerError } from '@/lib/handle-server-error'
 import { formatDateTime, toOptionalNumber } from './common'
 
@@ -46,6 +47,7 @@ const SOURCE_TYPE_LABEL: Record<number, string> = {
 
 export function LoginLogsPage() {
   const [logs, setLogs] = useState<LoginLog[]>([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
 
   const [userIdInput, setUserIdInput] = useState('')
@@ -54,7 +56,7 @@ export function LoginLogsPage() {
   const [sourceTypeInput, setSourceTypeInput] = useState<'all' | '1' | '2' | '3' | '4' | '5'>('all')
   const [startTimeInput, setStartTimeInput] = useState('')
   const [endTimeInput, setEndTimeInput] = useState('')
-  const [query, setQuery] = useState<LoginLogListQuery>({ limit: 200 })
+  const [query, setQuery] = useState<LoginLogListQuery>({ currentPage: 1, pageSize: 10 })
 
   const [detailOpen, setDetailOpen] = useState(false)
   const [detailLoading, setDetailLoading] = useState(false)
@@ -63,8 +65,9 @@ export function LoginLogsPage() {
   async function loadLogs(activeQuery: LoginLogListQuery = query) {
     setLoading(true)
     try {
-      const data = await listLoginLogs(activeQuery)
-      setLogs(data)
+      const pageData = await listLoginLogs(activeQuery)
+      setLogs(pageData.data ?? [])
+      setTotal(pageData.total ?? 0)
     } catch (error) {
       handleServerError(error)
     } finally {
@@ -85,7 +88,8 @@ export function LoginLogsPage() {
       sourceType: sourceTypeInput === 'all' ? undefined : Number(sourceTypeInput),
       startTime: startTimeInput || undefined,
       endTime: endTimeInput || undefined,
-      limit: 200,
+      currentPage: 1,
+      pageSize: query.pageSize ?? 10,
     })
   }
 
@@ -96,7 +100,15 @@ export function LoginLogsPage() {
     setSourceTypeInput('all')
     setStartTimeInput('')
     setEndTimeInput('')
-    setQuery({ limit: 200 })
+    setQuery({ currentPage: 1, pageSize: query.pageSize ?? 10 })
+  }
+
+  function handlePageChange(page: number) {
+    setQuery((prev) => ({ ...prev, currentPage: page }))
+  }
+
+  function handlePageSizeChange(size: number) {
+    setQuery((prev) => ({ ...prev, pageSize: size, currentPage: 1 }))
   }
 
   async function openDetail(logId?: number) {
@@ -239,6 +251,14 @@ export function LoginLogsPage() {
               )}
             </TableBody>
           </Table>
+          <PageToolbar
+            page={query.currentPage ?? 1}
+            size={query.pageSize ?? 10}
+            total={total}
+            loading={loading}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+          />
         </CardContent>
       </Card>
 

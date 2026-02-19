@@ -1,5 +1,6 @@
 package cn.refinex.system.infrastructure.persistence.repository;
 
+import cn.refinex.base.response.PageResponse;
 import cn.refinex.system.domain.model.entity.DrsEntity;
 import cn.refinex.system.domain.model.entity.DrsInterfaceEntity;
 import cn.refinex.system.domain.repository.DataResourceRepository;
@@ -11,6 +12,7 @@ import cn.refinex.system.infrastructure.persistence.mapper.ScrDrsInterfaceMapper
 import cn.refinex.system.infrastructure.persistence.mapper.ScrDrsMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -42,7 +44,8 @@ public class DataResourceRepositoryImpl implements DataResourceRepository {
      * @return 数据资源列表
      */
     @Override
-    public List<DrsEntity> listDrs(Long systemId, Integer status, Integer drsType, Long ownerEstabId, String keyword) {
+    public PageResponse<DrsEntity> listDrs(Long systemId, Integer status, Integer drsType, Long ownerEstabId,
+                                           String keyword, int currentPage, int pageSize) {
         LambdaQueryWrapper<ScrDrsDo> query = Wrappers.lambdaQuery(ScrDrsDo.class)
                 .eq(ScrDrsDo::getDeleted, 0)
                 .orderByAsc(ScrDrsDo::getId);
@@ -62,12 +65,14 @@ public class DataResourceRepositoryImpl implements DataResourceRepository {
             String trimmed = keyword.trim();
             query.and(w -> w.like(ScrDrsDo::getDrsCode, trimmed).or().like(ScrDrsDo::getDrsName, trimmed));
         }
-        List<ScrDrsDo> rows = scrDrsMapper.selectList(query);
+        Page<ScrDrsDo> page = new Page<>(currentPage, pageSize);
+        Page<ScrDrsDo> rowsPage = scrDrsMapper.selectPage(page, query);
+        List<ScrDrsDo> rows = rowsPage.getRecords();
         List<DrsEntity> result = new ArrayList<>();
         for (ScrDrsDo row : rows) {
             result.add(drsDoConverter.toEntity(row));
         }
-        return result;
+        return PageResponse.of(result, rowsPage.getTotal(), (int) rowsPage.getSize(), (int) rowsPage.getCurrent());
     }
 
     /**
@@ -162,7 +167,8 @@ public class DataResourceRepositoryImpl implements DataResourceRepository {
      * @return 数据资源接口列表
      */
     @Override
-    public List<DrsInterfaceEntity> listDrsInterfaces(Long drsId, Integer status, String keyword) {
+    public PageResponse<DrsInterfaceEntity> listDrsInterfaces(Long drsId, Integer status, String keyword,
+                                                              int currentPage, int pageSize) {
         LambdaQueryWrapper<ScrDrsInterfaceDo> query = Wrappers.lambdaQuery(ScrDrsInterfaceDo.class)
                 .eq(ScrDrsInterfaceDo::getDrsId, drsId)
                 .eq(ScrDrsInterfaceDo::getDeleted, 0)
@@ -175,12 +181,14 @@ public class DataResourceRepositoryImpl implements DataResourceRepository {
             query.and(w -> w.like(ScrDrsInterfaceDo::getInterfaceCode, trimmed)
                     .or().like(ScrDrsInterfaceDo::getInterfaceName, trimmed));
         }
-        List<ScrDrsInterfaceDo> rows = scrDrsInterfaceMapper.selectList(query);
+        Page<ScrDrsInterfaceDo> page = new Page<>(currentPage, pageSize);
+        Page<ScrDrsInterfaceDo> rowsPage = scrDrsInterfaceMapper.selectPage(page, query);
+        List<ScrDrsInterfaceDo> rows = rowsPage.getRecords();
         List<DrsInterfaceEntity> result = new ArrayList<>();
         for (ScrDrsInterfaceDo row : rows) {
             result.add(drsInterfaceDoConverter.toEntity(row));
         }
-        return result;
+        return PageResponse.of(result, rowsPage.getTotal(), (int) rowsPage.getSize(), (int) rowsPage.getCurrent());
     }
 
     /**

@@ -6,6 +6,8 @@ import type {
   MenuOpCreateRequest,
   MenuOpManage,
   MenuOpUpdateRequest,
+  PageData,
+  PaginationQuery,
   MenuTreeNode,
   MenuTreeQuery,
   MenuUpdateRequest,
@@ -37,9 +39,14 @@ export async function deleteMenu(menuId: number): Promise<void> {
   await http.delete<void>(buildSystemPath(`/menus/${menuId}`))
 }
 
-export async function listMenuOps(menuId: number): Promise<MenuOpManage[]> {
-  const response = await http.get<MenuOpManage[]>(buildSystemPath(`/menus/${menuId}/ops`))
-  return response.data ?? []
+export async function listMenuOps(
+  menuId: number,
+  query?: PaginationQuery
+): Promise<PageData<MenuOpManage>> {
+  const response = await http.get<PageData<MenuOpManage>>(buildSystemPath(`/menus/${menuId}/ops`), {
+    params: query,
+  })
+  return response.data ?? { data: [] }
 }
 
 export async function getMenuOp(menuOpId: number): Promise<MenuOpManage> {

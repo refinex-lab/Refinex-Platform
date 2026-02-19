@@ -1,5 +1,6 @@
 package cn.refinex.system.domain.repository;
 
+import cn.refinex.base.response.PageResponse;
 import cn.refinex.system.domain.model.entity.ValueEntity;
 import cn.refinex.system.domain.model.entity.ValueSetEntity;
 
@@ -19,7 +20,7 @@ public interface ValueSetRepository {
      * @param keyword 关键字
      * @return 值集列表
      */
-    List<ValueSetEntity> listValueSets(Integer status, String keyword);
+    PageResponse<ValueSetEntity> listValueSets(Integer status, String keyword, int currentPage, int pageSize);
 
     /**
      * 根据值集ID查询值集
@@ -84,7 +85,7 @@ public interface ValueSetRepository {
      * @param keyword 关键字
      * @return 值集明细列表
      */
-    List<ValueEntity> listValues(String setCode, Integer status, String keyword);
+    PageResponse<ValueEntity> listValues(String setCode, Integer status, String keyword, int currentPage, int pageSize);
 
     /**
      * 根据值ID查询值集明细

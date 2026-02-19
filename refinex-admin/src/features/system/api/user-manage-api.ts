@@ -1,6 +1,7 @@
 import { http } from '@/lib/http'
 import { buildSystemPath } from './client'
 import type {
+  PageData,
   SystemUser,
   SystemUserCreateRequest,
   SystemUserIdentity,
@@ -10,11 +11,11 @@ import type {
   SystemUserUpdateRequest,
 } from './types'
 
-export async function listSystemUsers(query?: SystemUserListQuery): Promise<SystemUser[]> {
-  const response = await http.get<SystemUser[]>(buildSystemPath('/system-users'), {
+export async function listSystemUsers(query?: SystemUserListQuery): Promise<PageData<SystemUser>> {
+  const response = await http.get<PageData<SystemUser>>(buildSystemPath('/system-users'), {
     params: query,
   })
-  return response.data ?? []
+  return response.data ?? { data: [] }
 }
 
 export async function getSystemUser(userId: number): Promise<SystemUser> {
@@ -35,11 +36,15 @@ export async function updateSystemUser(
   return response.data
 }
 
-export async function listSystemUserIdentities(userId: number): Promise<SystemUserIdentity[]> {
-  const response = await http.get<SystemUserIdentity[]>(
-    buildSystemPath(`/system-users/${userId}/identities`)
+export async function listSystemUserIdentities(
+  userId: number,
+  query?: { currentPage?: number; pageSize?: number }
+): Promise<PageData<SystemUserIdentity>> {
+  const response = await http.get<PageData<SystemUserIdentity>>(
+    buildSystemPath(`/system-users/${userId}/identities`),
+    { params: query }
   )
-  return response.data ?? []
+  return response.data ?? { data: [] }
 }
 
 export async function createSystemUserIdentity(

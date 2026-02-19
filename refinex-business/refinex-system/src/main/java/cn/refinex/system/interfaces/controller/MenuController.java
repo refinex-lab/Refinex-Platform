@@ -1,7 +1,6 @@
 package cn.refinex.system.interfaces.controller;
 
-import cn.refinex.base.response.MultiResponse;
-import cn.refinex.base.response.SingleResponse;
+import cn.refinex.base.response.PageResponse;
 import cn.refinex.system.application.command.CreateMenuCommand;
 import cn.refinex.system.application.command.CreateMenuOpCommand;
 import cn.refinex.system.application.command.QueryMenuTreeCommand;
@@ -13,6 +12,7 @@ import cn.refinex.system.application.dto.MenuTreeNodeDTO;
 import cn.refinex.system.application.service.SystemApplicationService;
 import cn.refinex.system.interfaces.assembler.SystemApiAssembler;
 import cn.refinex.system.interfaces.dto.MenuCreateRequest;
+import cn.refinex.system.interfaces.dto.MenuOpListQuery;
 import cn.refinex.system.interfaces.dto.MenuOpCreateRequest;
 import cn.refinex.system.interfaces.dto.MenuOpUpdateRequest;
 import cn.refinex.system.interfaces.dto.MenuTreeQuery;
@@ -20,6 +20,8 @@ import cn.refinex.system.interfaces.dto.MenuUpdateRequest;
 import cn.refinex.system.interfaces.vo.MenuOpManageVO;
 import cn.refinex.system.interfaces.vo.MenuVO;
 import cn.refinex.system.interfaces.vo.MenuTreeNodeVO;
+import cn.refinex.web.vo.PageResult;
+import cn.refinex.web.vo.Result;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
@@ -56,10 +58,10 @@ public class MenuController {
      * @return 菜单树
      */
     @GetMapping("/tree")
-    public MultiResponse<MenuTreeNodeVO> tree(@Valid MenuTreeQuery query) {
+    public Result<List<MenuTreeNodeVO>> tree(@Valid MenuTreeQuery query) {
         QueryMenuTreeCommand command = systemApiAssembler.toQueryMenuTreeCommand(query);
         List<MenuTreeNodeDTO> tree = systemApplicationService.getMenuTree(command);
-        return MultiResponse.of(systemApiAssembler.toMenuTreeNodeVoList(tree));
+        return Result.success(systemApiAssembler.toMenuTreeNodeVoList(tree));
     }
 
     /**
@@ -69,9 +71,9 @@ public class MenuController {
      * @return 菜单详情
      */
     @GetMapping("/{menuId}")
-    public SingleResponse<MenuVO> getMenu(@PathVariable @Positive(message = "菜单ID必须大于0") Long menuId) {
+    public Result<MenuVO> getMenu(@PathVariable @Positive(message = "菜单ID必须大于0") Long menuId) {
         MenuDTO menu = systemApplicationService.getMenu(menuId);
-        return SingleResponse.of(systemApiAssembler.toMenuVo(menu));
+        return Result.success(systemApiAssembler.toMenuVo(menu));
     }
 
     /**
@@ -81,10 +83,10 @@ public class MenuController {
      * @return 菜单详情
      */
     @PostMapping
-    public SingleResponse<MenuVO> createMenu(@Valid @RequestBody MenuCreateRequest request) {
+    public Result<MenuVO> createMenu(@Valid @RequestBody MenuCreateRequest request) {
         CreateMenuCommand command = systemApiAssembler.toCreateMenuCommand(request);
         MenuDTO created = systemApplicationService.createMenu(command);
-        return SingleResponse.of(systemApiAssembler.toMenuVo(created));
+        return Result.success(systemApiAssembler.toMenuVo(created));
     }
 
     /**
@@ -95,12 +97,12 @@ public class MenuController {
      * @return 菜单详情
      */
     @PutMapping("/{menuId}")
-    public SingleResponse<MenuVO> updateMenu(@PathVariable @Positive(message = "菜单ID必须大于0") Long menuId,
-                                             @Valid @RequestBody MenuUpdateRequest request) {
+    public Result<MenuVO> updateMenu(@PathVariable @Positive(message = "菜单ID必须大于0") Long menuId,
+                                     @Valid @RequestBody MenuUpdateRequest request) {
         UpdateMenuCommand command = systemApiAssembler.toUpdateMenuCommand(request);
         command.setMenuId(menuId);
         MenuDTO updated = systemApplicationService.updateMenu(command);
-        return SingleResponse.of(systemApiAssembler.toMenuVo(updated));
+        return Result.success(systemApiAssembler.toMenuVo(updated));
     }
 
     /**
@@ -110,9 +112,9 @@ public class MenuController {
      * @return 操作结果
      */
     @DeleteMapping("/{menuId}")
-    public SingleResponse<Void> deleteMenu(@PathVariable @Positive(message = "菜单ID必须大于0") Long menuId) {
+    public Result<Void> deleteMenu(@PathVariable @Positive(message = "菜单ID必须大于0") Long menuId) {
         systemApplicationService.deleteMenu(menuId);
-        return SingleResponse.of(null);
+        return Result.success();
     }
 
     /**
@@ -122,9 +124,19 @@ public class MenuController {
      * @return 菜单操作列表
      */
     @GetMapping("/{menuId}/ops")
-    public MultiResponse<MenuOpManageVO> listMenuOps(@PathVariable @Positive(message = "菜单ID必须大于0") Long menuId) {
-        List<MenuOpManageDTO> ops = systemApplicationService.listMenuOps(menuId);
-        return MultiResponse.of(systemApiAssembler.toMenuOpManageVoList(ops));
+    public PageResult<MenuOpManageVO> listMenuOps(@PathVariable @Positive(message = "菜单ID必须大于0") Long menuId,
+                                                  @Valid MenuOpListQuery query) {
+        PageResponse<MenuOpManageDTO> ops = systemApplicationService.listMenuOps(
+                menuId,
+                query.getCurrentPage(),
+                query.getPageSize()
+        );
+        return PageResult.success(
+                systemApiAssembler.toMenuOpManageVoList(ops.getData()),
+                ops.getTotal(),
+                ops.getCurrentPage(),
+                ops.getPageSize()
+        );
     }
 
     /**
@@ -134,9 +146,9 @@ public class MenuController {
      * @return 菜单操作详情
      */
     @GetMapping("/ops/{menuOpId}")
-    public SingleResponse<MenuOpManageVO> getMenuOp(@PathVariable @Positive(message = "菜单操作ID必须大于0") Long menuOpId) {
+    public Result<MenuOpManageVO> getMenuOp(@PathVariable @Positive(message = "菜单操作ID必须大于0") Long menuOpId) {
         MenuOpManageDTO menuOp = systemApplicationService.getMenuOp(menuOpId);
-        return SingleResponse.of(systemApiAssembler.toMenuOpManageVo(menuOp));
+        return Result.success(systemApiAssembler.toMenuOpManageVo(menuOp));
     }
 
     /**
@@ -147,12 +159,12 @@ public class MenuController {
      * @return 菜单操作详情
      */
     @PostMapping("/{menuId}/ops")
-    public SingleResponse<MenuOpManageVO> createMenuOp(@PathVariable @Positive(message = "菜单ID必须大于0") Long menuId,
-                                                        @Valid @RequestBody MenuOpCreateRequest request) {
+    public Result<MenuOpManageVO> createMenuOp(@PathVariable @Positive(message = "菜单ID必须大于0") Long menuId,
+                                               @Valid @RequestBody MenuOpCreateRequest request) {
         CreateMenuOpCommand command = systemApiAssembler.toCreateMenuOpCommand(request);
         command.setMenuId(menuId);
         MenuOpManageDTO created = systemApplicationService.createMenuOp(command);
-        return SingleResponse.of(systemApiAssembler.toMenuOpManageVo(created));
+        return Result.success(systemApiAssembler.toMenuOpManageVo(created));
     }
 
     /**
@@ -163,12 +175,12 @@ public class MenuController {
      * @return 菜单操作详情
      */
     @PutMapping("/ops/{menuOpId}")
-    public SingleResponse<MenuOpManageVO> updateMenuOp(@PathVariable @Positive(message = "菜单操作ID必须大于0") Long menuOpId,
-                                                        @Valid @RequestBody MenuOpUpdateRequest request) {
+    public Result<MenuOpManageVO> updateMenuOp(@PathVariable @Positive(message = "菜单操作ID必须大于0") Long menuOpId,
+                                               @Valid @RequestBody MenuOpUpdateRequest request) {
         UpdateMenuOpCommand command = systemApiAssembler.toUpdateMenuOpCommand(request);
         command.setMenuOpId(menuOpId);
         MenuOpManageDTO updated = systemApplicationService.updateMenuOp(command);
-        return SingleResponse.of(systemApiAssembler.toMenuOpManageVo(updated));
+        return Result.success(systemApiAssembler.toMenuOpManageVo(updated));
     }
 
     /**
@@ -178,8 +190,8 @@ public class MenuController {
      * @return 操作结果
      */
     @DeleteMapping("/ops/{menuOpId}")
-    public SingleResponse<Void> deleteMenuOp(@PathVariable @Positive(message = "菜单操作ID必须大于0") Long menuOpId) {
+    public Result<Void> deleteMenuOp(@PathVariable @Positive(message = "菜单操作ID必须大于0") Long menuOpId) {
         systemApplicationService.deleteMenuOp(menuOpId);
-        return SingleResponse.of(null);
+        return Result.success();
     }
 }

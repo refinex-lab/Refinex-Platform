@@ -2,11 +2,20 @@ import axios, {type AxiosResponse, type InternalAxiosRequestConfig} from 'axios'
 import {appConfig} from '@/config/app-config'
 import {useAuthStore} from '@/stores/auth-store'
 
-interface SingleResponseEnvelope<T> {
+interface ResultEnvelope<T> {
     success?: boolean
+    code?: string
+    message?: string
     responseCode?: string
     responseMessage?: string
     data?: T
+}
+
+interface PageResultEnvelope<T> extends ResultEnvelope<T[]> {
+    total?: number
+    totalPage?: number
+    page?: number
+    size?: number
 }
 
 interface GatewayEnvelope<T> {
@@ -29,8 +38,17 @@ export class ApiBusinessError extends Error {
     }
 }
 
-function isSingleResponseEnvelope(payload: unknown): payload is SingleResponseEnvelope<unknown> {
+function isResultEnvelope(payload: unknown): payload is ResultEnvelope<unknown> {
     return payload !== null && typeof payload === 'object' && 'success' in payload
+}
+
+function isPageResultEnvelope(payload: unknown): payload is PageResultEnvelope<unknown> {
+    return (
+        isResultEnvelope(payload) &&
+        'total' in payload &&
+        'page' in payload &&
+        'size' in payload
+    )
 }
 
 function isGatewayEnvelope(payload: unknown): payload is GatewayEnvelope<unknown> {
@@ -67,17 +85,20 @@ function attachToken(config: InternalAxiosRequestConfig): InternalAxiosRequestCo
 function unwrapResponse(response: AxiosResponse): AxiosResponse {
     const payload = response.data
 
-    if (isSingleResponseEnvelope(payload)) {
+    if (isResultEnvelope(payload)) {
         if (payload.success) {
-            response.data = payload.data
+            response.data = isPageResultEnvelope(payload) ? payload : payload.data
             return response
         }
 
-        throw new ApiBusinessError(payload.responseMessage || '请求失败', {
-            code: payload.responseCode,
-            status: response.status,
-            raw: payload,
-        })
+        throw new ApiBusinessError(
+            payload.message || payload.responseMessage || '请求失败',
+            {
+                code: payload.code || payload.responseCode,
+                status: response.status,
+                raw: payload,
+            }
+        )
     }
 
     if (isGatewayEnvelope(payload)) {

@@ -23,13 +23,14 @@ import type {
   TeamUserCreateRequest,
   TeamUserListQuery,
   TeamUserUpdateRequest,
+  PageData,
 } from './types'
 
-export async function listEstabs(query?: EstabListQuery): Promise<Estab[]> {
-  const response = await http.get<Estab[]>(buildSystemPath('/estabs'), {
+export async function listEstabs(query?: EstabListQuery): Promise<PageData<Estab>> {
+  const response = await http.get<PageData<Estab>>(buildSystemPath('/estabs'), {
     params: query,
   })
-  return response.data ?? []
+  return response.data ?? { data: [] }
 }
 
 export async function getEstab(estabId: number): Promise<Estab> {
@@ -54,12 +55,12 @@ export async function deleteEstab(estabId: number): Promise<void> {
 export async function listEstabAddresses(
   estabId: number,
   query?: EstabAddressListQuery
-): Promise<EstabAddress[]> {
-  const response = await http.get<EstabAddress[]>(
+): Promise<PageData<EstabAddress>> {
+  const response = await http.get<PageData<EstabAddress>>(
     buildSystemPath(`/estabs/${estabId}/addresses`),
     { params: query }
   )
-  return response.data ?? []
+  return response.data ?? { data: [] }
 }
 
 export async function createEstabAddress(
@@ -109,11 +110,11 @@ export async function updateEstabAuthPolicy(
 export async function listEstabUsers(
   estabId: number,
   query?: EstabUserListQuery
-): Promise<EstabUser[]> {
-  const response = await http.get<EstabUser[]>(buildSystemPath(`/estabs/${estabId}/users`), {
+): Promise<PageData<EstabUser>> {
+  const response = await http.get<PageData<EstabUser>>(buildSystemPath(`/estabs/${estabId}/users`), {
     params: query,
   })
-  return response.data ?? []
+  return response.data ?? { data: [] }
 }
 
 export async function createEstabUser(
@@ -142,11 +143,11 @@ export async function deleteEstabUser(estabUserId: number): Promise<void> {
   await http.delete<void>(buildSystemPath(`/estab-users/${estabUserId}`))
 }
 
-export async function listTeams(query?: TeamListQuery): Promise<Team[]> {
-  const response = await http.get<Team[]>(buildSystemPath('/teams'), {
+export async function listTeams(query?: TeamListQuery): Promise<PageData<Team>> {
+  const response = await http.get<PageData<Team>>(buildSystemPath('/teams'), {
     params: query,
   })
-  return response.data ?? []
+  return response.data ?? { data: [] }
 }
 
 export async function getTeam(teamId: number): Promise<Team> {
@@ -171,11 +172,11 @@ export async function deleteTeam(teamId: number): Promise<void> {
 export async function listTeamUsers(
   teamId: number,
   query?: TeamUserListQuery
-): Promise<TeamUser[]> {
-  const response = await http.get<TeamUser[]>(buildSystemPath(`/teams/${teamId}/users`), {
+): Promise<PageData<TeamUser>> {
+  const response = await http.get<PageData<TeamUser>>(buildSystemPath(`/teams/${teamId}/users`), {
     params: query,
   })
-  return response.data ?? []
+  return response.data ?? { data: [] }
 }
 
 export async function createTeamUser(

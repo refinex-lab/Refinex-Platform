@@ -1,5 +1,6 @@
 package cn.refinex.system.infrastructure.persistence.repository;
 
+import cn.refinex.base.response.PageResponse;
 import cn.refinex.system.domain.model.entity.ErrorLogEntity;
 import cn.refinex.system.domain.model.entity.LoginLogEntity;
 import cn.refinex.system.domain.model.entity.NotifyLogEntity;
@@ -19,6 +20,7 @@ import cn.refinex.system.infrastructure.persistence.mapper.LogNotifyMapper;
 import cn.refinex.system.infrastructure.persistence.mapper.LogOperateMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -47,19 +49,20 @@ public class LogRepositoryImpl implements LogRepository {
     /**
      * 查询登录日志列表
      *
-     * @param userId     用户ID
-     * @param estabId    企业ID
-     * @param success    登录是否成功
-     * @param loginType  登录类型
-     * @param sourceType 登录来源
-     * @param startTime  开始时间
-     * @param endTime    结束时间
-     * @param limit      限制条数
+     * @param userId      用户ID
+     * @param estabId     企业ID
+     * @param success     登录是否成功
+     * @param loginType   登录类型
+     * @param sourceType  登录来源
+     * @param startTime   开始时间
+     * @param endTime     结束时间
+     * @param currentPage 当前页
+     * @param pageSize    页大小
      * @return 登录日志列表
      */
     @Override
-    public List<LoginLogEntity> listLoginLogs(Long userId, Long estabId, Integer success, Integer loginType, Integer sourceType,
-                                              LocalDateTime startTime, LocalDateTime endTime, Integer limit) {
+    public PageResponse<LoginLogEntity> listLoginLogs(Long userId, Long estabId, Integer success, Integer loginType, Integer sourceType,
+                                                      LocalDateTime startTime, LocalDateTime endTime, int currentPage, int pageSize) {
         LambdaQueryWrapper<LogLoginDo> query = Wrappers.lambdaQuery(LogLoginDo.class)
                 .eq(LogLoginDo::getDeleted, 0)
                 .orderByDesc(LogLoginDo::getId);
@@ -84,13 +87,14 @@ public class LogRepositoryImpl implements LogRepository {
         if (endTime != null) {
             query.le(LogLoginDo::getGmtCreate, endTime);
         }
-        query.last("LIMIT " + (limit == null ? 50 : limit));
-        List<LogLoginDo> rows = logLoginMapper.selectList(query);
+        Page<LogLoginDo> page = new Page<>(currentPage, pageSize);
+        Page<LogLoginDo> rowsPage = logLoginMapper.selectPage(page, query);
+        List<LogLoginDo> rows = rowsPage.getRecords();
         List<LoginLogEntity> result = new ArrayList<>();
         for (LogLoginDo row : rows) {
             result.add(loginLogDoConverter.toEntity(row));
         }
-        return result;
+        return PageResponse.of(result, rowsPage.getTotal(), (int) rowsPage.getSize(), (int) rowsPage.getCurrent());
     }
 
     /**
@@ -115,12 +119,13 @@ public class LogRepositoryImpl implements LogRepository {
      * @param requestPath 请求路径
      * @param startTime   开始时间
      * @param endTime     结束时间
-     * @param limit       限制条数
+     * @param currentPage 当前页
+     * @param pageSize    页大小
      * @return 操作日志列表
      */
     @Override
-    public List<OperateLogEntity> listOperateLogs(Long userId, Long estabId, Integer success, String moduleCode, String requestPath,
-                                                  LocalDateTime startTime, LocalDateTime endTime, Integer limit) {
+    public PageResponse<OperateLogEntity> listOperateLogs(Long userId, Long estabId, Integer success, String moduleCode, String requestPath,
+                                                          LocalDateTime startTime, LocalDateTime endTime, int currentPage, int pageSize) {
         LambdaQueryWrapper<LogOperateDo> query = Wrappers.lambdaQuery(LogOperateDo.class)
                 .eq(LogOperateDo::getDeleted, 0)
                 .orderByDesc(LogOperateDo::getId);
@@ -145,13 +150,14 @@ public class LogRepositoryImpl implements LogRepository {
         if (endTime != null) {
             query.le(LogOperateDo::getGmtCreate, endTime);
         }
-        query.last("LIMIT " + (limit == null ? 50 : limit));
-        List<LogOperateDo> rows = logOperateMapper.selectList(query);
+        Page<LogOperateDo> page = new Page<>(currentPage, pageSize);
+        Page<LogOperateDo> rowsPage = logOperateMapper.selectPage(page, query);
+        List<LogOperateDo> rows = rowsPage.getRecords();
         List<OperateLogEntity> result = new ArrayList<>();
         for (LogOperateDo row : rows) {
             result.add(operateLogDoConverter.toEntity(row));
         }
-        return result;
+        return PageResponse.of(result, rowsPage.getTotal(), (int) rowsPage.getSize(), (int) rowsPage.getCurrent());
     }
 
     /**
@@ -174,12 +180,13 @@ public class LogRepositoryImpl implements LogRepository {
      * @param requestPath 请求路径
      * @param startTime   开始时间
      * @param endTime     结束时间
-     * @param limit       限制条数
+     * @param currentPage 当前页
+     * @param pageSize    页大小
      * @return 错误日志列表
      */
     @Override
-    public List<ErrorLogEntity> listErrorLogs(String serviceName, Integer errorLevel, String requestPath,
-                                              LocalDateTime startTime, LocalDateTime endTime, Integer limit) {
+    public PageResponse<ErrorLogEntity> listErrorLogs(String serviceName, Integer errorLevel, String requestPath,
+                                                      LocalDateTime startTime, LocalDateTime endTime, int currentPage, int pageSize) {
         LambdaQueryWrapper<LogErrorDo> query = Wrappers.lambdaQuery(LogErrorDo.class)
                 .eq(LogErrorDo::getDeleted, 0)
                 .orderByDesc(LogErrorDo::getId);
@@ -198,13 +205,14 @@ public class LogRepositoryImpl implements LogRepository {
         if (endTime != null) {
             query.le(LogErrorDo::getGmtCreate, endTime);
         }
-        query.last("LIMIT " + (limit == null ? 50 : limit));
-        List<LogErrorDo> rows = logErrorMapper.selectList(query);
+        Page<LogErrorDo> page = new Page<>(currentPage, pageSize);
+        Page<LogErrorDo> rowsPage = logErrorMapper.selectPage(page, query);
+        List<LogErrorDo> rows = rowsPage.getRecords();
         List<ErrorLogEntity> result = new ArrayList<>();
         for (LogErrorDo row : rows) {
             result.add(errorLogDoConverter.toEntity(row));
         }
-        return result;
+        return PageResponse.of(result, rowsPage.getTotal(), (int) rowsPage.getSize(), (int) rowsPage.getCurrent());
     }
 
     /**
@@ -228,12 +236,13 @@ public class LogRepositoryImpl implements LogRepository {
      * @param sendStatus  发送状态
      * @param startTime   开始时间
      * @param endTime     结束时间
-     * @param limit       限制条数
+     * @param currentPage 当前页
+     * @param pageSize    页大小
      * @return 通知日志列表
      */
     @Override
-    public List<NotifyLogEntity> listNotifyLogs(Integer channelType, String sceneCode, String receiver, Integer sendStatus,
-                                                LocalDateTime startTime, LocalDateTime endTime, Integer limit) {
+    public PageResponse<NotifyLogEntity> listNotifyLogs(Integer channelType, String sceneCode, String receiver, Integer sendStatus,
+                                                        LocalDateTime startTime, LocalDateTime endTime, int currentPage, int pageSize) {
         LambdaQueryWrapper<LogNotifyDo> query = Wrappers.lambdaQuery(LogNotifyDo.class)
                 .eq(LogNotifyDo::getDeleted, 0)
                 .orderByDesc(LogNotifyDo::getId);
@@ -255,13 +264,14 @@ public class LogRepositoryImpl implements LogRepository {
         if (endTime != null) {
             query.le(LogNotifyDo::getGmtCreate, endTime);
         }
-        query.last("LIMIT " + (limit == null ? 50 : limit));
-        List<LogNotifyDo> rows = logNotifyMapper.selectList(query);
+        Page<LogNotifyDo> page = new Page<>(currentPage, pageSize);
+        Page<LogNotifyDo> rowsPage = logNotifyMapper.selectPage(page, query);
+        List<LogNotifyDo> rows = rowsPage.getRecords();
         List<NotifyLogEntity> result = new ArrayList<>();
         for (LogNotifyDo row : rows) {
             result.add(notifyLogDoConverter.toEntity(row));
         }
-        return result;
+        return PageResponse.of(result, rowsPage.getTotal(), (int) rowsPage.getSize(), (int) rowsPage.getCurrent());
     }
 
     /**

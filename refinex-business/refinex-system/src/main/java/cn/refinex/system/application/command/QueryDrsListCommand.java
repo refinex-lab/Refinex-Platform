@@ -1,6 +1,8 @@
 package cn.refinex.system.application.command;
 
+import cn.refinex.base.request.PageRequest;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * 查询数据资源列表命令
@@ -8,7 +10,8 @@ import lombok.Data;
  * @author refinex
  */
 @Data
-public class QueryDrsListCommand {
+@EqualsAndHashCode(callSuper = true)
+public class QueryDrsListCommand extends PageRequest {
 
     /**
      * 系统ID

@@ -12,7 +12,7 @@ import cn.refinex.auth.infrastructure.client.user.UserRemoteGateway;
 import cn.refinex.auth.infrastructure.mapper.AuthRbacMapper;
 import cn.refinex.auth.infrastructure.mapper.ScrSystemMapper;
 import cn.refinex.base.exception.BizException;
-import cn.refinex.base.response.SingleResponse;
+import cn.refinex.web.vo.Result;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import jakarta.validation.Valid;
 import cn.refinex.satoken.helper.LoginUserHelper;
@@ -44,10 +44,10 @@ public class TokenController {
     /**
      * 获取当前登录的token信息
      *
-     * @return 单一结果
+     * @return Token 信息
      */
     @GetMapping("/info")
-    public SingleResponse<TokenInfo> tokenInfo() {
+    public Result<TokenInfo> tokenInfo() {
         if (!StpUtil.isLogin()) {
             throw new BizException(AuthErrorCode.USER_NOT_FOUND);
         }
@@ -58,21 +58,21 @@ public class TokenController {
         info.setTokenTimeout(StpUtil.getTokenTimeout());
         info.setActiveTimeout(StpUtil.getTokenActiveTimeout());
         info.setLoginId(StpUtil.getLoginId());
-        return SingleResponse.of(info);
+        return Result.success(info);
     }
 
     /**
      * 获取当前登录的用户信息
      *
-     * @return 单一结果
+     * @return 当前登录用户
      */
     @GetMapping("/current")
-    public SingleResponse<LoginUser> currentUser() {
+    public Result<LoginUser> currentUser() {
         if (!StpUtil.isLogin()) {
             throw new BizException(AuthErrorCode.USER_NOT_FOUND);
         }
 
-        return SingleResponse.of(LoginUserHelper.getLoginUser());
+        return Result.success(LoginUserHelper.getLoginUser());
     }
 
     /**
@@ -82,7 +82,7 @@ public class TokenController {
      * @return 更新后的登录用户
      */
     @PostMapping("/switch-estab")
-    public SingleResponse<LoginUser> switchEstab(@Valid @RequestBody SwitchEstabRequest request) {
+    public Result<LoginUser> switchEstab(@Valid @RequestBody SwitchEstabRequest request) {
         if (!StpUtil.isLogin()) {
             throw new BizException(AuthErrorCode.USER_NOT_FOUND);
         }
@@ -117,7 +117,7 @@ public class TokenController {
         loginUser.setPermissionCodes(permissionCodes == null ? Collections.emptyList() : permissionCodes);
 
         LoginUserHelper.setLoginUser(loginUser);
-        return SingleResponse.of(loginUser);
+        return Result.success(loginUser);
     }
 
     private Long resolveSystemId(String systemCode) {

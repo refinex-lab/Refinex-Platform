@@ -8,7 +8,7 @@ export const Route = createFileRoute('/_authenticated/system-management/logs/log
 
 function RouteComponent() {
   return (
-    <LogLayout title='登录日志' desc='审计用户登录行为，支持按登录方式、来源与时间窗口查询。'>
+    <LogLayout>
       <LoginLogsPage />
     </LogLayout>
   )

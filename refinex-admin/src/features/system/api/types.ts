@@ -1,3 +1,16 @@
+export interface PaginationQuery {
+  currentPage?: number
+  pageSize?: number
+}
+
+export interface PageData<T> {
+  data?: T[]
+  total?: number
+  totalPage?: number
+  page?: number
+  size?: number
+}
+
 export interface SystemDefinition {
   id?: number
   systemCode?: string
@@ -9,7 +22,7 @@ export interface SystemDefinition {
   remark?: string
 }
 
-export interface SystemListQuery {
+export interface SystemListQuery extends PaginationQuery {
   status?: number
   keyword?: string
 }
@@ -48,7 +61,7 @@ export interface Role {
   remark?: string
 }
 
-export interface RoleListQuery {
+export interface RoleListQuery extends PaginationQuery {
   systemId?: number
   estabId?: number
   status?: number
@@ -224,7 +237,7 @@ export interface ValueSet {
   description?: string
 }
 
-export interface ValueSetListQuery {
+export interface ValueSetListQuery extends PaginationQuery {
   status?: number
   keyword?: string
 }
@@ -255,7 +268,7 @@ export interface ValueItem {
   sort?: number
 }
 
-export interface ValueListQuery {
+export interface ValueListQuery extends PaginationQuery {
   setCode?: string
   status?: number
   keyword?: string
@@ -292,7 +305,7 @@ export interface DataResource {
   remark?: string
 }
 
-export interface DataResourceListQuery {
+export interface DataResourceListQuery extends PaginationQuery {
   systemId?: number
   status?: number
   drsType?: number
@@ -334,7 +347,7 @@ export interface DataResourceInterface {
   sort?: number
 }
 
-export interface DataResourceInterfaceListQuery {
+export interface DataResourceInterfaceListQuery extends PaginationQuery {
   drsId?: number
   status?: number
   keyword?: string
@@ -377,7 +390,7 @@ export interface LoginLog {
   gmtCreate?: string
 }
 
-export interface LoginLogListQuery {
+export interface LoginLogListQuery extends PaginationQuery {
   userId?: number
   estabId?: number
   success?: number
@@ -385,7 +398,6 @@ export interface LoginLogListQuery {
   sourceType?: number
   startTime?: string
   endTime?: string
-  limit?: number
 }
 
 export interface OperateLog {
@@ -410,7 +422,7 @@ export interface OperateLog {
   gmtCreate?: string
 }
 
-export interface OperateLogListQuery {
+export interface OperateLogListQuery extends PaginationQuery {
   userId?: number
   estabId?: number
   success?: number
@@ -418,7 +430,6 @@ export interface OperateLogListQuery {
   requestPath?: string
   startTime?: string
   endTime?: string
-  limit?: number
 }
 
 export interface ErrorLog {
@@ -439,13 +450,12 @@ export interface ErrorLog {
   gmtCreate?: string
 }
 
-export interface ErrorLogListQuery {
+export interface ErrorLogListQuery extends PaginationQuery {
   serviceName?: string
   errorLevel?: number
   requestPath?: string
   startTime?: string
   endTime?: string
-  limit?: number
 }
 
 export interface NotifyLog {
@@ -468,14 +478,13 @@ export interface NotifyLog {
   gmtCreate?: string
 }
 
-export interface NotifyLogListQuery {
+export interface NotifyLogListQuery extends PaginationQuery {
   channelType?: number
   sceneCode?: string
   receiver?: string
   sendStatus?: number
   startTime?: string
   endTime?: string
-  limit?: number
 }
 
 export interface Estab {
@@ -496,7 +505,7 @@ export interface Estab {
   remark?: string
 }
 
-export interface EstabListQuery {
+export interface EstabListQuery extends PaginationQuery {
   status?: number
   estabType?: number
   keyword?: string
@@ -555,7 +564,7 @@ export interface EstabAddress {
   remark?: string
 }
 
-export interface EstabAddressListQuery {
+export interface EstabAddressListQuery extends PaginationQuery {
   addrType?: number
 }
 
@@ -641,7 +650,7 @@ export interface EstabUser {
   positionTitle?: string
 }
 
-export interface EstabUserListQuery {
+export interface EstabUserListQuery extends PaginationQuery {
   status?: number
 }
 
@@ -676,7 +685,7 @@ export interface Team {
   remark?: string
 }
 
-export interface TeamListQuery {
+export interface TeamListQuery extends PaginationQuery {
   estabId?: number
   parentId?: number
   status?: number
@@ -712,7 +721,7 @@ export interface TeamUser {
   joinTime?: string
 }
 
-export interface TeamUserListQuery {
+export interface TeamUserListQuery extends PaginationQuery {
   status?: number
 }
 
@@ -752,12 +761,11 @@ export interface SystemUser {
   remark?: string
 }
 
-export interface SystemUserListQuery {
+export interface SystemUserListQuery extends PaginationQuery {
   primaryEstabId?: number
   status?: number
   userType?: number
   keyword?: string
-  limit?: number
 }
 
 export interface SystemUserCreateRequest {

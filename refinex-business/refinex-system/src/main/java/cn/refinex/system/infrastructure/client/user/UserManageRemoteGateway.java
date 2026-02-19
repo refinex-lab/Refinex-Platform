@@ -2,6 +2,7 @@ package cn.refinex.system.infrastructure.client.user;
 
 import cn.refinex.api.user.model.dto.*;
 import cn.refinex.base.exception.BizException;
+import cn.refinex.base.response.PageResponse;
 import cn.refinex.base.response.MultiResponse;
 import cn.refinex.base.response.SingleResponse;
 import cn.refinex.system.domain.error.SystemErrorCode;
@@ -29,8 +30,8 @@ public class UserManageRemoteGateway {
      * @param query 查询条件
      * @return 用户列表
      */
-    public List<UserManageDTO> listUsers(UserManageListQuery query) {
-        return invokeList(() -> userManageHttpClient.listUsers(query));
+    public PageResponse<UserManageDTO> listUsers(UserManageListQuery query) {
+        return invokePage(() -> userManageHttpClient.listUsers(query));
     }
 
     /**
@@ -144,6 +145,30 @@ public class UserManageRemoteGateway {
             }
             if (Boolean.TRUE.equals(response.getSuccess())) {
                 return response.getData() == null ? Collections.emptyList() : response.getData();
+            }
+            throw new BizException(response.getResponseMessage(), SystemErrorCode.INVALID_PARAM);
+        } catch (BizException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new BizException("调用用户服务失败", ex, SystemErrorCode.INVALID_PARAM);
+        }
+    }
+
+    /**
+     * 调用用户服务分页接口
+     *
+     * @param supplier 调用方法
+     * @param <T>      返回结果类型
+     * @return 分页结果
+     */
+    private <T> PageResponse<T> invokePage(Supplier<PageResponse<T>> supplier) {
+        try {
+            PageResponse<T> response = supplier.get();
+            if (response == null) {
+                throw new BizException(SystemErrorCode.INVALID_PARAM);
+            }
+            if (Boolean.TRUE.equals(response.getSuccess())) {
+                return response;
             }
             throw new BizException(response.getResponseMessage(), SystemErrorCode.INVALID_PARAM);
         } catch (BizException ex) {

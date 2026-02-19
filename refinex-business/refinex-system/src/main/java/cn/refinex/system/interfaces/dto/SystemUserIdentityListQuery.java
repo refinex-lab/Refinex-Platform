@@ -5,16 +5,11 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * 企业成员列表查询参数
+ * 系统用户身份列表查询参数
  *
  * @author refinex
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class EstabUserListQuery extends PageRequest {
-
-    /**
-     * 状态
-     */
-    private Integer status;
+public class SystemUserIdentityListQuery extends PageRequest {
 }
