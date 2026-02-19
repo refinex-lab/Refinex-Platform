@@ -1,644 +1,394 @@
-# Refinex Backend AI Development Rules
+# Refinex Backend AI Development Rules（ZH）
 
-# Java 21 + Spring Boot 4 + Spring Cloud 2025
+# Java 21 + Spring Boot 4 + Spring Cloud 2025.1
 
-本规范是 Refinex 项目的强制架构规则。
-
-AI 在生成、修改、重构任何后端代码时 **MUST 严格遵守本规范**。
-
-违反本规范属于 **严重架构错误（Critical Architecture Violation）**。
+本规范是 Refinex 后端代码生成与重构的强制规则。
+AI 在生成、修改、重构任何后端代码时，**MUST 严格遵守**。
+违反本规范属于 **严重架构违规（Critical Architecture Violation）**。
 
 ---
 
-# 0. 核心目标（Architecture Goals）
+# 0. 架构目标
 
-本架构基于：
+架构基础：
 
-* DDD（Domain Driven Design）
-* Clean Architecture
-* Hexagonal Architecture
-* AI-First Maintainability
+- DDD（Domain-Driven Design）
+- Clean Architecture
+- Hexagonal Architecture
+- AI-First Maintainability
 
-目标：
+核心目标：
 
-* 防止架构腐化
-* 防止业务逻辑扩散
-* 防止 Domain 被污染
-* 防止模块职责混乱
-* 保证长期可维护性
-* 保证 AI 可以安全扩展系统
+- 业务规则内聚到 domain，避免“贫血模型”
+- 技术细节下沉到 infrastructure，避免业务逻辑扩散
+- 严格控制依赖方向，避免层间污染
+- 保证系统长期可维护与可演进
 
 ---
 
-# 1. 技术栈强制规则（MUST）
+# 1. 技术栈基线（MUST）
 
-AI MUST 使用以下技术：
+MUST 使用：
 
-```
-Java 21
-Spring Boot 4.x
+```text
+Java 21（项目基线；不得低于 17）
 Spring Framework 7.x
-Spring Cloud 2025.x
+Spring Boot 4.x
+Spring Cloud 2025.1.x
 Spring Cloud Alibaba 2025.x
 MyBatis Plus 3.5.x
 MapStruct 1.6.x
 Spring HTTP Service Client
 ```
 
-AI MUST NOT 使用：
+MUST NOT 使用：
 
-```
-FeignClient
-OpenFeign
-RestTemplate
+```text
+FeignClient / OpenFeign
+RestTemplate（新增代码）
 BeanUtils.copyProperties
 ModelMapper
-手写对象转换代码
+跨层手写对象转换（绕过 MapStruct）
 ```
 
-对象转换 MUST 使用 MapStruct。
+说明：OpenFeign 已 feature-complete；新代码统一使用 Spring HTTP Service Client。
 
 ---
 
-# 2. 标准分层架构（MUST）
+# 2. 标准四层架构（MUST）
 
-系统 MUST 严格遵守以下分层：
+系统必须采用以下分层：
 
-```
+```text
 interfaces
 application
 domain
 infrastructure
 ```
 
-Mermaid 架构图：
+标准依赖方向（铁律）：
 
-```mermaid
-flowchart TB
-
-controller --> application
-facade --> application
-listener --> application
-job --> application
-
-application --> domain
-
-infrastructure --> domain
-
-infrastructure -.implements.-> repository
-
-domain --> repository
-
-repository -.implemented by.-> infrastructure
+```text
+interfaces -> application -> domain
+infrastructure -> domain
 ```
 
-依赖方向规则：
+禁止依赖方向：
 
-```
-interfaces → application → domain
-infrastructure → domain
-```
+```text
+domain -> application
+domain -> interfaces
+domain -> infrastructure
 
-禁止：
+application -> interfaces
+application -> infrastructure.persistence.mapper
 
-```
-domain → application
-domain → interfaces
-domain → infrastructure
-
-application → interfaces
-application → mapper
-
-interfaces → mapper
-interfaces → repository impl
+interfaces -> domain
+interfaces -> infrastructure
+interfaces -> mapper / repository impl
 ```
 
 ---
 
-# 3. 各层职责强制规则（MUST）
+# 3. 分层职责规则（MUST）
 
----
+## 3.1 interfaces 层
 
-## 3.1 interfaces 层规则
+推荐位置：
 
-位置：
-
-```
+```text
 interfaces.controller
 interfaces.facade
 interfaces.listener
 interfaces.job
+interfaces.vo
 ```
 
 职责：
 
-```
-接收外部请求
-参数校验
-调用 application
-返回 VO
-```
+- 接收请求（HTTP/MQ/Job）
+- 参数校验
+- 调用 application
+- DTO -> VO 返回
 
-调用流程：
+禁止：
 
-```mermaid
-sequenceDiagram
+- 业务规则判断
+- 数据库访问
+- 远程 HTTP 调用
+- 直接访问 mapper/repository impl/infrastructure
 
-actor Client
+## 3.2 application 层（Use Case）
 
-Client->>Controller: HTTP Request
-Controller->>Application: DTO
-Application->>Domain: Business Logic
-Domain->>Application: Result
-Application->>Controller: DTO
-Controller->>Client: VO Response
-```
+推荐位置：
 
-interfaces MUST NOT：
-
-```
-访问 mapper
-访问 repository impl
-访问 infrastructure
-实现业务逻辑
-访问数据库
-远程调用 HTTP
-```
-
----
-
-## 3.2 application 层规则（Use Case Layer）
-
-位置：
-
-```
+```text
 application.service
 application.command
 application.query
+application.dto
 application.assembler
 ```
 
 职责：
 
-```
-编排业务流程
-调用 domain
-管理事务
-转换 DTO ↔ Domain
-```
+- 编排用例流程
+- 调用 domain（实体/领域服务/仓储接口）
+- 管理事务边界
+- DTO <-> Domain 转换
 
-application MUST：
+必须：
 
-```
-使用 domain repository interface
-使用 MapStruct assembler
-使用 @Transactional
-```
+- 通过 domain.repository / domain.gateway 接口访问外部能力
+- 使用 MapStruct（assembler）完成 DTO <-> Domain 转换
 
-application MUST NOT：
+禁止：
 
-```
-访问 mapper
-访问 database
-访问 HttpClient
-访问 Redis
-访问 MQ
-```
+- 直接访问 mapper / database
+- 直接访问 infrastructure.client / Redis / MQ
+- 在 application 实现领域规则（规则应回到 domain）
 
-事务示意图：
+## 3.3 domain 层（核心层，最高优先级）
 
-```mermaid
-flowchart LR
+推荐位置：
 
-controller --> application
-
-application --> domain
-
-application --> transaction
-
-transaction --> database
-```
-
----
-
-## 3.3 domain 层规则（核心层，最高优先级）
-
-位置：
-
-```
+```text
 domain.model.entity
 domain.model.valueobject
-domain.repository
 domain.service
+domain.repository
+domain.gateway
+domain.event
 ```
 
-domain MUST 只包含：
+只允许包含：
 
-```
-Entity
-ValueObject
-Aggregate
-DomainService
-Repository Interface
-```
+- Entity / Aggregate / ValueObject
+- DomainService
+- Repository Interface / Gateway Interface
+- Domain Event
 
-domain MUST NOT 依赖：
+绝对禁止：
 
-```
-Spring Framework
-MyBatis
-HTTP
-Redis
-MQ
-Database
-Infrastructure
+```text
+Spring 注解与 API
+MyBatis 注解与 API
+HTTP/Redis/MQ/数据库客户端
+任何 infrastructure 实现类
 ```
 
-domain 必须是：
+约束：
 
-```
-Pure Java
-Framework Independent
-```
+- domain 必须保持 Pure Java、Framework-Independent
+- 聚合间通过 ID 引用，不直接持有外部聚合对象
 
-domain 示例：
+## 3.4 infrastructure 层
 
-```java
-public class Order {
+推荐位置：
 
-    public void pay() {
-
-        if (status != CREATED) {
-            throw new DomainException("Invalid status");
-        }
-
-        status = PAID;
-    }
-
-}
-```
-
----
-
-## 3.4 infrastructure 层规则
-
-位置：
-
-```
+```text
 infrastructure.persistence.mapper
-infrastructure.persistence.repository
 infrastructure.persistence.entity
+infrastructure.persistence.repository
+infrastructure.persistence.converter
 infrastructure.client
 infrastructure.config
 infrastructure.mq
+infrastructure.cache
 ```
 
 职责：
 
-```
-实现 domain repository
-数据库访问
-HTTP远程调用
-MQ访问
-Redis访问
-```
-
-Mermaid：
-
-```mermaid
-flowchart LR
-
-domain --> repository interface
-
-repository interface --> infrastructure repository impl
-
-infrastructure repository impl --> mapper
-
-mapper --> database
-```
+- 实现 domain.repository / domain.gateway
+- 数据库访问（Mapper）
+- 远程调用（HTTP Service Client）
+- MQ/Redis/配置等技术实现
 
 ---
 
-# 4. Repository 强制规则
+# 4. 数据对象边界（MUST）
 
-Domain MUST 定义接口：
+严格区分对象类型：
 
-```
-domain.repository.OrderRepository
-```
+- `VO`：仅 interfaces 使用
+- `DTO`：仅 application 使用
+- `Entity/VO(ValueObject)`：仅 domain 使用
+- `DO`：仅 infrastructure 持久化使用
 
-Infrastructure MUST 实现：
+禁止跨层泄露：
 
-```
-infrastructure.persistence.repository.OrderRepositoryImpl
-```
-
-Mapper MUST ONLY 存在：
-
-```
-infrastructure.persistence.mapper
-```
-
-Forbidden：
-
-```
-application 使用 mapper ❌
-controller 使用 mapper ❌
-domain 使用 mapper ❌
-```
+- Controller 返回 DO
+- Application 直接操作 DO
+- Domain 出现 DTO/VO/DO
 
 ---
 
-# 5. 远程调用强制规则（Spring HTTP Service Client）
+# 5. Repository 规则（MUST）
 
-AI MUST 使用：
+规则：
 
-```
-Spring HTTP Service Client
-```
+- `domain.repository.*` 只定义接口
+- `infrastructure.persistence.repository.*` 实现接口
+- Mapper 只能在 `infrastructure.persistence.mapper` 中出现并被 repository impl 调用
 
-位置：
+禁止：
 
-```
-infrastructure.client
-```
-
-示意图：
-
-```mermaid
-flowchart LR
-
-application --> domain
-
-domain --> repository interface
-
-repository interface --> infrastructure
-
-infrastructure --> http client
-
-http client --> remote service
-```
-
-示例：
-
-```java
-@HttpExchange("/users")
-public interface UserHttpClient {
-
-    @GetExchange("/{id}")
-    UserDTO getUser(@PathVariable Long id);
-
-}
-```
-
-AI MUST 参考：
-
-```
-document/reference/Spring HTTP Service Client 指南.md
-```
-
-Forbidden：
-
-```
-FeignClient ❌
-RestTemplate ❌
-```
+- application 直接注入 mapper
+- interfaces 直接访问 repository impl
+- domain 直接访问 mapper/database
 
 ---
 
-# 6. MapStruct 强制规则（对象转换）
+# 6. 远程调用规则（Spring HTTP Service Client）
 
-AI MUST 使用：
+## 6.1 位置与定义
 
-```
-MapStruct
-```
+- HTTP 接口定义在 `infrastructure.client`
+- 使用 `@HttpExchange` + `@GetExchange/@PostExchange/...`
+- 不使用 `@FeignClient`
 
-位置：
+## 6.2 注册与分组（Framework 7 / Boot 4）
 
-```
-application.assembler
-infrastructure.converter
-```
+- 使用 `@ImportHttpServices(group = "<group>", ...)` 注册客户端
+- `group` 建议与 serviceId 对齐（如 `user-service`）
+- 可通过 `HttpServiceProxyRegistry` 按 group 获取代理（多租户/多区域场景）
 
-转换关系：
+## 6.3 配置键（Boot 4）
 
-```mermaid
-flowchart LR
+必须使用：
 
-RequestDTO --> Domain
-Domain --> ResponseDTO
-Domain --> DO
-DO --> Domain
+```text
+spring.http.clients.*
+spring.http.serviceclient.<group>.*
 ```
 
-Forbidden：
+禁止使用旧错误键：
 
+```text
+spring.http.client.service.*
 ```
-BeanUtils.copyProperties ❌
-手写转换 ❌
-```
+
+## 6.4 内外部调用约定
+
+- 内部微服务：优先 `base-url: lb://<service-id>`（接入 LoadBalancer）
+- 外部第三方：使用显式 `https://...`
+- 常量 header 可配在 group 或注解；动态鉴权/trace/tenant 必须走拦截器或 group configurer
+
+## 6.5 容错与可观测性
+
+- 需要降级时使用 `@HttpServiceFallback`
+- 错误语义统一映射为业务异常，禁止将所有错误抛成同一种 RuntimeException
+- 关键 client 必须有契约测试（如 WireMock）
 
 ---
 
-# 7. 数据对象定义规则
+# 7. MapStruct 规则（MUST）
 
-严格区分：
+转换层位置：
 
-```
-VO  → interfaces
-DTO → application
-DO  → infrastructure
-Entity → domain
-```
+- `application.assembler`：DTO <-> Domain
+- `infrastructure.persistence.converter`：Domain <-> DO
 
-Mermaid：
+禁止：
 
-```mermaid
-flowchart LR
+- `BeanUtils.copyProperties`
+- 大量散落的手写转换逻辑
 
-Controller --> DTO
-
-DTO --> Domain
-
-Domain --> DO
-
-DO --> Database
-
-Domain --> DTO
-
-DTO --> VO
-
-VO --> Client
-```
+补充：确有复杂映射时，优先在 MapStruct 的 `default` 方法或表达式内封装，避免跨层复制粘贴转换代码。
 
 ---
 
-# 8. refinex-common 模块复用规则（强制）
+# 8. 事务规则（MUST）
 
-AI MUST 在开发前检查：
+`@Transactional` 只允许出现在：
 
-```
-refinex-common
-```
-
-AI MUST 优先复用：
-
-```
-Result
-PageResult
-Exception
-Utils
-BaseEntity
-...
-```
-
-AI MUST NOT 重复实现已有能力。
-
-如果能力缺失：
-
-MUST 新增到 refinex-common 的子模块下：
-
-```
-refinex-*
-```
-
-NOT service module。
-
----
-
-# 9. 事务规则
-
-@Transactional MUST ONLY 存在：
-
-```
+```text
 application.service
 ```
 
-Forbidden：
+禁止出现在：
 
+```text
+interfaces
+domain
+infrastructure.persistence.repository
+infrastructure.persistence.mapper
 ```
-controller ❌
-domain ❌
-repository ❌
-mapper ❌
-```
+
+说明：并非每个 application 方法都必须开启事务；仅在需要事务边界的用例上使用。
 
 ---
 
-# 10. AI 开发决策流程（强制）
+# 9. Domain 纯净性检查（MUST）
 
-AI MUST 按此顺序执行：
+Code Review 必检：
 
-```mermaid
-flowchart TD
-
-Start --> CheckCommon
-
-CheckCommon --> Exists{能力存在?}
-
-Exists -->|Yes| Reuse
-
-Exists -->|No| CheckService
-
-CheckService --> Exists2{Service存在?}
-
-Exists2 -->|Yes| Extend
-
-Exists2 -->|No| CreateCommon
-
-CreateCommon --> Implement
-```
-
-决策规则：
-
-```
-优先复用
-其次扩展
-最后创建
-```
-
-禁止重复实现。
+- domain 无 `import org.springframework.*`
+- domain 无 `import com.baomidou.*`
+- Entity 状态变更通过业务方法，不靠外部 setter 任意改写
+- ValueObject 不可变
+- domain 单元测试可脱离 Spring 容器运行
 
 ---
 
-# 11. 标准调用流程（完整）
+# 10. refinex-common 复用规则（MUST）
 
-```mermaid
-flowchart TB
+开发前必须检查：
 
-Client --> Controller
-
-Controller --> Application
-
-Application --> Domain
-
-Domain --> Repository Interface
-
-Repository Interface --> Infrastructure
-
-Infrastructure --> Database
-
-Infrastructure --> RemoteService
-
-Database --> Infrastructure
-
-Infrastructure --> Domain
-
-Domain --> Application
-
-Application --> Controller
-
-Controller --> Client
+```text
+refinex-common
 ```
+
+优先复用已有能力（如 `Result`、`PageResult`、通用异常、基础工具类等）。
+
+禁止：
+
+- 在业务 service 模块重复实现 common 已存在能力
+
+能力缺失时：
+
+- 先补充到 `refinex-common` 对应子模块，再在业务模块使用
 
 ---
 
-# 12. 严重违规行为（Critical Violations）
+# 11. 严重违规清单（MUST NEVER）
 
 以下行为属于严重违规：
 
-```
-Controller 访问 mapper
-Application 访问 mapper
-Domain 使用 Spring
-Domain 使用 HTTP
-手写 DTO 转换
-使用 Feign
-绕过 Application 调用 Domain
-```
-
-AI MUST NEVER 执行以上行为。
+- Controller/Facade 直接访问 mapper
+- Application 直接操作 DO 或 mapper
+- Domain 使用 Spring/MyBatis/HTTP 客户端
+- 跳过 application，直接从 interfaces 调 domain
+- 新增 Feign/OpenFeign 客户端
+- 使用错误的 Boot 4 HTTP Client 配置前缀
+- 手写跨层对象转换替代 MapStruct
 
 ---
 
-# 13. Domain 纯净性原则（最高优先级）
+# 12. AI 开发执行顺序（MUST）
 
-Domain MUST 永远保持：
+AI 必须按顺序执行：
 
+1. 检查 `refinex-common` 是否已有可复用能力
+2. 确认变更所在层与依赖方向是否合法
+3. 按对象边界设计 VO/DTO/Entity/DO
+4. 优先定义 domain 接口，再由 infrastructure 实现
+5. 远程调用统一走 HTTP Service Client（group 化配置）
+6. 补充必要测试（至少覆盖核心业务规则与关键客户端契约）
+
+决策优先级：
+
+```text
+复用 > 扩展 > 新建
 ```
-Pure
-Independent
-Stable
-Framework-Free
-```
-
-Domain 是系统核心。
-
-其他层围绕 Domain 工作。
 
 ---
 
-# 14. 本规则优先级
+# 13. 参考依据
 
-本规则优先级：
+本规范依据并对齐以下文档：
 
-```
-HIGHER THAN
+- `document/reference/领域驱动设计（DDD）：从核心概念到 Spring Cloud 标准落地.md`
+- `document/reference/Spring HTTP Service Client 指南.md`
 
-任何示例代码
-任何历史代码
-任何 AI 推测实现
-```
-
-AI MUST 遵守本规则。
+如历史代码与本规范冲突，以本规范为准。
