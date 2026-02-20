@@ -163,11 +163,16 @@ export function RoleManagementPage() {
   const [userKeyword, setUserKeyword] = useState('')
   const [userCandidates, setUserCandidates] = useState<RoleBindingUser[]>([])
   const [userSearching, setUserSearching] = useState(false)
+  const [userDialogOpen, setUserDialogOpen] = useState(false)
+  const [tempSelectedUserIds, setTempSelectedUserIds] = useState<Set<number>>(new Set())
 
   const [menuTree, setMenuTree] = useState<MenuTreeNode[]>([])
   const [menuTreeLoading, setMenuTreeLoading] = useState(false)
   const [selectedMenuIds, setSelectedMenuIds] = useState<Set<number>>(new Set())
   const [selectedMenuOpIds, setSelectedMenuOpIds] = useState<Set<number>>(new Set())
+
+  const [resourceDialogOpen, setResourceDialogOpen] = useState(false)
+  const [tempSelectedDrsInterfaceIds, setTempSelectedDrsInterfaceIds] = useState<Set<number>>(new Set())
 
   const [dataResources, setDataResources] = useState<DataResource[]>([])
   const [dataResourcesLoading, setDataResourcesLoading] = useState(false)
@@ -176,6 +181,7 @@ export function RoleManagementPage() {
   const [drsInterfaces, setDrsInterfaces] = useState<DataResourceInterface[]>([])
   const [drsInterfacesLoading, setDrsInterfacesLoading] = useState(false)
   const [selectedDrsInterfaceIds, setSelectedDrsInterfaceIds] = useState<Set<number>>(new Set())
+  const [allDrsInterfaces, setAllDrsInterfaces] = useState<DataResourceInterface[]>([])
 
   const form = useForm<RoleFormValues>({
     resolver: zodResolver(roleFormSchema),
@@ -248,6 +254,33 @@ export function RoleManagementPage() {
     }
   }
 
+  async function loadAllDrsInterfaces(ownerEstabId?: number) {
+    try {
+      const allResources = await listDataResources({
+        status: 1,
+        ownerEstabId,
+        currentPage: 1,
+        pageSize: DATA_RESOURCE_PAGE_SIZE,
+      })
+      const resources = allResources.data ?? []
+
+      const interfacePromises = resources.map((resource) =>
+        listDataResourceInterfaces({
+          drsId: resource.id!,
+          status: 1,
+          currentPage: 1,
+          pageSize: DATA_RESOURCE_INTERFACE_PAGE_SIZE,
+        })
+      )
+
+      const interfaceResults = await Promise.all(interfacePromises)
+      const allInterfaces = interfaceResults.flatMap((result) => result.data ?? [])
+      setAllDrsInterfaces(allInterfaces)
+    } catch (error) {
+      handleServerError(error)
+    }
+  }
+
   async function loadDataResources(ownerEstabId?: number) {
     setDataResourcesLoading(true)
     try {
@@ -312,6 +345,7 @@ export function RoleManagementPage() {
     const roleEstabId = editingRole?.estabId ?? roleQueryEstabId ?? 0
     void loadMenuTree(systemId, editingRole?.id, roleEstabId)
     void loadDataResources(roleEstabId)
+    void loadAllDrsInterfaces(roleEstabId)
     if (!editingRole) {
       setSelectedMenuIds(new Set())
       setSelectedMenuOpIds(new Set())
@@ -321,16 +355,16 @@ export function RoleManagementPage() {
   }, [dialogOpen, permissionSystemId, editingRole?.id, editingRole?.estabId, roleQueryEstabId])
 
   useEffect(() => {
-    if (!dialogOpen || !selectedDrsId) {
+    if ((!dialogOpen && !resourceDialogOpen) || !selectedDrsId) {
       setDrsInterfaces([])
       return
     }
     void loadDrsInterfaces(selectedDrsId, interfaceKeyword)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dialogOpen, selectedDrsId, interfaceKeyword])
+  }, [dialogOpen, resourceDialogOpen, selectedDrsId, interfaceKeyword])
 
   useEffect(() => {
-    if (!dialogOpen || activeTab !== 'users') return
+    if (!userDialogOpen) return
     if (!userKeyword.trim()) {
       setUserCandidates([])
       return
@@ -364,7 +398,7 @@ export function RoleManagementPage() {
 
     return () => window.clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dialogOpen, activeTab, userKeyword])
+  }, [userDialogOpen, userKeyword])
 
   function applyFilter() {
     setQuery((prev) => ({
@@ -494,18 +528,60 @@ export function RoleManagementPage() {
     }
   }
 
-  function addUser(user: RoleBindingUser) {
-    const userId = user.userId
-    if (!userId) return
-    setSelectedUserIds((prev) => {
+  function openUserDialog() {
+    setTempSelectedUserIds(new Set(selectedUserIds))
+    setUserKeyword('')
+    setUserCandidates([])
+    setUserDialogOpen(true)
+  }
+
+  function closeUserDialog() {
+    setUserDialogOpen(false)
+    setUserKeyword('')
+    setUserCandidates([])
+  }
+
+  function toggleTempUser(userId: number, checked: boolean) {
+    setTempSelectedUserIds((prev) => {
       const next = new Set(prev)
-      next.add(userId)
+      if (checked) next.add(userId)
+      else next.delete(userId)
       return next
     })
-    setBoundUsers((prev) => {
-      if (prev.some((item) => item.userId === userId)) return prev
-      return [...prev, user]
-    })
+  }
+
+  async function confirmAddUsers() {
+    setUserSearching(true)
+    try {
+      const newUserIds = Array.from(tempSelectedUserIds).filter((id) => !selectedUserIds.has(id))
+      if (newUserIds.length === 0) {
+        closeUserDialog()
+        return
+      }
+
+      const pageData = await listSystemUsers({
+        status: 1,
+        currentPage: 1,
+        pageSize: 200,
+      })
+      const allUsers = pageData.data ?? []
+      const newUsers: RoleBindingUser[] = allUsers
+        .filter((item) => item.userId != null && newUserIds.includes(item.userId))
+        .map((item) => ({
+          userId: item.userId,
+          userCode: item.userCode,
+          username: item.username,
+          displayName: item.displayName,
+        }))
+
+      setSelectedUserIds(tempSelectedUserIds)
+      setBoundUsers((prev) => [...prev, ...newUsers])
+      closeUserDialog()
+    } catch (error) {
+      handleServerError(error)
+    } finally {
+      setUserSearching(false)
+    }
   }
 
   function removeUser(userId?: number) {
@@ -516,6 +592,40 @@ export function RoleManagementPage() {
       return next
     })
     setBoundUsers((prev) => prev.filter((item) => item.userId !== userId))
+  }
+
+  function openResourceDialog() {
+    setTempSelectedDrsInterfaceIds(new Set(selectedDrsInterfaceIds))
+    setInterfaceKeyword('')
+    setResourceDialogOpen(true)
+  }
+
+  function closeResourceDialog() {
+    setResourceDialogOpen(false)
+    setInterfaceKeyword('')
+  }
+
+  function toggleTempDrsInterface(interfaceId: number, checked: boolean) {
+    setTempSelectedDrsInterfaceIds((prev) => {
+      const next = new Set(prev)
+      if (checked) next.add(interfaceId)
+      else next.delete(interfaceId)
+      return next
+    })
+  }
+
+  function confirmAddResources() {
+    setSelectedDrsInterfaceIds(tempSelectedDrsInterfaceIds)
+    closeResourceDialog()
+  }
+
+  function removeDrsInterface(interfaceId?: number) {
+    if (!interfaceId) return
+    setSelectedDrsInterfaceIds((prev) => {
+      const next = new Set(prev)
+      next.delete(interfaceId)
+      return next
+    })
   }
 
   function toggleMenu(menuId: number | undefined, checked: boolean) {
@@ -739,9 +849,7 @@ export function RoleManagementPage() {
                     </FormItem>
                   )}
                 />
-              </div>
 
-              <div className='grid gap-4 md:grid-cols-3'>
                 <FormField
                   control={form.control}
                   name='roleType'
@@ -750,7 +858,7 @@ export function RoleManagementPage() {
                       <FormLabel>角色类型</FormLabel>
                       <Select value={field.value} onValueChange={field.onChange}>
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className='w-full'>
                             <SelectValue placeholder='请选择角色类型' />
                           </SelectTrigger>
                         </FormControl>
@@ -764,7 +872,9 @@ export function RoleManagementPage() {
                     </FormItem>
                   )}
                 />
+              </div>
 
+              <div className='grid gap-4 md:grid-cols-3'>
                 <FormField
                   control={form.control}
                   name='status'
@@ -773,7 +883,7 @@ export function RoleManagementPage() {
                       <FormLabel>状态</FormLabel>
                       <Select value={field.value} onValueChange={field.onChange}>
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className='w-full'>
                             <SelectValue placeholder='请选择状态' />
                           </SelectTrigger>
                         </FormControl>
@@ -800,6 +910,25 @@ export function RoleManagementPage() {
                     </FormItem>
                   )}
                 />
+
+                <FormItem>
+                  <FormLabel>权限系统</FormLabel>
+                  <Select
+                    value={permissionSystemId ? String(permissionSystemId) : ''}
+                    onValueChange={(value) => setPermissionSystemId(Number(value))}
+                  >
+                    <SelectTrigger className='w-full' disabled={systemLoading}>
+                      <SelectValue placeholder='请选择系统' />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {systems.map((system) => (
+                        <SelectItem key={system.id} value={String(system.id)}>
+                          {system.systemName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormItem>
               </div>
 
               <FormField
@@ -822,126 +951,108 @@ export function RoleManagementPage() {
                   <TabsTrigger value='resources'>数据资源</TabsTrigger>
                   <TabsTrigger value='menus'>菜单权限</TabsTrigger>
                 </TabsList>
-                <div className='flex items-center gap-2'>
-                  <span className='text-sm text-muted-foreground'>权限系统</span>
-                  <Select
-                    value={permissionSystemId ? String(permissionSystemId) : ''}
-                    onValueChange={(value) => setPermissionSystemId(Number(value))}
-                  >
-                    <SelectTrigger className='w-[260px]' disabled={systemLoading}>
-                      <SelectValue placeholder='请选择系统' />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {systems.map((system) => (
-                        <SelectItem key={system.id} value={String(system.id)}>
-                          {system.systemName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
 
                 <TabsContent value='users' className='space-y-3'>
-                  <div className='grid gap-3 lg:grid-cols-2'>
-                    <Card className='gap-3 py-3'>
-                      <CardHeader className='pb-0'>
-                        <CardTitle className='text-base'>候选用户</CardTitle>
-                      </CardHeader>
-                      <CardContent className='space-y-3'>
-                        <Input
-                          value={userKeyword}
-                          placeholder='输入用户名/显示名快速检索'
-                          onChange={(event) => setUserKeyword(event.target.value)}
-                        />
-                        <div className='overflow-hidden rounded-md border border-border/90'>
-                          <Table className='[&_td]:border-r [&_td]:border-border/70 [&_td:last-child]:border-r-0 [&_th]:border-r [&_th]:border-border/70 [&_th:last-child]:border-r-0'>
-                            <TableHeader>
-                              <TableRow className='bg-muted/30 hover:bg-muted/30'>
-                                <TableHead>用户</TableHead>
-                                <TableHead>用户编码</TableHead>
-                                <TableHead className='w-[88px] text-center'>操作</TableHead>
+                  <Card className='gap-3 py-3'>
+                    <CardHeader className='pb-0 flex flex-row items-center justify-between'>
+                      <CardTitle className='text-base'>已授权用户（{selectedUserIds.size}）</CardTitle>
+                      <Button type='button' variant='link' size='sm' className='gap-1 h-auto p-0' onClick={openUserDialog}>
+                        <Plus className='h-3.5 w-3.5' />
+                        新增
+                      </Button>
+                    </CardHeader>
+                    <CardContent>
+                      <div className='overflow-hidden rounded-md border border-border/90'>
+                        <Table className='[&_td]:border-r [&_td]:border-border/70 [&_td:last-child]:border-r-0 [&_th]:border-r [&_th]:border-border/70 [&_th:last-child]:border-r-0'>
+                          <TableHeader>
+                            <TableRow className='bg-muted/30 hover:bg-muted/30'>
+                              <TableHead>用户</TableHead>
+                              <TableHead>用户编码</TableHead>
+                              <TableHead className='w-[88px] text-center'>操作</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {boundUsers.length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={3} className='py-4 text-center text-muted-foreground'>
+                                  当前未授权任何用户
+                                </TableCell>
                               </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {userSearching ? (
-                                <TableRow>
-                                  <TableCell colSpan={3}>
-                                    <div className='flex items-center justify-center gap-2 py-4 text-muted-foreground'>
-                                      <Loader2 className='h-4 w-4 animate-spin' />
-                                      正在检索用户...
-                                    </div>
+                            ) : (
+                              boundUsers.map((user) => (
+                                <TableRow key={user.userId ?? user.userCode ?? user.username}>
+                                  <TableCell>{toUserDisplay(user)}</TableCell>
+                                  <TableCell>{user.userCode || '-'}</TableCell>
+                                  <TableCell className='text-center'>
+                                    <Button
+                                      type='button'
+                                      variant='ghost'
+                                      size='sm'
+                                      className='mx-auto gap-1 text-destructive hover:text-destructive'
+                                      onClick={() => removeUser(user.userId)}
+                                    >
+                                      <Trash2 className='h-3.5 w-3.5' />
+                                      移除
+                                    </Button>
                                   </TableCell>
                                 </TableRow>
-                              ) : userCandidates.length === 0 ? (
-                                <TableRow>
-                                  <TableCell colSpan={3} className='py-4 text-center text-muted-foreground'>
-                                    输入关键字后可检索用户
-                                  </TableCell>
-                                </TableRow>
-                              ) : (
-                                userCandidates.map((user) => {
-                                  const userId = user.userId
-                                  const selected = userId ? selectedUserIds.has(userId) : false
-                                  return (
-                                    <TableRow key={userId ?? user.userCode ?? user.username}>
-                                      <TableCell>{toUserDisplay(user)}</TableCell>
-                                      <TableCell>{user.userCode || '-'}</TableCell>
-                                      <TableCell className='text-center'>
-                                        <Button
-                                          type='button'
-                                          size='sm'
-                                          variant={selected ? 'secondary' : 'outline'}
-                                          className='mx-auto gap-1'
-                                          disabled={selected}
-                                          onClick={() => addUser(user)}
-                                        >
-                                          {selected ? <Check className='h-3.5 w-3.5' /> : <Plus className='h-3.5 w-3.5' />}
-                                          {selected ? '已选' : '添加'}
-                                        </Button>
-                                      </TableCell>
-                                    </TableRow>
-                                  )
-                                })
-                              )}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      </CardContent>
-                    </Card>
+                              ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
 
-                    <Card className='gap-3 py-3'>
-                      <CardHeader className='pb-0'>
-                        <CardTitle className='text-base'>已授权用户（{selectedUserIds.size}）</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className='overflow-hidden rounded-md border border-border/90'>
-                          <Table className='[&_td]:border-r [&_td]:border-border/70 [&_td:last-child]:border-r-0 [&_th]:border-r [&_th]:border-border/70 [&_th:last-child]:border-r-0'>
-                            <TableHeader>
-                              <TableRow className='bg-muted/30 hover:bg-muted/30'>
-                                <TableHead>用户</TableHead>
-                                <TableHead>用户编码</TableHead>
-                                <TableHead className='w-[88px] text-center'>操作</TableHead>
+                <TabsContent value='resources' className='space-y-3'>
+                  <Card className='gap-3 py-3'>
+                    <CardHeader className='pb-0 flex flex-row items-center justify-between'>
+                      <CardTitle className='text-base'>已授权数据资源接口（{selectedDrsInterfaceIds.size}）</CardTitle>
+                      <Button type='button' variant='link' size='sm' className='gap-1 h-auto p-0' onClick={openResourceDialog}>
+                        <Plus className='h-3.5 w-3.5' />
+                        新增
+                      </Button>
+                    </CardHeader>
+                    <CardContent>
+                      <div className='overflow-hidden rounded-md border border-border/90'>
+                        <Table className='[&_td]:border-r [&_td]:border-border/70 [&_td:last-child]:border-r-0 [&_th]:border-r [&_th]:border-border/70 [&_th:last-child]:border-r-0'>
+                          <TableHeader>
+                            <TableRow className='bg-muted/30 hover:bg-muted/30'>
+                              <TableHead>接口编码</TableHead>
+                              <TableHead>接口名称</TableHead>
+                              <TableHead>SQL 过滤表达式</TableHead>
+                              <TableHead>状态</TableHead>
+                              <TableHead className='w-[88px] text-center'>操作</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {allDrsInterfaces.filter((item) => item.id && selectedDrsInterfaceIds.has(item.id)).length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={5} className='py-4 text-center text-muted-foreground'>
+                                  当前未授权任何数据资源接口
+                                </TableCell>
                               </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {boundUsers.length === 0 ? (
-                                <TableRow>
-                                  <TableCell colSpan={3} className='py-4 text-center text-muted-foreground'>
-                                    当前未授权任何用户
-                                  </TableCell>
-                                </TableRow>
-                              ) : (
-                                boundUsers.map((user) => (
-                                  <TableRow key={user.userId ?? user.userCode ?? user.username}>
-                                    <TableCell>{toUserDisplay(user)}</TableCell>
-                                    <TableCell>{user.userCode || '-'}</TableCell>
+                            ) : (
+                              allDrsInterfaces
+                                .filter((item) => item.id && selectedDrsInterfaceIds.has(item.id))
+                                .map((item) => (
+                                  <TableRow key={item.id}>
+                                    <TableCell>{item.interfaceCode || '-'}</TableCell>
+                                    <TableCell>{item.interfaceName || '-'}</TableCell>
+                                    <TableCell className='max-w-[420px] truncate'>{item.interfaceSql || '-'}</TableCell>
+                                    <TableCell>
+                                      <Badge variant={item.status === 1 ? 'default' : 'secondary'}>
+                                        {toStatusLabel(item.status)}
+                                      </Badge>
+                                    </TableCell>
                                     <TableCell className='text-center'>
                                       <Button
                                         type='button'
                                         variant='ghost'
                                         size='sm'
                                         className='mx-auto gap-1 text-destructive hover:text-destructive'
-                                        onClick={() => removeUser(user.userId)}
+                                        onClick={() => removeDrsInterface(item.id)}
                                       >
                                         <Trash2 className='h-3.5 w-3.5' />
                                         移除
@@ -949,89 +1060,6 @@ export function RoleManagementPage() {
                                     </TableCell>
                                   </TableRow>
                                 ))
-                              )}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value='resources' className='space-y-3'>
-                  <Card className='gap-3 py-3'>
-                    <CardHeader className='pb-0'>
-                      <CardTitle className='text-base'>数据资源接口授权</CardTitle>
-                    </CardHeader>
-                    <CardContent className='space-y-3'>
-                      <div className='grid gap-3 lg:grid-cols-[260px_1fr]'>
-                        <Select
-                          value={selectedDrsId ? String(selectedDrsId) : ''}
-                          onValueChange={(value) => setSelectedDrsId(Number(value))}
-                        >
-                          <SelectTrigger disabled={dataResourcesLoading}>
-                            <SelectValue placeholder='选择数据资源' />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {dataResources.map((resource) => (
-                              <SelectItem key={resource.id} value={String(resource.id)}>
-                                {resource.drsName}（{resource.drsCode}）
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Input
-                          value={interfaceKeyword}
-                          placeholder='按接口编码/名称筛选'
-                          onChange={(event) => setInterfaceKeyword(event.target.value)}
-                        />
-                      </div>
-                      <div className='overflow-hidden rounded-md border border-border/90'>
-                        <Table className='[&_td]:border-r [&_td]:border-border/70 [&_td:last-child]:border-r-0 [&_th]:border-r [&_th]:border-border/70 [&_th:last-child]:border-r-0'>
-                          <TableHeader>
-                            <TableRow className='bg-muted/30 hover:bg-muted/30'>
-                              <TableHead className='w-[64px] text-center'>授权</TableHead>
-                              <TableHead>接口编码</TableHead>
-                              <TableHead>接口名称</TableHead>
-                              <TableHead>SQL 过滤表达式</TableHead>
-                              <TableHead>状态</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {drsInterfacesLoading ? (
-                              <TableRow>
-                                <TableCell colSpan={5}>
-                                  <div className='flex items-center justify-center gap-2 py-4 text-muted-foreground'>
-                                    <Loader2 className='h-4 w-4 animate-spin' />
-                                    正在加载接口列表...
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            ) : drsInterfaces.length === 0 ? (
-                              <TableRow>
-                                <TableCell colSpan={5} className='py-4 text-center text-muted-foreground'>
-                                  当前数据资源暂无接口定义
-                                </TableCell>
-                              </TableRow>
-                            ) : (
-                              drsInterfaces.map((item) => (
-                                <TableRow key={item.id}>
-                                  <TableCell className='text-center'>
-                                    <Checkbox
-                                      checked={item.id ? selectedDrsInterfaceIds.has(item.id) : false}
-                                      onCheckedChange={(checked) => toggleDrsInterface(item.id, checked === true)}
-                                    />
-                                  </TableCell>
-                                  <TableCell>{item.interfaceCode || '-'}</TableCell>
-                                  <TableCell>{item.interfaceName || '-'}</TableCell>
-                                  <TableCell className='max-w-[420px] truncate'>{item.interfaceSql || '-'}</TableCell>
-                                  <TableCell>
-                                    <Badge variant={item.status === 1 ? 'default' : 'secondary'}>
-                                      {toStatusLabel(item.status)}
-                                    </Badge>
-                                  </TableCell>
-                                </TableRow>
-                              ))
                             )}
                           </TableBody>
                         </Table>
@@ -1076,6 +1104,176 @@ export function RoleManagementPage() {
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={userDialogOpen} onOpenChange={(open) => (open ? setUserDialogOpen(true) : closeUserDialog())}>
+        <DialogContent className='sm:max-w-3xl'>
+          <DialogHeader>
+            <DialogTitle>添加授权用户</DialogTitle>
+            <DialogDescription>从企业用户列表中勾选需要授权的用户</DialogDescription>
+          </DialogHeader>
+
+          <div className='space-y-3'>
+            <Input
+              value={userKeyword}
+              placeholder='输入用户名/显示名快速检索'
+              onChange={(event) => setUserKeyword(event.target.value)}
+            />
+            <div className='overflow-hidden rounded-md border border-border/90'>
+              <ScrollArea className='h-[420px]'>
+                <Table className='[&_td]:border-r [&_td]:border-border/70 [&_td:last-child]:border-r-0 [&_th]:border-r [&_th]:border-border/70 [&_th:last-child]:border-r-0'>
+                  <TableHeader>
+                    <TableRow className='bg-muted/30 hover:bg-muted/30'>
+                      <TableHead className='w-[64px] text-center'>选择</TableHead>
+                      <TableHead>用户</TableHead>
+                      <TableHead>用户编码</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {userSearching ? (
+                      <TableRow>
+                        <TableCell colSpan={3}>
+                          <div className='flex items-center justify-center gap-2 py-4 text-muted-foreground'>
+                            <Loader2 className='h-4 w-4 animate-spin' />
+                            正在检索用户...
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : userCandidates.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={3} className='py-4 text-center text-muted-foreground'>
+                          输入关键字后可检索用户
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      userCandidates.map((user) => {
+                        const userId = user.userId
+                        const checked = userId ? tempSelectedUserIds.has(userId) : false
+                        return (
+                          <TableRow key={userId ?? user.userCode ?? user.username}>
+                            <TableCell className='text-center'>
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={(checked) => userId && toggleTempUser(userId, checked === true)}
+                              />
+                            </TableCell>
+                            <TableCell>{toUserDisplay(user)}</TableCell>
+                            <TableCell>{user.userCode || '-'}</TableCell>
+                          </TableRow>
+                        )
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button type='button' variant='outline' onClick={closeUserDialog}>
+              取消
+            </Button>
+            <Button type='button' onClick={confirmAddUsers} disabled={userSearching}>
+              {userSearching ? <Loader2 className='mr-2 h-4 w-4 animate-spin' /> : null}
+              确定
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={resourceDialogOpen} onOpenChange={(open) => (open ? setResourceDialogOpen(true) : closeResourceDialog())}>
+        <DialogContent className='sm:max-w-5xl'>
+          <DialogHeader>
+            <DialogTitle>添加数据资源接口授权</DialogTitle>
+            <DialogDescription>从数据资源接口列表中勾选需要授权的接口</DialogDescription>
+          </DialogHeader>
+
+          <div className='space-y-3'>
+            <div className='grid gap-3 lg:grid-cols-[260px_1fr]'>
+              <Select
+                value={selectedDrsId ? String(selectedDrsId) : ''}
+                onValueChange={(value) => setSelectedDrsId(Number(value))}
+              >
+                <SelectTrigger disabled={dataResourcesLoading} className='w-full'>
+                  <SelectValue placeholder='选择数据资源' />
+                </SelectTrigger>
+                <SelectContent>
+                  {dataResources.map((resource) => (
+                    <SelectItem key={resource.id} value={String(resource.id)}>
+                      {resource.drsName}（{resource.drsCode}）
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                value={interfaceKeyword}
+                placeholder='按接口编码/名称筛选'
+                onChange={(event) => setInterfaceKeyword(event.target.value)}
+              />
+            </div>
+            <div className='overflow-hidden rounded-md border border-border/90'>
+              <ScrollArea className='h-[420px]'>
+                <Table className='[&_td]:border-r [&_td]:border-border/70 [&_td:last-child]:border-r-0 [&_th]:border-r [&_th]:border-border/70 [&_th:last-child]:border-r-0'>
+                  <TableHeader>
+                    <TableRow className='bg-muted/30 hover:bg-muted/30'>
+                      <TableHead className='w-[64px] text-center'>授权</TableHead>
+                      <TableHead>接口编码</TableHead>
+                      <TableHead>接口名称</TableHead>
+                      <TableHead>SQL 过滤表达式</TableHead>
+                      <TableHead>状态</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {drsInterfacesLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={5}>
+                          <div className='flex items-center justify-center gap-2 py-4 text-muted-foreground'>
+                            <Loader2 className='h-4 w-4 animate-spin' />
+                            正在加载接口列表...
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : drsInterfaces.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className='py-4 text-center text-muted-foreground'>
+                          当前数据资源暂无接口定义
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      drsInterfaces.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className='text-center'>
+                            <Checkbox
+                              checked={item.id ? tempSelectedDrsInterfaceIds.has(item.id) : false}
+                              onCheckedChange={(checked) => item.id && toggleTempDrsInterface(item.id, checked === true)}
+                            />
+                          </TableCell>
+                          <TableCell>{item.interfaceCode || '-'}</TableCell>
+                          <TableCell>{item.interfaceName || '-'}</TableCell>
+                          <TableCell className='max-w-[420px] truncate'>{item.interfaceSql || '-'}</TableCell>
+                          <TableCell>
+                            <Badge variant={item.status === 1 ? 'default' : 'secondary'}>
+                              {toStatusLabel(item.status)}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button type='button' variant='outline' onClick={closeResourceDialog}>
+              取消
+            </Button>
+            <Button type='button' onClick={confirmAddResources}>
+              确定
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

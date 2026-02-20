@@ -179,9 +179,9 @@ CREATE TABLE def_user (
   gmt_create DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
   gmt_modified DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '修改时间',
   UNIQUE KEY uk_user_code (user_code),
-  UNIQUE KEY uk_username (username),
   KEY idx_user_status (status),
-  KEY idx_user_estab (primary_estab_id)
+  KEY idx_user_estab (primary_estab_id),
+  KEY idx_username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='用户主档';
 
 DROP TABLE IF EXISTS def_user_identity;

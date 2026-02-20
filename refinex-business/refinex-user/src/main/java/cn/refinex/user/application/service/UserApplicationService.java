@@ -403,9 +403,6 @@ public class UserApplicationService {
         String userCode = generateUserCode();
 
         String username = normalizeNullableText(command.getUsername());
-        if (!isBlank(username) && userRepository.countUsername(username, null) > 0) {
-            throw new BizException(UserErrorCode.USERNAME_DUPLICATED);
-        }
 
         Long primaryEstabId = command.getPrimaryEstabId();
         if (primaryEstabId == null) {
