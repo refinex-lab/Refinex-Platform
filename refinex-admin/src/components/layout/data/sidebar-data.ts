@@ -23,6 +23,7 @@ import {
   GalleryVerticalEnd,
   Database,
   Building2,
+  UserRound,
 } from 'lucide-react'
 import { ClerkLogo } from '@/assets/clerk-logo'
 import { appConfig } from '@/config/app-config'
@@ -167,8 +168,8 @@ export const sidebarData: SidebarData = {
       title: '其他',
       items: [
         {
-          title: '设置',
-          icon: Settings,
+          title: '个人空间',
+          icon: UserRound,
           items: [
             {
               title: '个人资料',
