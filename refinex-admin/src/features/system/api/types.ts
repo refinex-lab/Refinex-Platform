@@ -769,6 +769,7 @@ export interface SystemUser {
   userType?: number
   status?: number
   primaryEstabId?: number
+  primaryEstabName?: string
   primaryPhone?: string
   phoneVerified?: number
   primaryEmail?: string
@@ -784,6 +785,12 @@ export interface SystemUserListQuery extends PaginationQuery {
   primaryEstabId?: number
   status?: number
   userType?: number
+  userCode?: string
+  username?: string
+  displayName?: string
+  nickname?: string
+  primaryPhone?: string
+  primaryEmail?: string
   keyword?: string
 }
 
@@ -856,4 +863,15 @@ export interface SystemUserIdentityUpdateRequest {
   isPrimary?: number
   verified?: number
   status?: number
+}
+
+export interface SystemUserEstab {
+  estabId?: number
+  estabCode?: string
+  estabName?: string
+  estabShortName?: string
+  logoUrl?: string
+  estabType?: number
+  admin?: boolean
+  current?: boolean
 }

@@ -86,6 +86,16 @@ public class UserManageApplicationService {
     }
 
     /**
+     * 查询用户所属企业列表
+     *
+     * @param userId 用户ID
+     * @return 所属企业列表
+     */
+    public List<UserManageEstabDTO> listUserEstabs(Long userId) {
+        return userManageRemoteGateway.listUserEstabs(userId);
+    }
+
+    /**
      * 创建用户身份
      *
      * @param userId  用户ID

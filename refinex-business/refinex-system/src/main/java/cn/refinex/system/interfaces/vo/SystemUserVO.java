@@ -69,6 +69,11 @@ public class SystemUserVO {
     private Long primaryEstabId;
 
     /**
+     * 主要企业名称
+     */
+    private String primaryEstabName;
+
+    /**
      * 主要手机号
      */
     private String primaryPhone;

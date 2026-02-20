@@ -1,14 +1,8 @@
 package cn.refinex.user.application.service;
 
-import cn.refinex.api.user.model.dto.UserIdentityManageCreateCommand;
-import cn.refinex.api.user.model.dto.UserIdentityManageDTO;
-import cn.refinex.api.user.model.dto.UserIdentityManageUpdateCommand;
-import cn.refinex.api.user.model.dto.UserManageCreateCommand;
-import cn.refinex.api.user.model.dto.UserManageDTO;
-import cn.refinex.api.user.model.dto.UserManageListQuery;
-import cn.refinex.api.user.model.dto.UserManageUpdateCommand;
 import cn.refinex.api.user.enums.UserStatus;
 import cn.refinex.api.user.enums.UserType;
+import cn.refinex.api.user.model.dto.*;
 import cn.refinex.base.exception.BizException;
 import cn.refinex.base.response.PageResponse;
 import cn.refinex.base.utils.PageUtils;
@@ -348,6 +342,12 @@ public class UserApplicationService {
                 safeQuery.getPrimaryEstabId(),
                 safeQuery.getStatus(),
                 safeQuery.getUserType(),
+                normalizeNullableText(safeQuery.getUserCode()),
+                normalizeNullableText(safeQuery.getUsername()),
+                normalizeNullableText(safeQuery.getDisplayName()),
+                normalizeNullableText(safeQuery.getNickname()),
+                normalizeNullableText(safeQuery.getPrimaryPhone()),
+                normalizeNullableText(safeQuery.getPrimaryEmail()),
                 normalizeNullableText(safeQuery.getKeyword()),
                 safeQuery.getUserIds(),
                 currentPage,
@@ -358,6 +358,7 @@ public class UserApplicationService {
         for (UserEntity user : page.getData()) {
             result.add(toUserManageDto(user));
         }
+        enrichPrimaryEstabNames(result);
         return PageResponse.of(result, page.getTotal(), page.getPageSize(), page.getCurrentPage());
     }
 
@@ -369,7 +370,9 @@ public class UserApplicationService {
      */
     public UserManageDTO getManageUser(Long userId) {
         UserEntity user = requireUserEntity(userId);
-        return toUserManageDto(user);
+        UserManageDTO dto = toUserManageDto(user);
+        enrichPrimaryEstabName(dto);
+        return dto;
     }
 
     /**
@@ -421,7 +424,9 @@ public class UserApplicationService {
         user.setRemark(normalizeNullableText(command.getRemark()));
 
         UserEntity created = userRepository.insertUser(user);
-        return toUserManageDto(requireUserEntity(created.getId()));
+        UserManageDTO dto = toUserManageDto(requireUserEntity(created.getId()));
+        enrichPrimaryEstabName(dto);
+        return dto;
     }
 
     /**
@@ -458,7 +463,37 @@ public class UserApplicationService {
         existing.setRemark(normalizeNullableText(command.getRemark()));
 
         userRepository.updateUser(existing);
-        return toUserManageDto(requireUserEntity(existing.getId()));
+        UserManageDTO dto = toUserManageDto(requireUserEntity(existing.getId()));
+        enrichPrimaryEstabName(dto);
+        return dto;
+    }
+
+    /**
+     * 查询管理端用户所属企业列表
+     *
+     * @param userId 用户ID
+     * @return 用户所属企业列表
+     */
+    public List<UserManageEstabDTO> listManageUserEstabs(Long userId) {
+        List<UserEstabDTO> estabs = listUserEstabs(userId, null);
+        List<UserManageEstabDTO> result = new ArrayList<>();
+        for (UserEstabDTO estab : estabs) {
+            if (estab == null) {
+                continue;
+            }
+
+            UserManageEstabDTO dto = new UserManageEstabDTO();
+            dto.setEstabId(estab.getEstabId());
+            dto.setEstabCode(estab.getEstabCode());
+            dto.setEstabName(estab.getEstabName());
+            dto.setEstabShortName(estab.getEstabShortName());
+            dto.setLogoUrl(estab.getLogoUrl());
+            dto.setEstabType(estab.getEstabType());
+            dto.setAdmin(estab.getAdmin());
+            dto.setCurrent(estab.getCurrent());
+            result.add(dto);
+        }
+        return result;
     }
 
     /**
@@ -892,6 +927,42 @@ public class UserApplicationService {
         dto.setLockUntil(user.getLockUntil());
         dto.setRemark(user.getRemark());
         return dto;
+    }
+
+    /**
+     * 批量补充主企业名称
+     *
+     * @param users 用户列表
+     */
+    private void enrichPrimaryEstabNames(List<UserManageDTO> users) {
+        if (users == null || users.isEmpty()) {
+            return;
+        }
+        List<Long> estabIds = users.stream()
+                .map(UserManageDTO::getPrimaryEstabId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Long, String> estabNameMap = userRepository.listEstabNameMapByIds(estabIds);
+        for (UserManageDTO user : users) {
+            if (user == null) {
+                continue;
+            }
+            user.setPrimaryEstabName(estabNameMap.get(user.getPrimaryEstabId()));
+        }
+    }
+
+    /**
+     * 补充单个用户主企业名称
+     *
+     * @param user 用户
+     */
+    private void enrichPrimaryEstabName(UserManageDTO user) {
+        if (user == null || user.getPrimaryEstabId() == null) {
+            return;
+        }
+        Map<Long, String> estabNameMap = userRepository.listEstabNameMapByIds(List.of(user.getPrimaryEstabId()));
+        user.setPrimaryEstabName(estabNameMap.get(user.getPrimaryEstabId()));
     }
 
     /**

@@ -76,6 +76,16 @@ public class UserManageRemoteGateway {
     }
 
     /**
+     * 查询用户所属企业列表
+     *
+     * @param userId 用户ID
+     * @return 所属企业列表
+     */
+    public List<UserManageEstabDTO> listUserEstabs(Long userId) {
+        return invokeList(() -> userManageHttpClient.listUserEstabs(userId));
+    }
+
+    /**
      * 创建身份
      *
      * @param userId  用户ID

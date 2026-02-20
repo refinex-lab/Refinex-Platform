@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
+  Eye,
+  EyeOff,
   Fingerprint,
+  Building2,
   Loader2,
   Pencil,
   Plus,
-  RefreshCw,
   Search as SearchIcon,
   Trash2,
 } from 'lucide-react'
@@ -60,10 +62,14 @@ import {
   createSystemUser,
   createSystemUserIdentity,
   deleteSystemUserIdentity,
+  listEstabs,
+  listSystemUserEstabs,
   listSystemUserIdentities,
   listSystemUsers,
+  type Estab,
   type SystemUser,
   type SystemUserCreateRequest,
+  type SystemUserEstab,
   type SystemUserIdentity,
   type SystemUserIdentityCreateRequest,
   type SystemUserIdentityUpdateRequest,
@@ -75,7 +81,6 @@ import {
 import {
   formatDateTime,
   toDateTimeLocalValue,
-  toOptionalNumber,
   toOptionalString,
 } from '@/features/system/common'
 import { PageToolbar } from '@/features/system/components/page-toolbar'
@@ -90,12 +95,23 @@ const userFormSchema = z.object({
   birthday: z.string().trim().optional(),
   userType: z.enum(['0', '1', '2']),
   status: z.enum(['1', '2', '3']),
-  primaryEstabId: z.string().trim().max(20, '企业ID格式非法').optional(),
+  primaryEstabId: z.string().trim().max(20, '企业标识格式非法').optional(),
   primaryPhone: z.string().trim().max(32, '手机号最长 32 位').optional(),
   phoneVerified: z.enum(['0', '1']),
   primaryEmail: z.string().trim().max(128, '邮箱最长 128 位').optional(),
   emailVerified: z.enum(['0', '1']),
   remark: z.string().trim().max(255, '备注最长 255 位').optional(),
+})
+
+const searchFormSchema = z.object({
+  userCode: z.string().trim().max(64, '用户编码最长 64 位').optional(),
+  username: z.string().trim().max(64, '用户名最长 64 位').optional(),
+  displayName: z.string().trim().max(64, '显示名称最长 64 位').optional(),
+  nickname: z.string().trim().max(64, '昵称最长 64 位').optional(),
+  primaryPhone: z.string().trim().max(32, '手机号最长 32 位').optional(),
+  primaryEmail: z.string().trim().max(128, '邮箱最长 128 位').optional(),
+  userType: z.enum(['all', '0', '1', '2']),
+  status: z.enum(['all', '1', '2', '3']),
 })
 
 const identityFormSchema = z.object({
@@ -110,7 +126,9 @@ const identityFormSchema = z.object({
 })
 
 type UserFormValues = z.infer<typeof userFormSchema>
+type SearchFormValues = z.infer<typeof searchFormSchema>
 type IdentityFormValues = z.infer<typeof identityFormSchema>
+type UserDialogMode = 'create' | 'edit' | 'view'
 
 const DEFAULT_USER_FORM: UserFormValues = {
   userCode: '',
@@ -127,6 +145,17 @@ const DEFAULT_USER_FORM: UserFormValues = {
   primaryEmail: '',
   emailVerified: '0',
   remark: '',
+}
+
+const DEFAULT_SEARCH_FORM: SearchFormValues = {
+  userCode: '',
+  username: '',
+  displayName: '',
+  nickname: '',
+  primaryPhone: '',
+  primaryEmail: '',
+  userType: 'all',
+  status: 'all',
 }
 
 const DEFAULT_IDENTITY_FORM: IdentityFormValues = {
@@ -166,10 +195,29 @@ function toIdentityTypeLabel(type?: number): string {
   return '-'
 }
 
-function parsePositiveInteger(value?: string): number | undefined {
-  const parsed = toOptionalNumber(value)
-  if (parsed == null || parsed <= 0) return undefined
+function parseOptionalLong(value?: string): number | undefined {
+  if (!value) return undefined
+  const parsed = Number(value)
+  if (!Number.isInteger(parsed) || parsed <= 0) return undefined
   return parsed
+}
+
+function maskPhone(phone?: string): string {
+  if (!phone) return '-'
+  if (phone.length <= 7) return phone
+  return `${phone.slice(0, 3)}****${phone.slice(-4)}`
+}
+
+function maskEmail(email?: string): string {
+  if (!email) return '-'
+  const index = email.indexOf('@')
+  if (index <= 1) return email
+  const prefix = email.slice(0, index)
+  const domain = email.slice(index)
+  if (prefix.length <= 2) {
+    return `${prefix[0] ?? ''}***${domain}`
+  }
+  return `${prefix.slice(0, 2)}***${domain}`
 }
 
 export function SystemUsersPage() {
@@ -177,24 +225,28 @@ export function SystemUsersPage() {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
 
-  const [keywordInput, setKeywordInput] = useState('')
-  const [statusInput, setStatusInput] = useState<'all' | '1' | '2' | '3'>('all')
-  const [typeInput, setTypeInput] = useState<'all' | '0' | '1' | '2'>('all')
-  const [estabIdInput, setEstabIdInput] = useState('')
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false)
   const [query, setQuery] = useState<SystemUserListQuery>({ currentPage: 1, pageSize: 10 })
+  const [estabOptions, setEstabOptions] = useState<Estab[]>([])
+  const [estabLoading, setEstabLoading] = useState(false)
+  const [visiblePhoneUserIds, setVisiblePhoneUserIds] = useState<Set<number>>(new Set())
+  const [visibleEmailUserIds, setVisibleEmailUserIds] = useState<Set<number>>(new Set())
 
   const [selectedUser, setSelectedUser] = useState<SystemUser | null>(null)
   const selectedUserId = selectedUser?.userId
 
   const [identities, setIdentities] = useState<SystemUserIdentity[]>([])
+  const [userEstabs, setUserEstabs] = useState<SystemUserEstab[]>([])
+  const [userEstabsLoading, setUserEstabsLoading] = useState(false)
   const [identityTotal, setIdentityTotal] = useState(0)
   const [identityLoading, setIdentityLoading] = useState(false)
   const [identityQuery, setIdentityQuery] = useState({ currentPage: 1, pageSize: 10 })
 
   const [userDialogOpen, setUserDialogOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<SystemUser | null>(null)
+  const [userDialogMode, setUserDialogMode] = useState<UserDialogMode>('create')
   const [savingUser, setSavingUser] = useState(false)
-  const [userDialogTab, setUserDialogTab] = useState<'identities'>('identities')
+  const [userDialogTab, setUserDialogTab] = useState<'identities' | 'estabs'>('identities')
 
   const [identityDialogOpen, setIdentityDialogOpen] = useState(false)
   const [editingIdentity, setEditingIdentity] = useState<SystemUserIdentity | null>(null)
@@ -207,18 +259,19 @@ export function SystemUsersPage() {
     defaultValues: DEFAULT_USER_FORM,
     mode: 'onChange',
   })
+  const searchForm = useForm<SearchFormValues>({
+    resolver: zodResolver(searchFormSchema),
+    defaultValues: DEFAULT_SEARCH_FORM,
+    mode: 'onChange',
+  })
   const identityForm = useForm<IdentityFormValues>({
     resolver: zodResolver(identityFormSchema),
     defaultValues: DEFAULT_IDENTITY_FORM,
     mode: 'onChange',
   })
 
-  const identityUserId = editingUser?.userId ?? selectedUserId
-  const selectedUserSummary = useMemo(() => {
-    const targetUser = editingUser ?? selectedUser
-    if (!targetUser) return '请先在上方用户列表中选择一个用户。'
-    return `当前用户：${targetUser.displayName || '-'}（ID: ${targetUser.userId ?? '-'}）`
-  }, [editingUser, selectedUser])
+  const identityUserId = editingUser?.userId ?? (userDialogMode === 'view' ? selectedUserId : undefined)
+  const isUserViewMode = userDialogMode === 'view'
 
   async function loadUsers(activeQuery: SystemUserListQuery = query) {
     setLoading(true)
@@ -227,6 +280,8 @@ export function SystemUsersPage() {
       const rows = pageData.data ?? []
       setUsers(rows)
       setTotal(pageData.total ?? 0)
+      setVisiblePhoneUserIds(new Set())
+      setVisibleEmailUserIds(new Set())
       setSelectedUser((prev) => {
         if (rows.length === 0) return null
         if (!prev?.userId) return rows[0]
@@ -253,10 +308,39 @@ export function SystemUsersPage() {
     }
   }
 
+  async function loadEstabOptions() {
+    setEstabLoading(true)
+    try {
+      const pageData = await listEstabs({ currentPage: 1, pageSize: 200, status: 1 })
+      setEstabOptions(pageData.data ?? [])
+    } catch (error) {
+      handleServerError(error)
+    } finally {
+      setEstabLoading(false)
+    }
+  }
+
+  async function loadUserEstabs(userId: number) {
+    setUserEstabsLoading(true)
+    try {
+      const rows = await listSystemUserEstabs(userId)
+      setUserEstabs(rows)
+    } catch (error) {
+      handleServerError(error)
+    } finally {
+      setUserEstabsLoading(false)
+    }
+  }
+
   useEffect(() => {
     void loadUsers(query)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query])
+
+  useEffect(() => {
+    void loadEstabOptions()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     if (!identityUserId) {
@@ -268,23 +352,49 @@ export function SystemUsersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [identityUserId, identityQuery])
 
-  function applyFilters() {
-    setQuery({
-      keyword: toOptionalString(keywordInput),
-      status: statusInput === 'all' ? undefined : Number(statusInput),
-      userType: typeInput === 'all' ? undefined : Number(typeInput),
-      primaryEstabId: parsePositiveInteger(estabIdInput),
-      currentPage: 1,
-      pageSize: query.pageSize ?? 10,
+  useEffect(() => {
+    if (!userDialogOpen || !identityUserId) {
+      setUserEstabs([])
+      return
+    }
+    void loadUserEstabs(identityUserId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userDialogOpen, identityUserId])
+
+  function openFilterDialog() {
+    searchForm.reset({
+      userCode: query.userCode ?? '',
+      username: query.username ?? '',
+      displayName: query.displayName ?? '',
+      nickname: query.nickname ?? '',
+      primaryPhone: query.primaryPhone ?? '',
+      primaryEmail: query.primaryEmail ?? '',
+      userType: query.userType == null ? 'all' : (String(query.userType) as '0' | '1' | '2'),
+      status: query.status == null ? 'all' : (String(query.status) as '1' | '2' | '3'),
     })
+    setFilterDialogOpen(true)
+  }
+
+  function applyFilters(values: SearchFormValues) {
+    setQuery((prev) => ({
+      ...prev,
+      userCode: toOptionalString(values.userCode),
+      username: toOptionalString(values.username),
+      displayName: toOptionalString(values.displayName),
+      nickname: toOptionalString(values.nickname),
+      primaryPhone: toOptionalString(values.primaryPhone),
+      primaryEmail: toOptionalString(values.primaryEmail),
+      userType: values.userType === 'all' ? undefined : Number(values.userType),
+      status: values.status === 'all' ? undefined : Number(values.status),
+      currentPage: 1,
+    }))
+    setFilterDialogOpen(false)
   }
 
   function resetFilters() {
-    setKeywordInput('')
-    setStatusInput('all')
-    setTypeInput('all')
-    setEstabIdInput('')
+    searchForm.reset(DEFAULT_SEARCH_FORM)
     setQuery({ currentPage: 1, pageSize: query.pageSize ?? 10 })
+    setFilterDialogOpen(false)
   }
 
   function handlePageChange(page: number) {
@@ -297,6 +407,7 @@ export function SystemUsersPage() {
 
   function openCreateUserDialog() {
     setEditingUser(null)
+    setUserDialogMode('create')
     setUserDialogTab('identities')
     userForm.reset(DEFAULT_USER_FORM)
     setUserDialogOpen(true)
@@ -305,6 +416,32 @@ export function SystemUsersPage() {
   function openEditUserDialog(user: SystemUser) {
     setSelectedUser(user)
     setEditingUser(user)
+    setUserDialogMode('edit')
+    setUserDialogTab('identities')
+    setIdentityQuery((prev) => ({ ...prev, currentPage: 1 }))
+    userForm.reset({
+      userCode: user.userCode ?? '',
+      username: user.username ?? '',
+      displayName: user.displayName ?? '',
+      nickname: user.nickname ?? '',
+      gender: String(user.gender ?? 0) as '0' | '1' | '2' | '3',
+      birthday: user.birthday ? toDateTimeLocalValue(user.birthday).slice(0, 10) : '',
+      userType: String(user.userType ?? 1) as '0' | '1' | '2',
+      status: String(user.status ?? 1) as '1' | '2' | '3',
+      primaryEstabId: user.primaryEstabId == null ? '' : String(user.primaryEstabId),
+      primaryPhone: user.primaryPhone ?? '',
+      phoneVerified: String(user.phoneVerified ?? 0) as '0' | '1',
+      primaryEmail: user.primaryEmail ?? '',
+      emailVerified: String(user.emailVerified ?? 0) as '0' | '1',
+      remark: user.remark ?? '',
+    })
+    setUserDialogOpen(true)
+  }
+
+  function openViewUserDialog(user: SystemUser) {
+    setSelectedUser(user)
+    setEditingUser(user)
+    setUserDialogMode('view')
     setUserDialogTab('identities')
     setIdentityQuery((prev) => ({ ...prev, currentPage: 1 }))
     userForm.reset({
@@ -329,7 +466,9 @@ export function SystemUsersPage() {
   function closeUserDialog() {
     setUserDialogOpen(false)
     setEditingUser(null)
+    setUserDialogMode('create')
     setUserDialogTab('identities')
+    setUserEstabs([])
     userForm.reset(DEFAULT_USER_FORM)
   }
 
@@ -343,7 +482,7 @@ export function SystemUsersPage() {
         birthday: toOptionalString(values.birthday),
         userType: Number(values.userType),
         status: Number(values.status),
-        primaryEstabId: parsePositiveInteger(values.primaryEstabId),
+        primaryEstabId: parseOptionalLong(values.primaryEstabId),
         primaryPhone: toOptionalString(values.primaryPhone),
         phoneVerified: Number(values.phoneVerified),
         primaryEmail: toOptionalString(values.primaryEmail),
@@ -457,6 +596,32 @@ export function SystemUsersPage() {
     }
   }
 
+  function togglePhoneVisible(userId?: number) {
+    if (!userId) return
+    setVisiblePhoneUserIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(userId)) {
+        next.delete(userId)
+      } else {
+        next.add(userId)
+      }
+      return next
+    })
+  }
+
+  function toggleEmailVisible(userId?: number) {
+    if (!userId) return
+    setVisibleEmailUserIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(userId)) {
+        next.delete(userId)
+      } else {
+        next.add(userId)
+      }
+      return next
+    })
+  }
+
   return (
     <>
       <Header>
@@ -470,56 +635,11 @@ export function SystemUsersPage() {
 
       <Main fixed fluid>
         <Card>
-          <CardContent className='grid gap-3 lg:grid-cols-[1fr_120px_120px_160px_auto]'>
-            <Input
-              value={keywordInput}
-              placeholder='用户名 / 显示名 / 手机号 / 邮箱'
-              onChange={(event) => setKeywordInput(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault()
-                  applyFilters()
-                }
-              }}
-            />
-            <Select value={typeInput} onValueChange={(value) => setTypeInput(value as 'all' | '0' | '1' | '2')}>
-              <SelectTrigger>
-                <SelectValue placeholder='用户类型' />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value='all'>全部类型</SelectItem>
-                <SelectItem value='0'>平台用户</SelectItem>
-                <SelectItem value='1'>租户用户</SelectItem>
-                <SelectItem value='2'>合作方</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select
-              value={statusInput}
-              onValueChange={(value) => setStatusInput(value as 'all' | '1' | '2' | '3')}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder='状态' />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value='all'>全部状态</SelectItem>
-                <SelectItem value='1'>启用</SelectItem>
-                <SelectItem value='2'>停用</SelectItem>
-                <SelectItem value='3'>锁定</SelectItem>
-              </SelectContent>
-            </Select>
-            <Input
-              value={estabIdInput}
-              placeholder='主企业ID'
-              onChange={(event) => setEstabIdInput(event.target.value)}
-            />
+          <CardContent className='flex flex-wrap items-center justify-between gap-2'>
             <div className='flex items-center gap-2'>
-              <Button type='button' variant='outline' onClick={applyFilters} className='gap-2'>
+              <Button type='button' variant='outline' onClick={openFilterDialog} className='gap-2'>
                 <SearchIcon className='h-4 w-4' />
-                查询
-              </Button>
-              <Button type='button' variant='outline' onClick={resetFilters} className='gap-2'>
-                <RefreshCw className='h-4 w-4' />
-                重置
+                查找
               </Button>
               <Button type='button' onClick={openCreateUserDialog} className='gap-2'>
                 <Plus className='h-4 w-4' />
@@ -534,20 +654,22 @@ export function SystemUsersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>用户ID</TableHead>
+                  <TableHead>用户编码</TableHead>
                   <TableHead>用户名</TableHead>
                   <TableHead>显示名</TableHead>
+                  <TableHead>昵称</TableHead>
+                  <TableHead>所属企业</TableHead>
                   <TableHead>用户类型</TableHead>
                   <TableHead className='w-[88px] text-center'>状态</TableHead>
                   <TableHead>主手机号</TableHead>
                   <TableHead>主邮箱</TableHead>
-                  <TableHead className='w-[176px] text-center'>操作</TableHead>
+                  <TableHead className='w-[132px] text-center'>操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={8}>
+                    <TableCell colSpan={10}>
                       <div className='flex items-center justify-center gap-2 py-8 text-muted-foreground'>
                         <Loader2 className='h-4 w-4 animate-spin' />
                         正在加载用户...
@@ -556,7 +678,7 @@ export function SystemUsersPage() {
                   </TableRow>
                 ) : users.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className='py-8 text-center text-muted-foreground'>
+                    <TableCell colSpan={10} className='py-8 text-center text-muted-foreground'>
                       暂无用户数据
                     </TableCell>
                   </TableRow>
@@ -568,17 +690,59 @@ export function SystemUsersPage() {
                       className='cursor-pointer'
                       onClick={() => setSelectedUser(item)}
                     >
-                      <TableCell>{item.userId ?? '-'}</TableCell>
+                      <TableCell>{item.userCode || '-'}</TableCell>
                       <TableCell>{item.username || '-'}</TableCell>
                       <TableCell>{item.displayName || '-'}</TableCell>
+                      <TableCell>{item.nickname || '-'}</TableCell>
+                      <TableCell>{item.primaryEstabName || '-'}</TableCell>
                       <TableCell>{toUserTypeLabel(item.userType)}</TableCell>
                       <TableCell className='text-center'>
                         <Badge variant={item.status === 1 ? 'default' : 'secondary'}>
                           {toStatusLabel(item.status)}
                         </Badge>
                       </TableCell>
-                      <TableCell>{item.primaryPhone || '-'}</TableCell>
-                      <TableCell>{item.primaryEmail || '-'}</TableCell>
+                      <TableCell>
+                        <div className='flex items-center gap-2'>
+                          <span>{visiblePhoneUserIds.has(item.userId ?? -1) ? (item.primaryPhone || '-') : maskPhone(item.primaryPhone)}</span>
+                          <Button
+                            type='button'
+                            variant='ghost'
+                            size='icon'
+                            className='h-7 w-7'
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              togglePhoneVisible(item.userId)
+                            }}
+                          >
+                            {visiblePhoneUserIds.has(item.userId ?? -1) ? (
+                              <EyeOff className='h-4 w-4' />
+                            ) : (
+                              <Eye className='h-4 w-4' />
+                            )}
+                          </Button>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className='flex items-center gap-2'>
+                          <span>{visibleEmailUserIds.has(item.userId ?? -1) ? (item.primaryEmail || '-') : maskEmail(item.primaryEmail)}</span>
+                          <Button
+                            type='button'
+                            variant='ghost'
+                            size='icon'
+                            className='h-7 w-7'
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              toggleEmailVisible(item.userId)
+                            }}
+                          >
+                            {visibleEmailUserIds.has(item.userId ?? -1) ? (
+                              <EyeOff className='h-4 w-4' />
+                            ) : (
+                              <Eye className='h-4 w-4' />
+                            )}
+                          </Button>
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <div className='flex items-center justify-center gap-1'>
                           <Button
@@ -588,10 +752,10 @@ export function SystemUsersPage() {
                             className='h-8 w-8'
                             onClick={(event) => {
                               event.stopPropagation()
-                              openEditUserDialog(item)
+                              openViewUserDialog(item)
                             }}
                           >
-                            <Pencil className='h-4 w-4' />
+                            <Eye className='h-4 w-4' />
                           </Button>
                           <Button
                             type='button'
@@ -603,7 +767,7 @@ export function SystemUsersPage() {
                               openEditUserDialog(item)
                             }}
                           >
-                            <Fingerprint className='h-4 w-4' />
+                            <Pencil className='h-4 w-4' />
                           </Button>
                         </div>
                       </TableCell>
@@ -624,6 +788,151 @@ export function SystemUsersPage() {
         </Card>
       </Main>
 
+      <Dialog open={filterDialogOpen} onOpenChange={setFilterDialogOpen}>
+        <DialogContent className='sm:max-w-3xl'>
+          <DialogHeader>
+            <DialogTitle>查找用户</DialogTitle>
+          </DialogHeader>
+          <Form {...searchForm}>
+            <form className='grid gap-4 md:grid-cols-2 xl:grid-cols-3' onSubmit={searchForm.handleSubmit(applyFilters)}>
+              <FormField
+                control={searchForm.control}
+                name='userCode'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>用户编码</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder='支持模糊匹配' />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={searchForm.control}
+                name='username'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>用户名</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder='支持模糊匹配' />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={searchForm.control}
+                name='displayName'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>显示名称</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder='支持模糊匹配' />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={searchForm.control}
+                name='nickname'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>昵称</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder='支持模糊匹配' />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={searchForm.control}
+                name='primaryPhone'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>手机号</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder='支持模糊匹配' />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={searchForm.control}
+                name='primaryEmail'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>邮箱</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder='支持模糊匹配' />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={searchForm.control}
+                name='userType'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>用户类型</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className='w-full'>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value='all'>全部类型</SelectItem>
+                        <SelectItem value='0'>平台用户</SelectItem>
+                        <SelectItem value='1'>租户用户</SelectItem>
+                        <SelectItem value='2'>合作方</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={searchForm.control}
+                name='status'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>状态</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className='w-full'>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value='all'>全部状态</SelectItem>
+                        <SelectItem value='1'>启用</SelectItem>
+                        <SelectItem value='2'>停用</SelectItem>
+                        <SelectItem value='3'>锁定</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter className='xl:col-span-3'>
+                <Button type='button' variant='outline' onClick={resetFilters}>
+                  重置
+                </Button>
+                <Button type='submit' className='gap-2'>
+                  <SearchIcon className='h-4 w-4' />
+                  查找
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
       <Dialog
         open={userDialogOpen}
         onOpenChange={(open) => {
@@ -636,11 +945,13 @@ export function SystemUsersPage() {
       >
         <DialogContent className='max-h-[92vh] overflow-y-auto sm:max-w-5xl'>
           <DialogHeader>
-            <DialogTitle>{editingUser ? '编辑用户' : '新建用户'}</DialogTitle>
-            <DialogDescription>维护用户主档信息，创建后可继续补充身份凭证。</DialogDescription>
+            <DialogTitle>
+              {isUserViewMode ? '查看用户' : editingUser ? '编辑用户' : '新建用户'}
+            </DialogTitle>
+            <DialogDescription>维护用户主档信息，保存后可继续维护身份凭证与所属企业。</DialogDescription>
           </DialogHeader>
           <Form {...userForm}>
-            <form className='grid gap-4 md:grid-cols-2' onSubmit={userForm.handleSubmit(submitUser)}>
+            <form className='grid gap-4 md:grid-cols-2 xl:grid-cols-3' onSubmit={userForm.handleSubmit(submitUser)}>
               <FormField
                 control={userForm.control}
                 name='userCode'
@@ -648,7 +959,7 @@ export function SystemUsersPage() {
                   <FormItem>
                     <FormLabel>用户编码</FormLabel>
                     <FormControl>
-                      <Input {...field} disabled={Boolean(editingUser)} />
+                      <Input {...field} disabled={Boolean(editingUser) || isUserViewMode} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -661,7 +972,7 @@ export function SystemUsersPage() {
                   <FormItem>
                     <FormLabel>用户名</FormLabel>
                     <FormControl>
-                      <Input {...field} disabled={Boolean(editingUser)} />
+                      <Input {...field} disabled={Boolean(editingUser) || isUserViewMode} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -674,7 +985,7 @@ export function SystemUsersPage() {
                   <FormItem>
                     <FormLabel>显示名称</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input {...field} disabled={isUserViewMode} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -687,7 +998,7 @@ export function SystemUsersPage() {
                   <FormItem>
                     <FormLabel>昵称</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input {...field} disabled={isUserViewMode} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -699,7 +1010,7 @@ export function SystemUsersPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>性别</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isUserViewMode}>
                       <FormControl>
                         <SelectTrigger className='w-full'>
                           <SelectValue />
@@ -723,7 +1034,7 @@ export function SystemUsersPage() {
                   <FormItem>
                     <FormLabel>生日</FormLabel>
                     <FormControl>
-                      <Input {...field} type='date' />
+                      <Input {...field} type='date' disabled={isUserViewMode} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -735,7 +1046,7 @@ export function SystemUsersPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>用户类型</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isUserViewMode}>
                       <FormControl>
                         <SelectTrigger className='w-full'>
                           <SelectValue />
@@ -757,7 +1068,7 @@ export function SystemUsersPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>状态</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isUserViewMode}>
                       <FormControl>
                         <SelectTrigger className='w-full'>
                           <SelectValue />
@@ -778,10 +1089,21 @@ export function SystemUsersPage() {
                 name='primaryEstabId'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>主企业ID</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
+                    <FormLabel>所属企业</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || undefined} disabled={isUserViewMode || estabLoading}>
+                      <FormControl>
+                        <SelectTrigger className='w-full'>
+                          <SelectValue placeholder={estabLoading ? '企业加载中...' : '请选择企业'} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {estabOptions.map((estab) => (
+                          <SelectItem key={estab.id} value={String(estab.id)}>
+                            {estab.estabName || estab.estabShortName || `企业 ${estab.id}`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -793,7 +1115,7 @@ export function SystemUsersPage() {
                   <FormItem>
                     <FormLabel>主手机号</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input {...field} disabled={isUserViewMode} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -805,7 +1127,7 @@ export function SystemUsersPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>手机号已验证</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isUserViewMode}>
                       <FormControl>
                         <SelectTrigger className='w-full'>
                           <SelectValue />
@@ -827,7 +1149,7 @@ export function SystemUsersPage() {
                   <FormItem>
                     <FormLabel>主邮箱</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input {...field} disabled={isUserViewMode} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -839,7 +1161,7 @@ export function SystemUsersPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>邮箱已验证</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isUserViewMode}>
                       <FormControl>
                         <SelectTrigger className='w-full'>
                           <SelectValue />
@@ -858,29 +1180,34 @@ export function SystemUsersPage() {
                 control={userForm.control}
                 name='remark'
                 render={({ field }) => (
-                  <FormItem className='md:col-span-2'>
+                  <FormItem className='xl:col-span-3'>
                     <FormLabel>备注</FormLabel>
                     <FormControl>
-                      <Textarea rows={3} {...field} placeholder='请输入备注说明（可选）'/>
+                      <Textarea rows={3} {...field} disabled={isUserViewMode} placeholder='请输入备注说明（可选）' />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <DialogFooter className='md:col-span-2'>
-                <Button type='button' variant='outline' onClick={closeUserDialog}>
-                  取消
-                </Button>
-                <Button type='submit' disabled={savingUser}>
-                  {savingUser ? (
-                    <>
-                      <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                      保存中...
-                    </>
-                  ) : (
-                    '保存用户'
-                  )}
-                </Button>
+              <DialogFooter className='xl:col-span-3'>
+                {/* 查看状态下不可见关闭按钮 */}
+                {!isUserViewMode ? (
+                  <Button type='button' variant='outline' onClick={closeUserDialog}>
+                    关闭
+                  </Button>
+                ) : null}
+                {!isUserViewMode ? (
+                  <Button type='submit' disabled={savingUser}>
+                    {savingUser ? (
+                      <>
+                        <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                        保存中...
+                      </>
+                    ) : (
+                      '保存用户'
+                    )}
+                  </Button>
+                ) : null}
               </DialogFooter>
             </form>
           </Form>
@@ -888,22 +1215,28 @@ export function SystemUsersPage() {
             <div className='mt-2 border-t pt-4'>
               <Tabs
                 value={userDialogTab}
-                onValueChange={(value) => setUserDialogTab(value as 'identities')}
+                onValueChange={(value) => setUserDialogTab(value as 'identities' | 'estabs')}
               >
-                <TabsList className='grid h-auto w-full grid-cols-1 gap-1.5 lg:w-[220px]'>
+                <TabsList className='grid h-auto w-full grid-cols-2 gap-1.5 lg:w-[360px]'>
                   <TabsTrigger value='identities' className='gap-1.5'>
                     <Fingerprint className='h-3.5 w-3.5' />
                     用户身份管理
+                  </TabsTrigger>
+                  <TabsTrigger value='estabs' className='gap-1.5'>
+                    <Building2 className='h-3.5 w-3.5' />
+                    所属企业
                   </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value='identities' className='mt-4 space-y-3'>
                   <div className='flex items-center justify-between'>
-                    <div className='text-sm text-muted-foreground'>{selectedUserSummary}</div>
-                    <Button type='button' onClick={openCreateIdentityDialog} className='gap-2'>
-                      <Plus className='h-4 w-4' />
-                      新增身份
-                    </Button>
+                    {/* <div className='text-sm text-muted-foreground'>{selectedUserSummary}</div> */}
+                    {!isUserViewMode ? (
+                      <Button type='button' onClick={openCreateIdentityDialog} className='gap-2'>
+                        <Plus className='h-4 w-4' />
+                        新增身份
+                      </Button>
+                    ) : null}
                   </div>
 
                   <Table>
@@ -958,26 +1291,30 @@ export function SystemUsersPage() {
                             </TableCell>
                             <TableCell>{formatDateTime(item.bindTime)}</TableCell>
                             <TableCell>
-                              <div className='flex items-center justify-center gap-1'>
-                                <Button
-                                  type='button'
-                                  variant='ghost'
-                                  size='icon'
-                                  className='h-8 w-8'
-                                  onClick={() => openEditIdentityDialog(item)}
-                                >
-                                  <Pencil className='h-4 w-4' />
-                                </Button>
-                                <Button
-                                  type='button'
-                                  variant='ghost'
-                                  size='icon'
-                                  className='h-8 w-8 text-destructive'
-                                  onClick={() => setDeletingIdentity(item)}
-                                >
-                                  <Trash2 className='h-4 w-4' />
-                                </Button>
-                              </div>
+                              {isUserViewMode ? (
+                                <div className='text-center text-muted-foreground'>-</div>
+                              ) : (
+                                <div className='flex items-center justify-center gap-1'>
+                                  <Button
+                                    type='button'
+                                    variant='ghost'
+                                    size='icon'
+                                    className='h-8 w-8'
+                                    onClick={() => openEditIdentityDialog(item)}
+                                  >
+                                    <Pencil className='h-4 w-4' />
+                                  </Button>
+                                  <Button
+                                    type='button'
+                                    variant='ghost'
+                                    size='icon'
+                                    className='h-8 w-8 text-destructive'
+                                    onClick={() => setDeletingIdentity(item)}
+                                  >
+                                    <Trash2 className='h-4 w-4' />
+                                  </Button>
+                                </div>
+                              )}
                             </TableCell>
                           </TableRow>
                         ))
@@ -993,6 +1330,59 @@ export function SystemUsersPage() {
                     onPageChange={(page) => setIdentityQuery((prev) => ({ ...prev, currentPage: page }))}
                     onPageSizeChange={(size) => setIdentityQuery({ currentPage: 1, pageSize: size })}
                   />
+                </TabsContent>
+
+                <TabsContent value='estabs' className='mt-4 space-y-3'>
+                  {/* <div className='text-sm text-muted-foreground'>
+                    用户：{selectedUserDisplay}
+                  </div> */}
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>企业名称</TableHead>
+                        <TableHead>企业编码</TableHead>
+                        <TableHead>企业简称</TableHead>
+                        <TableHead className='w-[96px] text-center'>管理员</TableHead>
+                        <TableHead className='w-[96px] text-center'>当前活跃</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {userEstabsLoading ? (
+                        <TableRow>
+                          <TableCell colSpan={5}>
+                            <div className='flex items-center justify-center gap-2 py-8 text-muted-foreground'>
+                              <Loader2 className='h-4 w-4 animate-spin' />
+                              正在加载所属企业...
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ) : userEstabs.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className='py-8 text-center text-muted-foreground'>
+                            暂无所属企业
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        userEstabs.map((item) => (
+                          <TableRow key={item.estabId}>
+                            <TableCell>{item.estabName || '-'}</TableCell>
+                            <TableCell>{item.estabCode || '-'}</TableCell>
+                            <TableCell>{item.estabShortName || '-'}</TableCell>
+                            <TableCell className='text-center'>
+                              <Badge variant={item.admin ? 'default' : 'secondary'}>
+                                {item.admin ? '是' : '否'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className='text-center'>
+                              <Badge variant={item.current ? 'default' : 'secondary'}>
+                                {item.current ? '是' : '否'}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
                 </TabsContent>
               </Tabs>
             </div>

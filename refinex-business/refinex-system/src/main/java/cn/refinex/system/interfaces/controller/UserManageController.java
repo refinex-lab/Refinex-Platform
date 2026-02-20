@@ -5,6 +5,7 @@ import cn.refinex.base.response.PageResponse;
 import cn.refinex.system.application.service.UserManageApplicationService;
 import cn.refinex.system.interfaces.assembler.UserManageApiAssembler;
 import cn.refinex.system.interfaces.dto.*;
+import cn.refinex.system.interfaces.vo.SystemUserEstabVO;
 import cn.refinex.system.interfaces.vo.SystemUserIdentityVO;
 import cn.refinex.system.interfaces.vo.SystemUserVO;
 import cn.refinex.web.vo.PageResult;
@@ -14,6 +15,8 @@ import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 系统用户管理接口
@@ -101,12 +104,24 @@ public class UserManageController {
                 query.getCurrentPage(),
                 query.getPageSize()
         );
+
         return PageResult.success(
                 userManageApiAssembler.toSystemUserIdentityVoList(identities.getData()),
                 identities.getTotal(),
                 identities.getCurrentPage(),
                 identities.getPageSize()
         );
+    }
+
+    /**
+     * 查询用户所属企业列表
+     *
+     * @param userId 用户ID
+     * @return 用户所属企业列表
+     */
+    @GetMapping("/{userId}/estabs")
+    public Result<List<SystemUserEstabVO>> listUserEstabs(@PathVariable @Positive(message = "用户ID必须大于0") Long userId) {
+        return Result.success(userManageApiAssembler.toSystemUserEstabVoList(userManageApplicationService.listUserEstabs(userId)));
     }
 
     /**

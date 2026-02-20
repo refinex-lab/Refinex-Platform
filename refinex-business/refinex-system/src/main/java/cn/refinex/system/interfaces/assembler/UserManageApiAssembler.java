@@ -2,6 +2,7 @@ package cn.refinex.system.interfaces.assembler;
 
 import cn.refinex.api.user.model.dto.*;
 import cn.refinex.system.interfaces.dto.*;
+import cn.refinex.system.interfaces.vo.SystemUserEstabVO;
 import cn.refinex.system.interfaces.vo.SystemUserIdentityVO;
 import cn.refinex.system.interfaces.vo.SystemUserVO;
 import org.mapstruct.Mapper;
@@ -23,6 +24,7 @@ public interface UserManageApiAssembler {
      * @param query 查询参数
      * @return 用户管理列表查询参数
      */
+    @Mapping(target = "userIds", ignore = true)
     UserManageListQuery toUserManageListQuery(SystemUserListQuery query);
 
     /**
@@ -89,4 +91,20 @@ public interface UserManageApiAssembler {
      * @return 系统用户身份 VO 列表
      */
     List<SystemUserIdentityVO> toSystemUserIdentityVoList(List<UserIdentityManageDTO> dtos);
+
+    /**
+     * 用户企业 DTO 转换为系统用户企业 VO
+     *
+     * @param dto 用户企业 DTO
+     * @return 系统用户企业 VO
+     */
+    SystemUserEstabVO toSystemUserEstabVo(UserManageEstabDTO dto);
+
+    /**
+     * 用户企业 DTO 列表转换为系统用户企业 VO 列表
+     *
+     * @param dtos 用户企业 DTO 列表
+     * @return 系统用户企业 VO 列表
+     */
+    List<SystemUserEstabVO> toSystemUserEstabVoList(List<UserManageEstabDTO> dtos);
 }

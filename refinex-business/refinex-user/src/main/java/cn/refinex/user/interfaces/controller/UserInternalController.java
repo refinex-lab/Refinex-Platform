@@ -11,6 +11,7 @@ import cn.refinex.api.user.model.dto.UserLoginFailureCommand;
 import cn.refinex.api.user.model.dto.UserLoginSuccessCommand;
 import cn.refinex.api.user.model.dto.UserManageCreateCommand;
 import cn.refinex.api.user.model.dto.UserManageDTO;
+import cn.refinex.api.user.model.dto.UserManageEstabDTO;
 import cn.refinex.api.user.model.dto.UserManageListQuery;
 import cn.refinex.api.user.model.dto.UserManageUpdateCommand;
 import cn.refinex.api.user.model.dto.UserRegisterCommand;
@@ -187,6 +188,17 @@ public class UserInternalController {
     @GetMapping("/manage/{userId}/identities")
     public MultiResponse<UserIdentityManageDTO> listManageIdentities(@PathVariable Long userId) {
         return MultiResponse.of(userApplicationService.listManageIdentities(userId));
+    }
+
+    /**
+     * 查询用户所属企业列表（管理端）
+     *
+     * @param userId 用户ID
+     * @return 用户所属企业列表
+     */
+    @GetMapping("/manage/{userId}/estabs")
+    public MultiResponse<UserManageEstabDTO> listManageUserEstabs(@PathVariable Long userId) {
+        return MultiResponse.of(userApplicationService.listManageUserEstabs(userId));
     }
 
     /**

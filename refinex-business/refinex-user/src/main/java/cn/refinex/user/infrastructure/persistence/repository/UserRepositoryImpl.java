@@ -25,7 +25,9 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -119,6 +121,8 @@ public class UserRepositoryImpl implements UserRepository {
      */
     @Override
     public PageResponse<UserEntity> listUsersForManage(Long primaryEstabId, Integer status, Integer userType,
+                                                       String userCode, String username, String displayName,
+                                                       String nickname, String primaryPhone, String primaryEmail,
                                                        String keyword, List<Long> userIds, int currentPage,
                                                        int pageSize) {
         var query = Wrappers.lambdaQuery(DefUserDo.class)
@@ -132,6 +136,24 @@ public class UserRepositoryImpl implements UserRepository {
         }
         if (userType != null) {
             query.eq(DefUserDo::getUserType, userType);
+        }
+        if (userCode != null && !userCode.isBlank()) {
+            query.like(DefUserDo::getUserCode, userCode.trim());
+        }
+        if (username != null && !username.isBlank()) {
+            query.like(DefUserDo::getUsername, username.trim());
+        }
+        if (displayName != null && !displayName.isBlank()) {
+            query.like(DefUserDo::getDisplayName, displayName.trim());
+        }
+        if (nickname != null && !nickname.isBlank()) {
+            query.like(DefUserDo::getNickname, nickname.trim());
+        }
+        if (primaryPhone != null && !primaryPhone.isBlank()) {
+            query.like(DefUserDo::getPrimaryPhone, primaryPhone.trim());
+        }
+        if (primaryEmail != null && !primaryEmail.isBlank()) {
+            query.like(DefUserDo::getPrimaryEmail, primaryEmail.trim());
         }
         if (keyword != null && !keyword.isBlank()) {
             String trimmed = keyword.trim();
@@ -156,6 +178,34 @@ public class UserRepositoryImpl implements UserRepository {
         Page<DefUserDo> rows = defUserMapper.selectPage(page, query);
         List<UserEntity> data = rows.getRecords().stream().map(userDoConverter::toEntity).collect(Collectors.toList());
         return PageResponse.of(data, rows.getTotal(), pageSize, currentPage);
+    }
+
+    /**
+     * 批量查询企业名称映射
+     *
+     * @param estabIds 企业ID列表
+     * @return 企业名称映射
+     */
+    @Override
+    public Map<Long, String> listEstabNameMapByIds(List<Long> estabIds) {
+        if (estabIds == null || estabIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<DefEstabDo> rows = defEstabMapper.selectBatchIds(estabIds);
+        Map<Long, String> result = new HashMap<>();
+        if (rows == null || rows.isEmpty()) {
+            return result;
+        }
+        for (DefEstabDo row : rows) {
+            if (row == null || row.getId() == null) {
+                continue;
+            }
+            if (row.getDeleted() != null && row.getDeleted() == 1) {
+                continue;
+            }
+            result.put(row.getId(), row.getEstabName());
+        }
+        return result;
     }
 
     /**

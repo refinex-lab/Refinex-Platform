@@ -8,6 +8,7 @@ import cn.refinex.user.domain.model.entity.UserIdentityEntity;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 用户仓储
@@ -54,15 +55,32 @@ public interface UserRepository {
      * @param primaryEstabId 主组织ID
      * @param status         用户状态
      * @param userType       用户类型
-     * @param keyword        关键字
+     * @param userCode       用户编码
+     * @param username       用户名
+     * @param displayName    显示名称
+     * @param nickname       昵称
+     * @param primaryPhone   主手机号
+     * @param primaryEmail   主邮箱
+     * @param keyword        关键字（兼容）
      * @param userIds        用户ID列表
      * @param currentPage    当前页
      * @param pageSize       每页条数
      * @return 用户分页列表
      */
-    PageResponse<UserEntity> listUsersForManage(Long primaryEstabId, Integer status, Integer userType, String keyword,
+    PageResponse<UserEntity> listUsersForManage(Long primaryEstabId, Integer status, Integer userType,
+                                                String userCode, String username, String displayName,
+                                                String nickname, String primaryPhone, String primaryEmail,
+                                                String keyword,
                                                 List<Long> userIds,
                                                 int currentPage, int pageSize);
+
+    /**
+     * 批量查询企业名称映射
+     *
+     * @param estabIds 企业ID列表
+     * @return 企业名称映射
+     */
+    Map<Long, String> listEstabNameMapByIds(List<Long> estabIds);
 
     /**
      * 根据用户编码统计用户数量

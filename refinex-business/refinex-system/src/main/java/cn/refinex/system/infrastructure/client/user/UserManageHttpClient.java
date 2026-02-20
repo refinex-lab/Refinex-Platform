@@ -63,6 +63,15 @@ public interface UserManageHttpClient {
     MultiResponse<UserIdentityManageDTO> listIdentities(@PathVariable Long userId);
 
     /**
+     * 查询用户所属企业列表
+     *
+     * @param userId 用户ID
+     * @return 所属企业列表
+     */
+    @GetExchange("/manage/{userId}/estabs")
+    MultiResponse<UserManageEstabDTO> listUserEstabs(@PathVariable Long userId);
+
+    /**
      * 创建身份
      *
      * @param userId  用户ID

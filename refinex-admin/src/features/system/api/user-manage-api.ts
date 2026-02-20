@@ -4,6 +4,7 @@ import type {
   PageData,
   SystemUser,
   SystemUserCreateRequest,
+  SystemUserEstab,
   SystemUserIdentity,
   SystemUserIdentityCreateRequest,
   SystemUserIdentityUpdateRequest,
@@ -45,6 +46,11 @@ export async function listSystemUserIdentities(
     { params: query }
   )
   return response.data ?? { data: [] }
+}
+
+export async function listSystemUserEstabs(userId: number): Promise<SystemUserEstab[]> {
+  const response = await http.get<SystemUserEstab[]>(buildSystemPath(`/system-users/${userId}/estabs`))
+  return response.data ?? []
 }
 
 export async function createSystemUserIdentity(

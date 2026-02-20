@@ -74,6 +74,11 @@ public class UserManageDTO implements Serializable {
     private Long primaryEstabId;
 
     /**
+     * 主组织名称
+     */
+    private String primaryEstabName;
+
+    /**
      * 主手机号
      */
     private String primaryPhone;
