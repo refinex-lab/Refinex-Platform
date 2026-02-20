@@ -10,7 +10,7 @@ export function SignIn() {
       <div className='space-y-2'>
         <h2 className='text-2xl font-semibold tracking-tight'>登录</h2>
         <p className='text-sm text-muted-foreground'>
-          支持用户名密码、手机号验证码、邮箱密码、邮箱验证码
+          支持手机号验证码、邮箱密码、邮箱验证码
         </p>
       </div>
       <UserAuthForm redirectTo={redirect} />

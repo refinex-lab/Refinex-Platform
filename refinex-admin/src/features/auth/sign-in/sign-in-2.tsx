@@ -22,7 +22,7 @@ export function SignIn2() {
           <div className='flex flex-col space-y-2 text-start'>
             <h2 className='text-lg font-semibold tracking-tight'>登录</h2>
             <p className='text-sm text-muted-foreground'>
-              支持用户名密码、手机号验证码、邮箱密码、邮箱验证码<br />
+              支持手机号验证码、邮箱密码、邮箱验证码<br />
               请选择一种方式登录
             </p>
           </div>

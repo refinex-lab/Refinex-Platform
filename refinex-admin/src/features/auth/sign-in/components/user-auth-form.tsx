@@ -33,7 +33,7 @@ const formSchema = z.object({
   code: z.string().optional(),
 })
 
-type LoginMode = 'username_password' | 'phone_sms' | 'email_password' | 'email_code'
+type LoginMode = 'phone_sms' | 'email_password' | 'email_code'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PHONE_REGEX = /^1\d{10}$/
@@ -50,7 +50,7 @@ export function UserAuthForm({
   const [isLoading, setIsLoading] = useState(false)
   const [sendCodeLoading, setSendCodeLoading] = useState(false)
   const [codeCooldown, setCodeCooldown] = useState(0)
-  const [loginMode, setLoginMode] = useState<LoginMode>('username_password')
+  const [loginMode, setLoginMode] = useState<LoginMode>('phone_sms')
   const navigate = useNavigate()
   const { auth } = useAuthStore()
 
@@ -85,13 +85,12 @@ export function UserAuthForm({
       }
     }
     return {
-      label: '用户名',
-      placeholder: '请输入用户名',
+      label: '手机号',
+      placeholder: '请输入 11 位手机号',
     }
   }, [loginMode])
 
-  const requiresPassword =
-    loginMode === 'username_password' || loginMode === 'email_password'
+  const requiresPassword = loginMode === 'email_password'
   const requiresCode = loginMode === 'phone_sms' || loginMode === 'email_code'
 
   async function handleSendCode() {
@@ -159,13 +158,11 @@ export function UserAuthForm({
     setIsLoading(true)
     try {
       const loginType =
-        loginMode === 'username_password'
-          ? LoginTypeCode.USERNAME_PASSWORD
-          : loginMode === 'phone_sms'
-            ? LoginTypeCode.PHONE_SMS
-            : loginMode === 'email_password'
-              ? LoginTypeCode.EMAIL_PASSWORD
-              : LoginTypeCode.EMAIL_CODE
+        loginMode === 'phone_sms'
+          ? LoginTypeCode.PHONE_SMS
+          : loginMode === 'email_password'
+            ? LoginTypeCode.EMAIL_PASSWORD
+            : LoginTypeCode.EMAIL_CODE
 
       const loginResult = await login({
         loginType,
@@ -201,10 +198,7 @@ export function UserAuthForm({
             form.clearErrors()
           }}
         >
-          <TabsList className='grid h-auto w-full grid-cols-4 gap-1.5'>
-            <TabsTrigger value='username_password' className='px-2 text-xs sm:text-sm'>
-              用户名密码
-            </TabsTrigger>
+          <TabsList className='grid h-auto w-full grid-cols-3 gap-1.5'>
             <TabsTrigger value='phone_sms' className='px-2 text-xs sm:text-sm'>
               手机号验证码
             </TabsTrigger>
@@ -291,7 +285,7 @@ export function UserAuthForm({
         </Button>
 
         <div className='space-y-3 text-xs text-muted-foreground'>
-          <div className='space-y-1.5'>
+          {/* <div className='space-y-1.5'>
             <p>其他登录方式（敬请期待）</p>
             <div className='flex flex-wrap gap-x-3 gap-y-1'>
               <button
@@ -323,7 +317,7 @@ export function UserAuthForm({
                 TOTP
               </button>
             </div>
-          </div>
+          </div> */}
           <div className='pt-0.5'>
             还没有账号？
             <Link to='/sign-up' className='ms-1 underline underline-offset-4'>
