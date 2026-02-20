@@ -881,8 +881,8 @@ export function EstabsPage() {
       </Header>
 
       <Main fixed fluid>
-        <Card>
-          <CardContent className='grid gap-3 lg:grid-cols-[1fr_140px_140px_auto]'>
+        <Card className='py-3 gap-3'>
+          <CardContent className='pt-0 grid gap-3 lg:grid-cols-[1fr_140px_140px_auto]'>
             <Input
               value={keywordInput}
               placeholder='企业编码 / 企业名称 / 联系人'
@@ -935,11 +935,12 @@ export function EstabsPage() {
           </CardContent>
         </Card>
 
-        <Card className='mt-4 overflow-hidden'>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
+        <Card className='mt-2 overflow-hidden py-3 gap-3'>
+          <CardContent className='pt-0'>
+            <div className='overflow-hidden rounded-md border border-border/90'>
+              <Table className='[&_td]:border-r [&_td]:border-border/70 [&_td:last-child]:border-r-0 [&_th]:border-r [&_th]:border-border/70 [&_th:last-child]:border-r-0'>
+                <TableHeader>
+                  <TableRow className='bg-muted/30 hover:bg-muted/30'>
                   <TableHead>企业编码</TableHead>
                   <TableHead>企业名称</TableHead>
                   <TableHead>企业类型</TableHead>
@@ -947,87 +948,88 @@ export function EstabsPage() {
                   <TableHead>联系电话</TableHead>
                   <TableHead className='w-[88px] text-center'>状态</TableHead>
                   <TableHead className='w-[132px] text-center'>操作</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={7}>
-                      <div className='flex items-center justify-center gap-2 py-8 text-muted-foreground'>
-                        <Loader2 className='h-4 w-4 animate-spin' />
-                        正在加载企业列表...
-                      </div>
-                    </TableCell>
                   </TableRow>
-                ) : estabs.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className='py-8 text-center text-muted-foreground'>
-                      暂无企业数据
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  estabs.map((item) => (
-                    <TableRow
-                      key={item.id}
-                      data-state={selectedEstabId === item.id ? 'selected' : undefined}
-                      className='cursor-pointer'
-                      onClick={() => setSelectedEstab(item)}
-                    >
-                      <TableCell>{item.estabCode || '-'}</TableCell>
-                      <TableCell>{item.estabName || '-'}</TableCell>
-                      <TableCell>{toEstabTypeLabel(item.estabType)}</TableCell>
-                      <TableCell>{item.contactName || '-'}</TableCell>
-                      <TableCell>{item.contactPhone || '-'}</TableCell>
-                      <TableCell className='text-center'>
-                        <Badge variant={item.status === 1 ? 'default' : 'secondary'}>
-                          {toStatusLabel(item.status)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className='flex items-center justify-center gap-1'>
-                          <Button
-                            type='button'
-                            variant='ghost'
-                            size='icon'
-                            className='h-8 w-8'
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              openViewEstabDialog(item)
-                            }}
-                          >
-                            <Eye className='h-4 w-4' />
-                          </Button>
-                          <Button
-                            type='button'
-                            variant='ghost'
-                            size='icon'
-                            className='h-8 w-8'
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              openEditEstabDialog(item)
-                            }}
-                          >
-                            <Pencil className='h-4 w-4' />
-                          </Button>
-                          <Button
-                            type='button'
-                            variant='ghost'
-                            size='icon'
-                            className='h-8 w-8 text-destructive'
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              setDeletingEstab(item)
-                            }}
-                          >
-                            <Trash2 className='h-4 w-4' />
-                          </Button>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={7}>
+                        <div className='flex items-center justify-center gap-2 py-8 text-muted-foreground'>
+                          <Loader2 className='h-4 w-4 animate-spin' />
+                          正在加载企业列表...
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : estabs.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className='py-8 text-center text-muted-foreground'>
+                        暂无企业数据
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    estabs.map((item) => (
+                      <TableRow
+                        key={item.id}
+                        data-state={selectedEstabId === item.id ? 'selected' : undefined}
+                        className='cursor-pointer'
+                        onClick={() => setSelectedEstab(item)}
+                      >
+                        <TableCell>{item.estabCode || '-'}</TableCell>
+                        <TableCell>{item.estabName || '-'}</TableCell>
+                        <TableCell>{toEstabTypeLabel(item.estabType)}</TableCell>
+                        <TableCell>{item.contactName || '-'}</TableCell>
+                        <TableCell>{item.contactPhone || '-'}</TableCell>
+                        <TableCell className='text-center'>
+                          <Badge variant={item.status === 1 ? 'default' : 'secondary'}>
+                            {toStatusLabel(item.status)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className='flex items-center justify-center gap-1'>
+                            <Button
+                              type='button'
+                              variant='ghost'
+                              size='icon'
+                              className='h-8 w-8'
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                openViewEstabDialog(item)
+                              }}
+                            >
+                              <Eye className='h-4 w-4' />
+                            </Button>
+                            <Button
+                              type='button'
+                              variant='ghost'
+                              size='icon'
+                              className='h-8 w-8'
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                openEditEstabDialog(item)
+                              }}
+                            >
+                              <Pencil className='h-4 w-4' />
+                            </Button>
+                            <Button
+                              type='button'
+                              variant='ghost'
+                              size='icon'
+                              className='h-8 w-8 text-destructive'
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                setDeletingEstab(item)
+                              }}
+                            >
+                              <Trash2 className='h-4 w-4' />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
             <PageToolbar
               page={query.currentPage ?? 1}
               size={query.pageSize ?? 10}
@@ -1351,76 +1353,78 @@ export function EstabsPage() {
                       </Button>
                     ) : null}
                   </div>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
+                  <div className='overflow-hidden rounded-md border border-border/90'>
+                    <Table className='[&_td]:border-r [&_td]:border-border/70 [&_td:last-child]:border-r-0 [&_th]:border-r [&_th]:border-border/70 [&_th:last-child]:border-r-0'>
+                      <TableHeader>
+                        <TableRow className='bg-muted/30 hover:bg-muted/30'>
                         <TableHead>类型</TableHead>
                         <TableHead>地区</TableHead>
                         <TableHead>详细地址</TableHead>
                         <TableHead className='w-[88px] text-center'>默认</TableHead>
                         <TableHead className='w-[132px] text-center'>操作</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {addressLoading ? (
-                        <TableRow>
-                          <TableCell colSpan={5}>
-                            <div className='flex items-center justify-center gap-2 py-6 text-muted-foreground'>
-                              <Loader2 className='h-4 w-4 animate-spin' />
-                              正在加载地址...
-                            </div>
-                          </TableCell>
                         </TableRow>
-                      ) : addresses.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={5} className='py-6 text-center text-muted-foreground'>
-                            暂无地址信息
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        addresses.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell>{toAddressTypeLabel(item.addrType)}</TableCell>
-                            <TableCell>
-                              {[item.provinceName, item.cityName, item.districtName].filter(Boolean).join(' / ') || '-'}
-                            </TableCell>
-                            <TableCell>{item.addressLine1 || item.addressLine2 || '-'}</TableCell>
-                            <TableCell className='text-center'>
-                              <Badge variant={item.isDefault === 1 ? 'default' : 'secondary'}>
-                                {item.isDefault === 1 ? '是' : '否'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              {isEstabReadOnly ? (
-                                <div className='text-center text-muted-foreground'>-</div>
-                              ) : (
-                                <div className='flex items-center justify-center gap-1'>
-                                  <Button
-                                    type='button'
-                                    variant='ghost'
-                                    size='icon'
-                                    className='h-8 w-8'
-                                    onClick={() => openEditAddressDialog(item)}
-                                  >
-                                    <Pencil className='h-4 w-4' />
-                                  </Button>
-                                  <Button
-                                    type='button'
-                                    variant='ghost'
-                                    size='icon'
-                                    className='h-8 w-8 text-destructive'
-                                    onClick={() => setDeletingAddress(item)}
-                                  >
-                                    <Trash2 className='h-4 w-4' />
-                                  </Button>
-                                </div>
-                              )}
+                      </TableHeader>
+                      <TableBody>
+                        {addressLoading ? (
+                          <TableRow>
+                            <TableCell colSpan={5}>
+                              <div className='flex items-center justify-center gap-2 py-6 text-muted-foreground'>
+                                <Loader2 className='h-4 w-4 animate-spin' />
+                                正在加载地址...
+                              </div>
                             </TableCell>
                           </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
+                        ) : addresses.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className='py-6 text-center text-muted-foreground'>
+                              暂无地址信息
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          addresses.map((item) => (
+                            <TableRow key={item.id}>
+                              <TableCell>{toAddressTypeLabel(item.addrType)}</TableCell>
+                              <TableCell>
+                                {[item.provinceName, item.cityName, item.districtName].filter(Boolean).join(' / ') || '-'}
+                              </TableCell>
+                              <TableCell>{item.addressLine1 || item.addressLine2 || '-'}</TableCell>
+                              <TableCell className='text-center'>
+                                <Badge variant={item.isDefault === 1 ? 'default' : 'secondary'}>
+                                  {item.isDefault === 1 ? '是' : '否'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {isEstabReadOnly ? (
+                                  <div className='text-center text-muted-foreground'>-</div>
+                                ) : (
+                                  <div className='flex items-center justify-center gap-1'>
+                                    <Button
+                                      type='button'
+                                      variant='ghost'
+                                      size='icon'
+                                      className='h-8 w-8'
+                                      onClick={() => openEditAddressDialog(item)}
+                                    >
+                                      <Pencil className='h-4 w-4' />
+                                    </Button>
+                                    <Button
+                                      type='button'
+                                      variant='ghost'
+                                      size='icon'
+                                      className='h-8 w-8 text-destructive'
+                                      onClick={() => setDeletingAddress(item)}
+                                    >
+                                      <Trash2 className='h-4 w-4' />
+                                    </Button>
+                                  </div>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
                   <PageToolbar
                     page={addressQuery.currentPage ?? 1}
                     size={addressQuery.pageSize ?? 10}
@@ -1443,9 +1447,10 @@ export function EstabsPage() {
                       </Button>
                     ) : null}
                   </div>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
+                  <div className='overflow-hidden rounded-md border border-border/90'>
+                    <Table className='[&_td]:border-r [&_td]:border-border/70 [&_td:last-child]:border-r-0 [&_th]:border-r [&_th]:border-border/70 [&_th:last-child]:border-r-0'>
+                      <TableHeader>
+                        <TableRow className='bg-muted/30 hover:bg-muted/30'>
                         <TableHead>用户ID</TableHead>
                         <TableHead>成员类型</TableHead>
                         <TableHead className='w-[88px] text-center'>管理员</TableHead>
@@ -1453,72 +1458,73 @@ export function EstabsPage() {
                         <TableHead>岗位</TableHead>
                         <TableHead>加入时间</TableHead>
                         <TableHead className='w-[132px] text-center'>操作</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {memberLoading ? (
-                        <TableRow>
-                          <TableCell colSpan={7}>
-                            <div className='flex items-center justify-center gap-2 py-6 text-muted-foreground'>
-                              <Loader2 className='h-4 w-4 animate-spin' />
-                              正在加载成员...
-                            </div>
-                          </TableCell>
                         </TableRow>
-                      ) : members.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={7} className='py-6 text-center text-muted-foreground'>
-                            暂无成员数据
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        members.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell>{item.userId ?? '-'}</TableCell>
-                            <TableCell>{toMemberTypeLabel(item.memberType)}</TableCell>
-                            <TableCell className='text-center'>
-                              <Badge variant={item.isAdmin === 1 ? 'default' : 'secondary'}>
-                                {item.isAdmin === 1 ? '是' : '否'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className='text-center'>
-                              <Badge variant={item.status === 1 ? 'default' : 'secondary'}>
-                                {toStatusLabel(item.status)}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>{item.positionTitle || '-'}</TableCell>
-                            <TableCell>{formatDateTime(item.joinTime)}</TableCell>
-                            <TableCell>
-                              {isEstabReadOnly ? (
-                                <div className='text-center text-muted-foreground'>-</div>
-                              ) : (
-                                <div className='flex items-center justify-center gap-1'>
-                                  <Button
-                                    type='button'
-                                    variant='ghost'
-                                    size='icon'
-                                    className='h-8 w-8'
-                                    onClick={() => openEditMemberDialog(item)}
-                                  >
-                                    <Pencil className='h-4 w-4' />
-                                  </Button>
-                                  <Button
-                                    type='button'
-                                    variant='ghost'
-                                    size='icon'
-                                    className='h-8 w-8 text-destructive'
-                                    onClick={() => setDeletingMember(item)}
-                                  >
-                                    <Trash2 className='h-4 w-4' />
-                                  </Button>
-                                </div>
-                              )}
+                      </TableHeader>
+                      <TableBody>
+                        {memberLoading ? (
+                          <TableRow>
+                            <TableCell colSpan={7}>
+                              <div className='flex items-center justify-center gap-2 py-6 text-muted-foreground'>
+                                <Loader2 className='h-4 w-4 animate-spin' />
+                                正在加载成员...
+                              </div>
                             </TableCell>
                           </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
+                        ) : members.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={7} className='py-6 text-center text-muted-foreground'>
+                              暂无成员数据
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          members.map((item) => (
+                            <TableRow key={item.id}>
+                              <TableCell>{item.userId ?? '-'}</TableCell>
+                              <TableCell>{toMemberTypeLabel(item.memberType)}</TableCell>
+                              <TableCell className='text-center'>
+                                <Badge variant={item.isAdmin === 1 ? 'default' : 'secondary'}>
+                                  {item.isAdmin === 1 ? '是' : '否'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className='text-center'>
+                                <Badge variant={item.status === 1 ? 'default' : 'secondary'}>
+                                  {toStatusLabel(item.status)}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>{item.positionTitle || '-'}</TableCell>
+                              <TableCell>{formatDateTime(item.joinTime)}</TableCell>
+                              <TableCell>
+                                {isEstabReadOnly ? (
+                                  <div className='text-center text-muted-foreground'>-</div>
+                                ) : (
+                                  <div className='flex items-center justify-center gap-1'>
+                                    <Button
+                                      type='button'
+                                      variant='ghost'
+                                      size='icon'
+                                      className='h-8 w-8'
+                                      onClick={() => openEditMemberDialog(item)}
+                                    >
+                                      <Pencil className='h-4 w-4' />
+                                    </Button>
+                                    <Button
+                                      type='button'
+                                      variant='ghost'
+                                      size='icon'
+                                      className='h-8 w-8 text-destructive'
+                                      onClick={() => setDeletingMember(item)}
+                                    >
+                                      <Trash2 className='h-4 w-4' />
+                                    </Button>
+                                  </div>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
                   <PageToolbar
                     page={memberQuery.currentPage ?? 1}
                     size={memberQuery.pageSize ?? 10}

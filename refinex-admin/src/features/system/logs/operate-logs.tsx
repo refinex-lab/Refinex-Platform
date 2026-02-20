@@ -109,8 +109,8 @@ export function OperateLogsPage() {
 
   return (
     <>
-      <Card>
-        <CardContent className='grid gap-3 xl:grid-cols-[130px_180px_1fr_1fr_1fr_auto]'>
+      <Card className='py-3 gap-3'>
+        <CardContent className='pt-0 grid gap-3 xl:grid-cols-[130px_180px_1fr_1fr_1fr_auto]'>
           <Select value={successInput} onValueChange={(value) => setSuccessInput(value as 'all' | '1' | '0')}>
             <SelectTrigger>
               <SelectValue placeholder='结果' />
@@ -138,11 +138,12 @@ export function OperateLogsPage() {
         </CardContent>
       </Card>
 
-      <Card className='mt-4 overflow-hidden'>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
+      <Card className='mt-2 overflow-hidden py-3 gap-3'>
+        <CardContent className='pt-0'>
+          <div className='overflow-hidden rounded-md border border-border/90'>
+            <Table className='[&_td]:border-r [&_td]:border-border/70 [&_td:last-child]:border-r-0 [&_th]:border-r [&_th]:border-border/70 [&_th:last-child]:border-r-0'>
+              <TableHeader>
+                <TableRow className='bg-muted/30 hover:bg-muted/30'>
                 <TableHead className='w-[140px]'>用户名</TableHead>
                 <TableHead>模块</TableHead>
                 <TableHead>操作</TableHead>
@@ -152,51 +153,52 @@ export function OperateLogsPage() {
                 <TableHead className='w-[100px] text-right'>耗时(ms)</TableHead>
                 <TableHead>操作时间</TableHead>
                 <TableHead className='w-[80px] text-center'>详情</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={9}>
-                    <div className='flex items-center justify-center gap-2 py-8 text-muted-foreground'>
-                      <Loader2 className='h-4 w-4 animate-spin' />
-                      正在加载操作日志...
-                    </div>
-                  </TableCell>
                 </TableRow>
-              ) : logs.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={9} className='py-8 text-center text-muted-foreground'>
-                    暂无操作日志
-                  </TableCell>
-                </TableRow>
-              ) : (
-                logs.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>{item.username || '-'}</TableCell>
-                    <TableCell>{item.moduleCode || '-'}</TableCell>
-                    <TableCell>{item.operation || '-'}</TableCell>
-                    <TableCell>{item.targetType && item.targetId ? `${item.targetType}:${item.targetId}` : '-'}</TableCell>
-                    <TableCell className='text-center'>
-                      <Badge variant={item.success === 1 ? 'default' : 'secondary'}>
-                        {item.success === 1 ? '成功' : '失败'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className='max-w-[260px] truncate'>{item.requestPath || '-'}</TableCell>
-                    <TableCell className='text-right'>{item.durationMs ?? '-'}</TableCell>
-                    <TableCell>{formatDateTime(item.gmtCreate)}</TableCell>
-                    <TableCell>
-                      <div className='flex justify-center'>
-                        <Button type='button' variant='ghost' size='icon' className='h-8 w-8' onClick={() => void openDetail(item.id)}>
-                          <Eye className='h-4 w-4' />
-                        </Button>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={9}>
+                      <div className='flex items-center justify-center gap-2 py-8 text-muted-foreground'>
+                        <Loader2 className='h-4 w-4 animate-spin' />
+                        正在加载操作日志...
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : logs.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className='py-8 text-center text-muted-foreground'>
+                      暂无操作日志
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  logs.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell>{item.username || '-'}</TableCell>
+                      <TableCell>{item.moduleCode || '-'}</TableCell>
+                      <TableCell>{item.operation || '-'}</TableCell>
+                      <TableCell>{item.targetType && item.targetId ? `${item.targetType}:${item.targetId}` : '-'}</TableCell>
+                      <TableCell className='text-center'>
+                        <Badge variant={item.success === 1 ? 'default' : 'secondary'}>
+                          {item.success === 1 ? '成功' : '失败'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className='max-w-[260px] truncate'>{item.requestPath || '-'}</TableCell>
+                      <TableCell className='text-right'>{item.durationMs ?? '-'}</TableCell>
+                      <TableCell>{formatDateTime(item.gmtCreate)}</TableCell>
+                      <TableCell>
+                        <div className='flex justify-center'>
+                          <Button type='button' variant='ghost' size='icon' className='h-8 w-8' onClick={() => void openDetail(item.id)}>
+                            <Eye className='h-4 w-4' />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
           <PageToolbar
             page={query.currentPage ?? 1}
             size={query.pageSize ?? 10}

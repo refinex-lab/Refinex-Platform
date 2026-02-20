@@ -125,8 +125,8 @@ export function NotifyLogsPage() {
 
   return (
     <>
-      <Card>
-        <CardContent className='grid gap-3 xl:grid-cols-[130px_130px_180px_1fr_1fr_1fr_auto]'>
+      <Card className='py-3 gap-3'>
+        <CardContent className='pt-0 grid gap-3 xl:grid-cols-[130px_130px_180px_1fr_1fr_1fr_auto]'>
           <Select value={channelInput} onValueChange={(value) => setChannelInput(value as 'all' | '1' | '2' | '3' | '4')}>
             <SelectTrigger>
               <SelectValue placeholder='通知渠道' />
@@ -167,11 +167,12 @@ export function NotifyLogsPage() {
         </CardContent>
       </Card>
 
-      <Card className='mt-4 overflow-hidden'>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
+      <Card className='mt-2 overflow-hidden py-3 gap-3'>
+        <CardContent className='pt-0'>
+          <div className='overflow-hidden rounded-md border border-border/90'>
+            <Table className='[&_td]:border-r [&_td]:border-border/70 [&_td:last-child]:border-r-0 [&_th]:border-r [&_th]:border-border/70 [&_th:last-child]:border-r-0'>
+              <TableHeader>
+                <TableRow className='bg-muted/30 hover:bg-muted/30'>
                 <TableHead>渠道</TableHead>
                 <TableHead>场景编码</TableHead>
                 <TableHead>接收方</TableHead>
@@ -180,58 +181,59 @@ export function NotifyLogsPage() {
                 <TableHead>模板编码</TableHead>
                 <TableHead>发送时间</TableHead>
                 <TableHead className='w-[80px] text-center'>详情</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={8}>
-                    <div className='flex items-center justify-center gap-2 py-8 text-muted-foreground'>
-                      <Loader2 className='h-4 w-4 animate-spin' />
-                      正在加载通知日志...
-                    </div>
-                  </TableCell>
                 </TableRow>
-              ) : logs.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className='py-8 text-center text-muted-foreground'>
-                    暂无通知日志
-                  </TableCell>
-                </TableRow>
-              ) : (
-                logs.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>{item.channelType == null ? '-' : (CHANNEL_LABEL[item.channelType] ?? item.channelType)}</TableCell>
-                    <TableCell>{item.sceneCode || '-'}</TableCell>
-                    <TableCell>{item.receiver || '-'}</TableCell>
-                    <TableCell className='max-w-[220px] truncate'>{item.subject || '-'}</TableCell>
-                    <TableCell className='text-center'>
-                      <Badge
-                        variant={
-                          item.sendStatus === 1
-                            ? 'default'
-                            : item.sendStatus === 2
-                              ? 'destructive'
-                              : 'secondary'
-                        }
-                      >
-                        {item.sendStatus == null ? '-' : (SEND_STATUS_LABEL[item.sendStatus] ?? item.sendStatus)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{item.templateCode || '-'}</TableCell>
-                    <TableCell>{formatDateTime(item.gmtCreate)}</TableCell>
-                    <TableCell>
-                      <div className='flex justify-center'>
-                        <Button type='button' variant='ghost' size='icon' className='h-8 w-8' onClick={() => void openDetail(item.id)}>
-                          <Eye className='h-4 w-4' />
-                        </Button>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={8}>
+                      <div className='flex items-center justify-center gap-2 py-8 text-muted-foreground'>
+                        <Loader2 className='h-4 w-4 animate-spin' />
+                        正在加载通知日志...
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : logs.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className='py-8 text-center text-muted-foreground'>
+                      暂无通知日志
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  logs.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell>{item.channelType == null ? '-' : (CHANNEL_LABEL[item.channelType] ?? item.channelType)}</TableCell>
+                      <TableCell>{item.sceneCode || '-'}</TableCell>
+                      <TableCell>{item.receiver || '-'}</TableCell>
+                      <TableCell className='max-w-[220px] truncate'>{item.subject || '-'}</TableCell>
+                      <TableCell className='text-center'>
+                        <Badge
+                          variant={
+                            item.sendStatus === 1
+                              ? 'default'
+                              : item.sendStatus === 2
+                                ? 'destructive'
+                                : 'secondary'
+                          }
+                        >
+                          {item.sendStatus == null ? '-' : (SEND_STATUS_LABEL[item.sendStatus] ?? item.sendStatus)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{item.templateCode || '-'}</TableCell>
+                      <TableCell>{formatDateTime(item.gmtCreate)}</TableCell>
+                      <TableCell>
+                        <div className='flex justify-center'>
+                          <Button type='button' variant='ghost' size='icon' className='h-8 w-8' onClick={() => void openDetail(item.id)}>
+                            <Eye className='h-4 w-4' />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
           <PageToolbar
             page={query.currentPage ?? 1}
             size={query.pageSize ?? 10}

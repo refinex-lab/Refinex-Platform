@@ -832,7 +832,7 @@ export function TeamsPage() {
 
       <Main fixed fluid>
         <div className='grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]'>
-          <Card className='overflow-hidden'>
+          <Card className='overflow-hidden py-3 gap-3'>
             <CardHeader className='pb-3'>
               <div className='flex items-center justify-between gap-2'>
                 <CardTitle className='text-base'>组织结构</CardTitle>
@@ -849,7 +849,7 @@ export function TeamsPage() {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className='pt-0'>
               <div
                 className='max-h-[calc(100vh-300px)] min-h-[360px] overflow-auto pr-1'
                 onScroll={handleTeamTreeScroll}
@@ -886,7 +886,7 @@ export function TeamsPage() {
             </CardContent>
           </Card>
 
-          <Card className='overflow-hidden'>
+          <Card className='overflow-hidden py-3 gap-3'>
             <CardHeader className='pb-3'>
               <div className='flex flex-wrap items-center justify-between gap-2'>
                 <div className='space-y-1'>
@@ -898,85 +898,87 @@ export function TeamsPage() {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
+            <CardContent className='pt-0'>
+              <div className='overflow-hidden rounded-md border border-border/90'>
+                <Table className='[&_td]:border-r [&_td]:border-border/70 [&_td:last-child]:border-r-0 [&_th]:border-r [&_th]:border-border/70 [&_th:last-child]:border-r-0'>
+                  <TableHeader>
+                    <TableRow className='bg-muted/30 hover:bg-muted/30'>
                     <TableHead>用户名</TableHead>
                     <TableHead>团队角色</TableHead>
                     <TableHead className='w-[88px] text-center'>状态</TableHead>
                     <TableHead>加入时间</TableHead>
                     <TableHead className='w-[132px] text-center'>操作</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {memberLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={5}>
-                        <div className='flex items-center justify-center gap-2 py-8 text-muted-foreground'>
-                          <Loader2 className='h-4 w-4 animate-spin' />
-                          正在加载团队成员...
-                        </div>
-                      </TableCell>
                     </TableRow>
-                  ) : members.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className='py-8 text-center text-muted-foreground'>
-                        {selectedTeam ? '暂无团队成员' : '请先在左侧选择团队'}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    members.map((item) => {
-                      const title = item.displayName || item.username || '-'
-                      const subtitle =
-                        item.displayName && item.username
-                          ? `${item.username}${item.userCode ? `（${item.userCode}）` : ''}`
-                          : item.userCode
-                            ? `编码：${item.userCode}`
-                            : ''
-                      return (
-                        <TableRow key={item.id}>
-                          <TableCell>
-                            <div className='flex flex-col'>
-                              <span>{title}</span>
-                              {subtitle ? <span className='text-xs text-muted-foreground'>{subtitle}</span> : null}
-                            </div>
-                          </TableCell>
-                          <TableCell>{toRoleInTeamLabel(item.roleInTeam)}</TableCell>
-                          <TableCell className='text-center'>
-                            <Badge variant={item.status === 1 ? 'default' : 'secondary'}>
-                              {toStatusLabel(item.status)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{formatDateTime(item.joinTime)}</TableCell>
-                          <TableCell>
-                            <div className='flex items-center justify-center gap-1'>
-                              <Button
-                                type='button'
-                                variant='ghost'
-                                size='icon'
-                                className='h-8 w-8'
-                                onClick={() => openEditMemberDialog(item)}
-                              >
-                                <Pencil className='h-4 w-4' />
-                              </Button>
-                              <Button
-                                type='button'
-                                variant='ghost'
-                                size='icon'
-                                className='h-8 w-8 text-destructive'
-                                onClick={() => setDeletingMember(item)}
-                              >
-                                <Trash2 className='h-4 w-4' />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })
-                  )}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {memberLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={5}>
+                          <div className='flex items-center justify-center gap-2 py-8 text-muted-foreground'>
+                            <Loader2 className='h-4 w-4 animate-spin' />
+                            正在加载团队成员...
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : members.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className='py-8 text-center text-muted-foreground'>
+                          {selectedTeam ? '暂无团队成员' : '请先在左侧选择团队'}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      members.map((item) => {
+                        const title = item.displayName || item.username || '-'
+                        const subtitle =
+                          item.displayName && item.username
+                            ? `${item.username}${item.userCode ? `（${item.userCode}）` : ''}`
+                            : item.userCode
+                              ? `编码：${item.userCode}`
+                              : ''
+                        return (
+                          <TableRow key={item.id}>
+                            <TableCell>
+                              <div className='flex flex-col'>
+                                <span>{title}</span>
+                                {subtitle ? <span className='text-xs text-muted-foreground'>{subtitle}</span> : null}
+                              </div>
+                            </TableCell>
+                            <TableCell>{toRoleInTeamLabel(item.roleInTeam)}</TableCell>
+                            <TableCell className='text-center'>
+                              <Badge variant={item.status === 1 ? 'default' : 'secondary'}>
+                                {toStatusLabel(item.status)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{formatDateTime(item.joinTime)}</TableCell>
+                            <TableCell>
+                              <div className='flex items-center justify-center gap-1'>
+                                <Button
+                                  type='button'
+                                  variant='ghost'
+                                  size='icon'
+                                  className='h-8 w-8'
+                                  onClick={() => openEditMemberDialog(item)}
+                                >
+                                  <Pencil className='h-4 w-4' />
+                                </Button>
+                                <Button
+                                  type='button'
+                                  variant='ghost'
+                                  size='icon'
+                                  className='h-8 w-8 text-destructive'
+                                  onClick={() => setDeletingMember(item)}
+                                >
+                                  <Trash2 className='h-4 w-4' />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
 
               <PageToolbar
                 page={memberQuery.currentPage ?? 1}

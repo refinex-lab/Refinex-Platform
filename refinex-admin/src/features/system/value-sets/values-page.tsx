@@ -316,7 +316,7 @@ export function ValueSetValuesPage({ setCode, setName }: ValueSetValuesPageProps
       </Header>
 
       <Main fixed fluid>
-        <Card>
+        <Card className='py-3 gap-3'>
           <CardHeader className='flex flex-row items-center justify-between gap-3'>
             <div className='space-y-1'>
               <CardTitle>集合值定义</CardTitle>
@@ -332,7 +332,7 @@ export function ValueSetValuesPage({ setCode, setName }: ValueSetValuesPageProps
               返回集合列表
             </Button>
           </CardHeader>
-          <CardContent className='space-y-4'>
+          <CardContent className='pt-0 space-y-2'>
             <div className='grid gap-3 md:grid-cols-[1fr_180px_auto]'>
               <Input
                 value={keywordInput}
@@ -374,9 +374,10 @@ export function ValueSetValuesPage({ setCode, setName }: ValueSetValuesPageProps
               </div>
             </div>
 
-            <Table>
-              <TableHeader>
-                <TableRow>
+            <div className='overflow-hidden rounded-md border border-border/90'>
+              <Table className='[&_td]:border-r [&_td]:border-border/70 [&_td:last-child]:border-r-0 [&_th]:border-r [&_th]:border-border/70 [&_th:last-child]:border-r-0'>
+                <TableHeader>
+                  <TableRow className='bg-muted/30 hover:bg-muted/30'>
                   <TableHead>值编码</TableHead>
                   <TableHead>值名称</TableHead>
                   <TableHead className='w-[88px] text-center'>默认</TableHead>
@@ -384,68 +385,69 @@ export function ValueSetValuesPage({ setCode, setName }: ValueSetValuesPageProps
                   <TableHead className='w-[80px] text-center'>排序</TableHead>
                   <TableHead>值描述</TableHead>
                   <TableHead className='w-[108px] text-center'>操作</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={7}>
-                      <div className='flex items-center justify-center gap-2 py-8 text-muted-foreground'>
-                        <Loader2 className='h-4 w-4 animate-spin' />
-                        正在加载集合值...
-                      </div>
-                    </TableCell>
                   </TableRow>
-                ) : values.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className='py-8 text-center text-muted-foreground'>
-                      当前集合暂无集合值
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  values.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className='font-medium'>{item.valueCode || '-'}</TableCell>
-                      <TableCell>{item.valueName || '-'}</TableCell>
-                      <TableCell className='text-center'>
-                        <Badge variant={item.isDefault === 1 ? 'default' : 'outline'}>
-                          {item.isDefault === 1 ? '默认' : '普通'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className='text-center'>
-                        <Badge variant={item.status === 1 ? 'default' : 'secondary'}>
-                          {toStatusLabel(item.status)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className='text-center'>{item.sort ?? '-'}</TableCell>
-                      <TableCell className='max-w-[480px] truncate'>{item.valueDesc || '-'}</TableCell>
-                      <TableCell>
-                        <div className='flex items-center justify-center gap-1'>
-                          <Button
-                            type='button'
-                            variant='ghost'
-                            size='icon'
-                            className='h-8 w-8'
-                            onClick={() => openEditDialog(item)}
-                          >
-                            <Pencil className='h-4 w-4' />
-                          </Button>
-                          <Button
-                            type='button'
-                            variant='ghost'
-                            size='icon'
-                            className='h-8 w-8 text-destructive hover:text-destructive'
-                            onClick={() => setDeletingValueItem(item)}
-                          >
-                            <Trash2 className='h-4 w-4' />
-                          </Button>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={7}>
+                        <div className='flex items-center justify-center gap-2 py-8 text-muted-foreground'>
+                          <Loader2 className='h-4 w-4 animate-spin' />
+                          正在加载集合值...
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : values.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className='py-8 text-center text-muted-foreground'>
+                        当前集合暂无集合值
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    values.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell className='font-medium'>{item.valueCode || '-'}</TableCell>
+                        <TableCell>{item.valueName || '-'}</TableCell>
+                        <TableCell className='text-center'>
+                          <Badge variant={item.isDefault === 1 ? 'default' : 'outline'}>
+                            {item.isDefault === 1 ? '默认' : '普通'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className='text-center'>
+                          <Badge variant={item.status === 1 ? 'default' : 'secondary'}>
+                            {toStatusLabel(item.status)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className='text-center'>{item.sort ?? '-'}</TableCell>
+                        <TableCell className='max-w-[480px] truncate'>{item.valueDesc || '-'}</TableCell>
+                        <TableCell>
+                          <div className='flex items-center justify-center gap-1'>
+                            <Button
+                              type='button'
+                              variant='ghost'
+                              size='icon'
+                              className='h-8 w-8'
+                              onClick={() => openEditDialog(item)}
+                            >
+                              <Pencil className='h-4 w-4' />
+                            </Button>
+                            <Button
+                              type='button'
+                              variant='ghost'
+                              size='icon'
+                              className='h-8 w-8 text-destructive hover:text-destructive'
+                              onClick={() => setDeletingValueItem(item)}
+                            >
+                              <Trash2 className='h-4 w-4' />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
             <PageToolbar
               page={query.currentPage ?? 1}
               size={query.pageSize ?? 10}

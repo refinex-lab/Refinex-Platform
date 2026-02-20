@@ -228,12 +228,12 @@ export function SystemDefinitionsPage() {
             </Header>
 
             <Main fixed fluid>
-                <Card>
+                <Card className='py-3 gap-3'>
                     {/*<CardHeader>*/}
                     {/*  <CardTitle>筛选条件</CardTitle>*/}
                     {/*  <CardDescription>支持按系统状态和关键字（编码/名称）查询。</CardDescription>*/}
                     {/*</CardHeader>*/}
-                    <CardContent className='grid gap-3 md:grid-cols-[1fr_180px_auto]'>
+                    <CardContent className='pt-0 grid gap-3 md:grid-cols-[1fr_180px_auto]'>
                         <Input
                             value={keywordInput}
                             placeholder='请输入系统编码或名称'
@@ -273,11 +273,12 @@ export function SystemDefinitionsPage() {
                     </CardContent>
                 </Card>
 
-                <Card className='mt-4 grow overflow-hidden'>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
+                <Card className='mt-2 grow overflow-hidden py-3 gap-3'>
+                    <CardContent className='pt-0'>
+                        <div className='overflow-hidden rounded-md border border-border/90'>
+                            <Table className='[&_td]:border-r [&_td]:border-border/70 [&_td:last-child]:border-r-0 [&_th]:border-r [&_th]:border-border/70 [&_th:last-child]:border-r-0'>
+                                <TableHeader>
+                                    <TableRow className='bg-muted/30 hover:bg-muted/30'>
                                     <TableHead>系统编码</TableHead>
                                     <TableHead>系统名称</TableHead>
                                     <TableHead>系统类型</TableHead>
@@ -286,57 +287,58 @@ export function SystemDefinitionsPage() {
                                     <TableHead>排序</TableHead>
                                     <TableHead>备注</TableHead>
                                     <TableHead className='w-[120px] text-center'>操作</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {loading ? (
-                                    <TableRow>
-                                        <TableCell colSpan={8}>
-                                            <div
-                                                className='flex items-center justify-center gap-2 py-6 text-muted-foreground'>
-                                                <Loader2 className='h-4 w-4 animate-spin'/>
-                                                正在加载系统定义...
-                                            </div>
-                                        </TableCell>
                                     </TableRow>
-                                ) : systems.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={8} className='py-6 text-center text-muted-foreground'>
-                                            暂无系统定义数据
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    systems.map((system) => (
-                                        <TableRow key={system.id}>
-                                            <TableCell>{system.systemCode || '-'}</TableCell>
-                                            <TableCell>{system.systemName || '-'}</TableCell>
-                                            <TableCell>{toSystemTypeLabel(system.systemType)}</TableCell>
-                                            <TableCell>{system.baseUrl || '-'}</TableCell>
-                                            <TableCell>
-                                                <Badge variant={system.status === 1 ? 'default' : 'secondary'}>
-                                                    {toStatusLabel(system.status)}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell>{system.sort ?? '-'}</TableCell>
-                                            <TableCell
-                                                className='max-w-[280px] truncate'>{system.remark || '-'}</TableCell>
-                                            <TableCell className='text-center'>
-                                                <Button
-                                                    type='button'
-                                                    variant='ghost'
-                                                    size='sm'
-                                                    className='mx-auto gap-1'
-                                                    onClick={() => openEditDialog(system)}
-                                                >
-                                                    <Pencil className='h-4 w-4'/>
-                                                    编辑
-                                                </Button>
+                                </TableHeader>
+                                <TableBody>
+                                    {loading ? (
+                                        <TableRow>
+                                            <TableCell colSpan={8}>
+                                                <div
+                                                    className='flex items-center justify-center gap-2 py-6 text-muted-foreground'>
+                                                    <Loader2 className='h-4 w-4 animate-spin'/>
+                                                    正在加载系统定义...
+                                                </div>
                                             </TableCell>
                                         </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
+                                    ) : systems.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={8} className='py-6 text-center text-muted-foreground'>
+                                                暂无系统定义数据
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        systems.map((system) => (
+                                            <TableRow key={system.id}>
+                                                <TableCell>{system.systemCode || '-'}</TableCell>
+                                                <TableCell>{system.systemName || '-'}</TableCell>
+                                                <TableCell>{toSystemTypeLabel(system.systemType)}</TableCell>
+                                                <TableCell>{system.baseUrl || '-'}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant={system.status === 1 ? 'default' : 'secondary'}>
+                                                        {toStatusLabel(system.status)}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell>{system.sort ?? '-'}</TableCell>
+                                                <TableCell
+                                                    className='max-w-[280px] truncate'>{system.remark || '-'}</TableCell>
+                                                <TableCell className='text-center'>
+                                                    <Button
+                                                        type='button'
+                                                        variant='ghost'
+                                                        size='sm'
+                                                        className='mx-auto gap-1'
+                                                        onClick={() => openEditDialog(system)}
+                                                    >
+                                                        <Pencil className='h-4 w-4'/>
+                                                        编辑
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
                         <PageToolbar
                             page={query.currentPage ?? 1}
                             size={query.pageSize ?? 10}
