@@ -182,11 +182,11 @@ export function AccountForm() {
   return (
     <div className='space-y-6'>
       <Card>
-        <CardHeader>
+        {/* <CardHeader>
           <CardTitle>账号基础信息</CardTitle>
           <CardDescription>以下字段由系统维护，部分字段需通过验证流程更新。</CardDescription>
-        </CardHeader>
-        <CardContent className='space-y-4'>
+        </CardHeader> */}
+        <CardContent className='space-y-4 px-0'>
           <div className='grid gap-4 md:grid-cols-2'>
             <div className='space-y-2'>
               <p className='text-sm font-medium'>用户编码</p>
@@ -269,11 +269,11 @@ export function AccountForm() {
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className='px-0'>
           <CardTitle>修改密码</CardTitle>
           <CardDescription>修改成功后，建议重新登录以刷新会话状态。</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className='px-0'>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
               {account && !canChangePassword && (

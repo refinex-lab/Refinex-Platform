@@ -202,9 +202,9 @@ export function ProfileForm() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-8'>
-        <div className='rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground'>
+        {/* <div className='rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground'>
           这里维护个人展示信息。账号安全、登录方式与密码请在“账号”页面管理。
-        </div>
+        </div> */}
 
         <FormField
           control={form.control}

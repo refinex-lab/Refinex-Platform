@@ -82,24 +82,24 @@ export const sidebarData: SidebarData = {
           url: '/users',
           icon: Users,
         },
-        {
-          title: 'Clerk 认证',
-          icon: ClerkLogo,
-          items: [
-            {
-              title: '登录',
-              url: '/clerk/sign-in',
-            },
-            {
-              title: '注册',
-              url: '/clerk/sign-up',
-            },
-            {
-              title: '用户管理',
-              url: '/clerk/user-management',
-            },
-          ],
-        },
+        // {
+        //   title: 'Clerk 认证',
+        //   icon: ClerkLogo,
+        //   items: [
+        //     {
+        //       title: '登录',
+        //       url: '/clerk/sign-in',
+        //     },
+        //     {
+        //       title: '注册',
+        //       url: '/clerk/sign-up',
+        //     },
+        //     {
+        //       title: '用户管理',
+        //       url: '/clerk/user-management',
+        //     },
+        //   ],
+        // },
       ],
     },
     // {
