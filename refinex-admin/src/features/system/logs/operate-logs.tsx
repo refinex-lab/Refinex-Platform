@@ -28,14 +28,13 @@ import {
 } from '@/features/system/api'
 import { PageToolbar } from '@/features/system/components/page-toolbar'
 import { handleServerError } from '@/lib/handle-server-error'
-import { formatDateTime, toOptionalNumber, toOptionalString } from './common'
+import { formatDateTime, toOptionalString } from './common'
 
 export function OperateLogsPage() {
   const [logs, setLogs] = useState<OperateLog[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
 
-  const [userIdInput, setUserIdInput] = useState('')
   const [successInput, setSuccessInput] = useState<'all' | '1' | '0'>('all')
   const [moduleCodeInput, setModuleCodeInput] = useState('')
   const [requestPathInput, setRequestPathInput] = useState('')
@@ -67,7 +66,6 @@ export function OperateLogsPage() {
 
   function applyFilter() {
     setQuery({
-      userId: toOptionalNumber(userIdInput),
       success: successInput === 'all' ? undefined : Number(successInput),
       moduleCode: toOptionalString(moduleCodeInput),
       requestPath: toOptionalString(requestPathInput),
@@ -79,7 +77,6 @@ export function OperateLogsPage() {
   }
 
   function resetFilter() {
-    setUserIdInput('')
     setSuccessInput('all')
     setModuleCodeInput('')
     setRequestPathInput('')
@@ -113,8 +110,7 @@ export function OperateLogsPage() {
   return (
     <>
       <Card>
-        <CardContent className='grid gap-3 xl:grid-cols-[120px_130px_180px_1fr_1fr_1fr_auto]'>
-          <Input placeholder='用户ID' value={userIdInput} onChange={(event) => setUserIdInput(event.target.value)} />
+        <CardContent className='grid gap-3 xl:grid-cols-[130px_180px_1fr_1fr_1fr_auto]'>
           <Select value={successInput} onValueChange={(value) => setSuccessInput(value as 'all' | '1' | '0')}>
             <SelectTrigger>
               <SelectValue placeholder='结果' />
@@ -147,7 +143,7 @@ export function OperateLogsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className='w-[90px]'>用户ID</TableHead>
+                <TableHead className='w-[140px]'>用户名</TableHead>
                 <TableHead>模块</TableHead>
                 <TableHead>操作</TableHead>
                 <TableHead>目标</TableHead>
@@ -177,7 +173,7 @@ export function OperateLogsPage() {
               ) : (
                 logs.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell>{item.userId ?? '-'}</TableCell>
+                    <TableCell>{item.username || '-'}</TableCell>
                     <TableCell>{item.moduleCode || '-'}</TableCell>
                     <TableCell>{item.operation || '-'}</TableCell>
                     <TableCell>{item.targetType && item.targetId ? `${item.targetType}:${item.targetId}` : '-'}</TableCell>
@@ -225,7 +221,7 @@ export function OperateLogsPage() {
           ) : (
             <div className='grid gap-3 md:grid-cols-2'>
               <Input disabled value={`日志ID：${detail?.id ?? '-'}`} />
-              <Input disabled value={`用户ID：${detail?.userId ?? '-'}`} />
+              <Input disabled value={`用户名：${detail?.username || '-'}`} />
               <Input disabled value={`企业ID：${detail?.estabId ?? '-'}`} />
               <Input disabled value={`模块编码：${detail?.moduleCode || '-'}`} />
               <Input disabled value={`操作：${detail?.operation || '-'}`} />

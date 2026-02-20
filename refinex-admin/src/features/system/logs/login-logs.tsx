@@ -28,7 +28,7 @@ import {
 } from '@/features/system/api'
 import { PageToolbar } from '@/features/system/components/page-toolbar'
 import { handleServerError } from '@/lib/handle-server-error'
-import { formatDateTime, toOptionalNumber } from './common'
+import { formatDateTime } from './common'
 
 const LOGIN_TYPE_LABEL: Record<number, string> = {
   1: '用户名密码',
@@ -50,7 +50,6 @@ export function LoginLogsPage() {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
 
-  const [userIdInput, setUserIdInput] = useState('')
   const [successInput, setSuccessInput] = useState<'all' | '1' | '0'>('all')
   const [loginTypeInput, setLoginTypeInput] = useState<'all' | '1' | '2' | '3' | '4'>('all')
   const [sourceTypeInput, setSourceTypeInput] = useState<'all' | '1' | '2' | '3' | '4' | '5'>('all')
@@ -82,7 +81,6 @@ export function LoginLogsPage() {
 
   function applyFilter() {
     setQuery({
-      userId: toOptionalNumber(userIdInput),
       success: successInput === 'all' ? undefined : Number(successInput),
       loginType: loginTypeInput === 'all' ? undefined : Number(loginTypeInput),
       sourceType: sourceTypeInput === 'all' ? undefined : Number(sourceTypeInput),
@@ -94,7 +92,6 @@ export function LoginLogsPage() {
   }
 
   function resetFilter() {
-    setUserIdInput('')
     setSuccessInput('all')
     setLoginTypeInput('all')
     setSourceTypeInput('all')
@@ -128,12 +125,7 @@ export function LoginLogsPage() {
   return (
     <>
       <Card>
-        <CardContent className='grid gap-3 xl:grid-cols-[130px_140px_140px_140px_1fr_1fr_auto]'>
-          <Input
-            placeholder='用户ID'
-            value={userIdInput}
-            onChange={(event) => setUserIdInput(event.target.value)}
-          />
+        <CardContent className='grid gap-3 xl:grid-cols-[140px_140px_140px_1fr_1fr_auto]'>
           <Select value={successInput} onValueChange={(value) => setSuccessInput(value as 'all' | '1' | '0')}>
             <SelectTrigger>
               <SelectValue placeholder='结果' />
@@ -197,7 +189,7 @@ export function LoginLogsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className='w-[120px]'>用户ID</TableHead>
+                <TableHead className='w-[140px]'>用户名</TableHead>
                 <TableHead className='w-[120px]'>企业ID</TableHead>
                 <TableHead>登录方式</TableHead>
                 <TableHead>来源</TableHead>
@@ -227,7 +219,7 @@ export function LoginLogsPage() {
               ) : (
                 logs.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell>{item.userId ?? '-'}</TableCell>
+                    <TableCell>{item.username || '-'}</TableCell>
                     <TableCell>{item.estabId ?? '-'}</TableCell>
                     <TableCell>{item.loginType == null ? '-' : (LOGIN_TYPE_LABEL[item.loginType] ?? item.loginType)}</TableCell>
                     <TableCell>{item.sourceType == null ? '-' : (SOURCE_TYPE_LABEL[item.sourceType] ?? item.sourceType)}</TableCell>
@@ -275,7 +267,7 @@ export function LoginLogsPage() {
           ) : (
             <div className='grid gap-3 md:grid-cols-2'>
               <Input disabled value={`日志ID：${detail?.id ?? '-'}`} />
-              <Input disabled value={`用户ID：${detail?.userId ?? '-'}`} />
+              <Input disabled value={`用户名：${detail?.username || '-'}`} />
               <Input disabled value={`企业ID：${detail?.estabId ?? '-'}`} />
               <Input disabled value={`身份ID：${detail?.identityId ?? '-'}`} />
               <Input disabled value={`登录方式：${detail?.loginType == null ? '-' : (LOGIN_TYPE_LABEL[detail.loginType] ?? detail.loginType)}`} />

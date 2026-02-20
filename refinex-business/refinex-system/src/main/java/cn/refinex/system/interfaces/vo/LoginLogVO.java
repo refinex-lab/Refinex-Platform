@@ -25,7 +25,7 @@ public class LoginLogVO {
     /**
      * 用户名
      */
-    private String nickname;
+    private String username;
 
     /**
      * 企业ID

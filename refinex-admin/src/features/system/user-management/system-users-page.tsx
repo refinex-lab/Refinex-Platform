@@ -1018,7 +1018,7 @@ export function SystemUsersPage() {
                     <FormLabel>身份类型</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value} disabled={Boolean(editingIdentity)}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className='w-full'>
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -1098,7 +1098,7 @@ export function SystemUsersPage() {
                       <FormLabel>主身份</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className='w-full'>
                             <SelectValue />
                           </SelectTrigger>
                         </FormControl>
@@ -1118,7 +1118,7 @@ export function SystemUsersPage() {
                       <FormLabel>已验证</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className='w-full'>
                             <SelectValue />
                           </SelectTrigger>
                         </FormControl>
@@ -1138,7 +1138,7 @@ export function SystemUsersPage() {
                       <FormLabel>状态</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className='w-full'>
                             <SelectValue />
                           </SelectTrigger>
                         </FormControl>

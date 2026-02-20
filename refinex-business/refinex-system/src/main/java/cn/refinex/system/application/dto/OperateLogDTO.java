@@ -23,6 +23,11 @@ public class OperateLogDTO {
     private Long userId;
 
     /**
+     * 用户名
+     */
+    private String username;
+
+    /**
      * 企业ID
      */
     private Long estabId;

@@ -376,6 +376,7 @@ export interface DataResourceInterfaceUpdateRequest {
 export interface LoginLog {
   id?: number
   userId?: number
+  username?: string
   estabId?: number
   identityId?: number
   loginType?: number
@@ -403,6 +404,7 @@ export interface LoginLogListQuery extends PaginationQuery {
 export interface OperateLog {
   id?: number
   userId?: number
+  username?: string
   estabId?: number
   moduleCode?: string
   operation?: string

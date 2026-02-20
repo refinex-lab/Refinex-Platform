@@ -102,14 +102,14 @@ const USER_CANDIDATE_LIMIT = 10
 
 const teamFormSchema = z.object({
   teamName: z.string().trim().min(1, '团队名称不能为空').max(128, '团队名称最长 128 位'),
-  leaderUserId: z.string().trim().max(20, '负责人ID格式非法').optional(),
+  leaderUserId: z.string().trim().max(20, '负责人标识格式非法').optional(),
   status: z.enum(['1', '2']),
   sort: z.string().trim().max(6, '排序值过大').optional(),
   remark: z.string().trim().max(255, '备注最长 255 位').optional(),
 })
 
 const teamUserFormSchema = z.object({
-  userId: z.string().trim().min(1, '请选择团队成员').max(20, '用户ID格式非法'),
+  userId: z.string().trim().min(1, '请选择团队成员').max(20, '成员标识格式非法'),
   roleInTeam: z.enum(['1', '2', '3']),
   status: z.enum(['1', '2']),
   joinTime: z.string().trim().optional(),
@@ -738,8 +738,7 @@ export function TeamsPage() {
       const hasChildren = node.children.length > 0
       const isExpanded = expandedNodeIds.has(nodeId)
       const isSelected = selectedTeamId === nodeId
-      const leaderLabel =
-        node.leaderDisplayName || node.leaderUsername || (node.leaderUserId ? `用户 #${node.leaderUserId}` : '-')
+      const leaderLabel = node.leaderDisplayName || node.leaderUsername || '-'
 
       return (
         <div key={nodeId} className='space-y-1'>
@@ -928,8 +927,7 @@ export function TeamsPage() {
                     </TableRow>
                   ) : (
                     members.map((item) => {
-                      const title =
-                        item.displayName || item.username || (item.userId == null ? '-' : `用户 #${item.userId}`)
+                      const title = item.displayName || item.username || '-'
                       const subtitle =
                         item.displayName && item.username
                           ? `${item.username}${item.userCode ? `（${item.userCode}）` : ''}`
@@ -1035,7 +1033,7 @@ export function TeamsPage() {
                     {isTeamViewMode ? (
                       <FormControl>
                         <Input
-                          value={buildCandidateLabel(selectedTeamLeader) || (field.value ? `用户 #${field.value}` : '-')}
+                          value={buildCandidateLabel(selectedTeamLeader) || '-'}
                           disabled
                         />
                       </FormControl>
@@ -1081,9 +1079,7 @@ export function TeamsPage() {
                                 onClick={() => selectTeamLeaderCandidate(candidate, field.onChange)}
                               >
                                 <span className='truncate'>
-                                  {candidate.username ||
-                                    candidate.displayName ||
-                                    `用户 #${candidate.userId ?? '-'}`}
+                                  {candidate.username || candidate.displayName || '-'}
                                 </span>
                                 <span className='ml-2 text-xs text-muted-foreground'>
                                   {candidate.userCode || '-'}
@@ -1189,7 +1185,7 @@ export function TeamsPage() {
                     {editingMember ? (
                       <FormControl>
                         <Input
-                          value={buildCandidateLabel(selectedCandidate) || (field.value ? `用户 #${field.value}` : '-')}
+                          value={buildCandidateLabel(selectedCandidate) || '-'}
                           disabled
                         />
                       </FormControl>
@@ -1235,7 +1231,7 @@ export function TeamsPage() {
                                 onClick={() => selectMemberCandidate(candidate, field.onChange)}
                               >
                                 <span className='truncate'>
-                                  {candidate.username || candidate.displayName || `用户 #${candidate.userId ?? '-'}`}
+                                  {candidate.username || candidate.displayName || '-'}
                                 </span>
                                 <span className='ml-2 text-xs text-muted-foreground'>
                                   {candidate.userCode || '-'}
