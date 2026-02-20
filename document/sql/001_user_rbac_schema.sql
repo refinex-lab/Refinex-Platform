@@ -330,7 +330,7 @@ CREATE TABLE scr_role (
   estab_id BIGINT NOT NULL DEFAULT 0 COMMENT '组织ID(平台级为0)',
   role_code VARCHAR(64) NOT NULL COMMENT '角色编码',
   role_name VARCHAR(128) NOT NULL COMMENT '角色名称',
-  role_type TINYINT NOT NULL DEFAULT 0 COMMENT '角色类型 0系统内置 1租户内置 2自定义',
+  role_type TINYINT NOT NULL DEFAULT 0 COMMENT '角色类型 0系统内置 1租户内置',
   is_builtin TINYINT NOT NULL DEFAULT 0 COMMENT '是否内置 1是 0否',
   status TINYINT NOT NULL DEFAULT 1 COMMENT '状态 1启用 2停用',
   sort INT NOT NULL DEFAULT 0 COMMENT '排序(升序)',

@@ -22,10 +22,10 @@ public class RoleUpdateRequest {
     private String roleName;
 
     /**
-     * 角色类型 0系统内置 1租户内置 2自定义
+     * 角色类型 0系统内置 1租户内置
      */
     @Min(value = 0, message = "角色类型取值非法")
-    @Max(value = 2, message = "角色类型取值非法")
+    @Max(value = 1, message = "角色类型取值非法")
     private Integer roleType;
 
     /**

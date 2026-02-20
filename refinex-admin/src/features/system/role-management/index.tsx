@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Check,
@@ -84,14 +84,13 @@ import { PageToolbar } from '@/features/system/components/page-toolbar'
 import { handleServerError } from '@/lib/handle-server-error'
 import { useAuthStore } from '@/stores/auth-store'
 
-const USER_CANDIDATE_LIMIT = 10
 const SYSTEM_OPTION_PAGE_SIZE = 200
 const DATA_RESOURCE_PAGE_SIZE = 200
 const DATA_RESOURCE_INTERFACE_PAGE_SIZE = 200
 
 const roleFormSchema = z.object({
   roleName: z.string().trim().min(1, '角色名称不能为空').max(128, '角色名称最长 128 位'),
-  roleType: z.enum(['0', '1', '2']),
+  roleType: z.enum(['0', '1']),
   status: z.enum(['1', '2']),
   sort: z.string().trim().max(6, '排序值过大').optional(),
   remark: z.string().trim().max(255, '备注最长 255 位').optional(),
@@ -101,7 +100,7 @@ type RoleFormValues = z.infer<typeof roleFormSchema>
 
 const DEFAULT_ROLE_FORM: RoleFormValues = {
   roleName: '',
-  roleType: '2',
+  roleType: '1',
   status: '1',
   sort: '0',
   remark: '',
@@ -110,7 +109,6 @@ const DEFAULT_ROLE_FORM: RoleFormValues = {
 function toRoleTypeLabel(value?: number): string {
   if (value === 0) return '系统内置'
   if (value === 1) return '租户内置'
-  if (value === 2) return '自定义'
   return '-'
 }
 
@@ -165,6 +163,9 @@ export function RoleManagementPage() {
   const [userSearching, setUserSearching] = useState(false)
   const [userDialogOpen, setUserDialogOpen] = useState(false)
   const [tempSelectedUserIds, setTempSelectedUserIds] = useState<Set<number>>(new Set())
+  const [userCandidatesTotal, setUserCandidatesTotal] = useState(0)
+  const [userCandidatesPage, setUserCandidatesPage] = useState(1)
+  const [userCandidatesPageSize, setUserCandidatesPageSize] = useState(10)
 
   const [menuTree, setMenuTree] = useState<MenuTreeNode[]>([])
   const [menuTreeLoading, setMenuTreeLoading] = useState(false)
@@ -188,11 +189,6 @@ export function RoleManagementPage() {
     defaultValues: DEFAULT_ROLE_FORM,
     mode: 'onChange',
   })
-
-  const selectedSystemName = useMemo(() => {
-    const matched = systems.find((item) => item.id === permissionSystemId)
-    return matched?.systemName || '-'
-  }, [systems, permissionSystemId])
 
   async function loadSystems() {
     setSystemLoading(true)
@@ -344,8 +340,8 @@ export function RoleManagementPage() {
     if (!systemId) return
     const roleEstabId = editingRole?.estabId ?? roleQueryEstabId ?? 0
     void loadMenuTree(systemId, editingRole?.id, roleEstabId)
-    void loadDataResources(roleEstabId)
-    void loadAllDrsInterfaces(roleEstabId)
+    void loadDataResources(activeEstabId)
+    void loadAllDrsInterfaces(activeEstabId)
     if (!editingRole) {
       setSelectedMenuIds(new Set())
       setSelectedMenuOpIds(new Set())
@@ -365,23 +361,20 @@ export function RoleManagementPage() {
 
   useEffect(() => {
     if (!userDialogOpen) return
-    if (!userKeyword.trim()) {
-      setUserCandidates([])
-      return
-    }
 
     const timer = window.setTimeout(async () => {
       setUserSearching(true)
       try {
         const pageData = await listSystemUsers({
-          keyword: userKeyword.trim(),
+          keyword: userKeyword.trim() || undefined,
           status: 1,
-          currentPage: 1,
-          pageSize: USER_CANDIDATE_LIMIT,
+          currentPage: userCandidatesPage,
+          pageSize: userCandidatesPageSize,
         })
         const rows = pageData.data ?? []
+        // 过滤掉已经授权的用户
         const candidates: RoleBindingUser[] = rows
-          .filter((item) => item.userId != null)
+          .filter((item) => item.userId != null && !selectedUserIds.has(item.userId))
           .map((item) => ({
             userId: item.userId,
             userCode: item.userCode,
@@ -389,6 +382,7 @@ export function RoleManagementPage() {
             displayName: item.displayName,
           }))
         setUserCandidates(candidates)
+        setUserCandidatesTotal(pageData.total ?? 0)
       } catch (error) {
         handleServerError(error)
       } finally {
@@ -398,7 +392,7 @@ export function RoleManagementPage() {
 
     return () => window.clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userDialogOpen, userKeyword])
+  }, [userDialogOpen, userKeyword, userCandidatesPage, userCandidatesPageSize, selectedUserIds])
 
   function applyFilter() {
     setQuery((prev) => ({
@@ -459,7 +453,7 @@ export function RoleManagementPage() {
 
     form.reset({
       roleName: role.roleName ?? '',
-      roleType: String(role.roleType ?? 2) as '0' | '1' | '2',
+      roleType: String(role.roleType ?? 1) as '0' | '1',
       status: String(role.status ?? 1) as '1' | '2',
       sort: String(role.sort ?? 0),
       remark: role.remark ?? '',
@@ -490,9 +484,9 @@ export function RoleManagementPage() {
         remark: toOptionalString(values.remark),
       }
 
-      let roleId = editingRole?.id
       if (editingRole?.id) {
         await updateRole(editingRole.id, basePayload)
+        toast.success('角色信息已更新')
       } else {
         const createPayload: RoleCreateRequest = {
           estabId: roleQueryEstabId ?? 0,
@@ -504,23 +498,72 @@ export function RoleManagementPage() {
           remark: toOptionalString(values.remark),
         }
         const created = await createRole(createPayload)
-        roleId = created.id
+        setEditingRole(created)
+        toast.success('角色创建成功，请继续配置权限')
       }
 
-      if (roleId) {
-        await assignRoleUsers(roleId, {
-          userIds: Array.from(selectedUserIds),
-        })
-        await assignRolePermissions(roleId, {
-          menuIds: Array.from(selectedMenuIds),
-          menuOpIds: Array.from(selectedMenuOpIds),
-          drsInterfaceIds: Array.from(selectedDrsInterfaceIds),
-        })
-      }
-
-      toast.success(editingRole?.id ? '角色配置已更新' : '角色创建成功')
-      closeDialog()
       await loadRoles(query)
+    } catch (error) {
+      handleServerError(error)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function applyUserPermissions() {
+    if (!editingRole?.id) {
+      toast.error('请先保存角色基本信息')
+      return
+    }
+
+    setSaving(true)
+    try {
+      await assignRoleUsers(editingRole.id, {
+        userIds: Array.from(selectedUserIds),
+      })
+      toast.success('用户授权已应用')
+    } catch (error) {
+      handleServerError(error)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function applyMenuPermissions() {
+    if (!editingRole?.id) {
+      toast.error('请先保存角色基本信息')
+      return
+    }
+
+    setSaving(true)
+    try {
+      await assignRolePermissions(editingRole.id, {
+        menuIds: Array.from(selectedMenuIds),
+        menuOpIds: Array.from(selectedMenuOpIds),
+        drsInterfaceIds: [],
+      })
+      toast.success('菜单权限已应用')
+    } catch (error) {
+      handleServerError(error)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function applyResourcePermissions() {
+    if (!editingRole?.id) {
+      toast.error('请先保存角色基本信息')
+      return
+    }
+
+    setSaving(true)
+    try {
+      await assignRolePermissions(editingRole.id, {
+        menuIds: [],
+        menuOpIds: [],
+        drsInterfaceIds: Array.from(selectedDrsInterfaceIds),
+      })
+      toast.success('数据资源权限已应用')
     } catch (error) {
       handleServerError(error)
     } finally {
@@ -532,6 +575,8 @@ export function RoleManagementPage() {
     setTempSelectedUserIds(new Set(selectedUserIds))
     setUserKeyword('')
     setUserCandidates([])
+    setUserCandidatesPage(1)
+    setUserCandidatesPageSize(10)
     setUserDialogOpen(true)
   }
 
@@ -539,6 +584,7 @@ export function RoleManagementPage() {
     setUserDialogOpen(false)
     setUserKeyword('')
     setUserCandidates([])
+    setUserCandidatesPage(1)
   }
 
   function toggleTempUser(userId: number, checked: boolean) {
@@ -551,31 +597,51 @@ export function RoleManagementPage() {
   }
 
   async function confirmAddUsers() {
+    const newUserIds = Array.from(tempSelectedUserIds).filter((id) => !selectedUserIds.has(id))
+    if (newUserIds.length === 0) {
+      closeUserDialog()
+      return
+    }
+
     setUserSearching(true)
     try {
-      const newUserIds = Array.from(tempSelectedUserIds).filter((id) => !selectedUserIds.has(id))
-      if (newUserIds.length === 0) {
-        closeUserDialog()
-        return
+      // 从候选列表中获取新选中的用户
+      const newUsers: RoleBindingUser[] = userCandidates.filter(
+        (user) => user.userId != null && newUserIds.includes(user.userId)
+      )
+
+      // 如果候选列表中没有全部新选中的用户，需要额外查询
+      if (newUsers.length < newUserIds.length) {
+        const pageData = await listSystemUsers({
+          status: 1,
+          userIds: newUserIds,
+          currentPage: 1,
+          pageSize: 200,
+        })
+        const allUsers = pageData.data ?? []
+        const additionalUsers: RoleBindingUser[] = allUsers
+          .filter((item) => item.userId != null && newUserIds.includes(item.userId))
+          .map((item) => ({
+            userId: item.userId,
+            userCode: item.userCode,
+            username: item.username,
+            displayName: item.displayName,
+          }))
+
+        // 合并去重
+        const userMap = new Map<number, RoleBindingUser>()
+        ;[...newUsers, ...additionalUsers].forEach((user) => {
+          if (user.userId) userMap.set(user.userId, user)
+        })
+        const finalNewUsers = Array.from(userMap.values())
+
+        setSelectedUserIds(tempSelectedUserIds)
+        setBoundUsers((prev) => [...prev, ...finalNewUsers])
+      } else {
+        setSelectedUserIds(tempSelectedUserIds)
+        setBoundUsers((prev) => [...prev, ...newUsers])
       }
 
-      const pageData = await listSystemUsers({
-        status: 1,
-        currentPage: 1,
-        pageSize: 200,
-      })
-      const allUsers = pageData.data ?? []
-      const newUsers: RoleBindingUser[] = allUsers
-        .filter((item) => item.userId != null && newUserIds.includes(item.userId))
-        .map((item) => ({
-          userId: item.userId,
-          userCode: item.userCode,
-          username: item.username,
-          displayName: item.displayName,
-        }))
-
-      setSelectedUserIds(tempSelectedUserIds)
-      setBoundUsers((prev) => [...prev, ...newUsers])
       closeUserDialog()
     } catch (error) {
       handleServerError(error)
@@ -713,7 +779,7 @@ export function RoleManagementPage() {
         <Card className='py-3 gap-3'>
           <CardContent className='pt-0 grid gap-3 lg:grid-cols-[180px_1fr_auto]'>
             <Select value={statusInput} onValueChange={(value) => setStatusInput(value as 'all' | '1' | '2')}>
-              <SelectTrigger>
+              <SelectTrigger className='w-full'>
                 <SelectValue placeholder='状态' />
               </SelectTrigger>
               <SelectContent>
@@ -865,7 +931,6 @@ export function RoleManagementPage() {
                         <SelectContent>
                           <SelectItem value='0'>系统内置</SelectItem>
                           <SelectItem value='1'>租户内置</SelectItem>
-                          <SelectItem value='2'>自定义</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -874,7 +939,7 @@ export function RoleManagementPage() {
                 />
               </div>
 
-              <div className='grid gap-4 md:grid-cols-3'>
+              <div className='grid gap-4 md:grid-cols-2'>
                 <FormField
                   control={form.control}
                   name='status'
@@ -910,25 +975,6 @@ export function RoleManagementPage() {
                     </FormItem>
                   )}
                 />
-
-                <FormItem>
-                  <FormLabel>权限系统</FormLabel>
-                  <Select
-                    value={permissionSystemId ? String(permissionSystemId) : ''}
-                    onValueChange={(value) => setPermissionSystemId(Number(value))}
-                  >
-                    <SelectTrigger className='w-full' disabled={systemLoading}>
-                      <SelectValue placeholder='请选择系统' />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {systems.map((system) => (
-                        <SelectItem key={system.id} value={String(system.id)}>
-                          {system.systemName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormItem>
               </div>
 
               <FormField
@@ -945,21 +991,28 @@ export function RoleManagementPage() {
                 )}
               />
 
-              <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'users' | 'resources' | 'menus')}>
-                <TabsList className='grid w-full grid-cols-3'>
-                  <TabsTrigger value='users'>人员列表</TabsTrigger>
-                  <TabsTrigger value='resources'>数据资源</TabsTrigger>
-                  <TabsTrigger value='menus'>菜单权限</TabsTrigger>
-                </TabsList>
+              {editingRole?.id && (
+                <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'users' | 'resources' | 'menus')}>
+                  <TabsList className='grid w-full grid-cols-3'>
+                    <TabsTrigger value='users'>人员列表</TabsTrigger>
+                    <TabsTrigger value='resources'>数据资源</TabsTrigger>
+                    <TabsTrigger value='menus'>菜单权限</TabsTrigger>
+                  </TabsList>
 
                 <TabsContent value='users' className='space-y-3'>
                   <Card className='gap-3 py-3'>
                     <CardHeader className='pb-0 flex flex-row items-center justify-between'>
                       <CardTitle className='text-base'>已授权用户（{selectedUserIds.size}）</CardTitle>
-                      <Button type='button' variant='link' size='sm' className='gap-1 h-auto p-0' onClick={openUserDialog}>
-                        <Plus className='h-3.5 w-3.5' />
-                        新增
-                      </Button>
+                      <div className='flex items-center gap-2'>
+                        <Button type='button' variant='outline' size='sm' className='gap-1' onClick={applyUserPermissions} disabled={saving}>
+                          {saving ? <Loader2 className='h-3.5 w-3.5 animate-spin' /> : <Check className='h-3.5 w-3.5' />}
+                          应用
+                        </Button>
+                        <Button type='button' variant='link' size='sm' className='gap-1 h-auto p-0' onClick={openUserDialog}>
+                          <Plus className='h-3.5 w-3.5' />
+                          新增
+                        </Button>
+                      </div>
                     </CardHeader>
                     <CardContent>
                       <div className='overflow-hidden rounded-md border border-border/90'>
@@ -1009,10 +1062,16 @@ export function RoleManagementPage() {
                   <Card className='gap-3 py-3'>
                     <CardHeader className='pb-0 flex flex-row items-center justify-between'>
                       <CardTitle className='text-base'>已授权数据资源接口（{selectedDrsInterfaceIds.size}）</CardTitle>
-                      <Button type='button' variant='link' size='sm' className='gap-1 h-auto p-0' onClick={openResourceDialog}>
-                        <Plus className='h-3.5 w-3.5' />
-                        新增
-                      </Button>
+                      <div className='flex items-center gap-2'>
+                        <Button type='button' variant='outline' size='sm' className='gap-1' onClick={applyResourcePermissions} disabled={saving}>
+                          {saving ? <Loader2 className='h-3.5 w-3.5 animate-spin' /> : <Check className='h-3.5 w-3.5' />}
+                          应用
+                        </Button>
+                        <Button type='button' variant='link' size='sm' className='gap-1 h-auto p-0' onClick={openResourceDialog}>
+                          <Plus className='h-3.5 w-3.5' />
+                          新增
+                        </Button>
+                      </div>
                     </CardHeader>
                     <CardContent>
                       <div className='overflow-hidden rounded-md border border-border/90'>
@@ -1070,10 +1129,29 @@ export function RoleManagementPage() {
 
                 <TabsContent value='menus' className='space-y-3'>
                   <Card className='gap-3 py-3'>
-                    <CardHeader className='pb-0'>
-                      <CardTitle className='text-base'>
-                        菜单与操作授权（系统：{selectedSystemName}）
-                      </CardTitle>
+                    <CardHeader className='pb-0 flex flex-row items-center justify-between'>
+                      <div className='flex items-center gap-3'>
+                        <CardTitle className='text-base'>菜单与操作授权</CardTitle>
+                        <Select
+                          value={permissionSystemId ? String(permissionSystemId) : ''}
+                          onValueChange={(value) => setPermissionSystemId(Number(value))}
+                        >
+                          <SelectTrigger className='w-[240px]' disabled={systemLoading}>
+                            <SelectValue placeholder='请选择系统' />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {systems.map((system) => (
+                              <SelectItem key={system.id} value={String(system.id)}>
+                                {system.systemName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button type='button' variant='outline' size='sm' className='gap-1' onClick={applyMenuPermissions} disabled={saving}>
+                        {saving ? <Loader2 className='h-3.5 w-3.5 animate-spin' /> : <Check className='h-3.5 w-3.5' />}
+                        应用
+                      </Button>
                     </CardHeader>
                     <CardContent>
                       <ScrollArea className='h-[420px] rounded-md border border-border/70 p-3'>
@@ -1092,6 +1170,7 @@ export function RoleManagementPage() {
                   </Card>
                 </TabsContent>
               </Tabs>
+              )}
 
               <DialogFooter>
                 <Button type='button' variant='outline' onClick={closeDialog}>
@@ -1136,14 +1215,14 @@ export function RoleManagementPage() {
                         <TableCell colSpan={3}>
                           <div className='flex items-center justify-center gap-2 py-4 text-muted-foreground'>
                             <Loader2 className='h-4 w-4 animate-spin' />
-                            正在检索用户...
+                            正在加载用户...
                           </div>
                         </TableCell>
                       </TableRow>
                     ) : userCandidates.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={3} className='py-4 text-center text-muted-foreground'>
-                          输入关键字后可检索用户
+                          暂无用户数据
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -1168,6 +1247,17 @@ export function RoleManagementPage() {
                 </Table>
               </ScrollArea>
             </div>
+            <PageToolbar
+              page={userCandidatesPage}
+              size={userCandidatesPageSize}
+              total={userCandidatesTotal}
+              loading={userSearching}
+              onPageChange={(page) => setUserCandidatesPage(page)}
+              onPageSizeChange={(size) => {
+                setUserCandidatesPageSize(size)
+                setUserCandidatesPage(1)
+              }}
+            />
           </div>
 
           <DialogFooter>

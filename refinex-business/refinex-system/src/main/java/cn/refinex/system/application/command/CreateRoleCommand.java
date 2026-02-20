@@ -26,7 +26,7 @@ public class CreateRoleCommand {
     private String roleName;
 
     /**
-     * 角色类型 0系统内置 1租户内置 2自定义
+     * 角色类型 0系统内置 1租户内置
      */
     private Integer roleType;
 
