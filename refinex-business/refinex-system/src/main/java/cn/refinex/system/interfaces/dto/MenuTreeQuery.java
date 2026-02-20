@@ -1,7 +1,7 @@
 package cn.refinex.system.interfaces.dto;
 
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Data;
 
 /**
@@ -13,14 +13,19 @@ import lombok.Data;
 public class MenuTreeQuery {
 
     /**
+     * 企业ID（平台级为0）
+     */
+    @PositiveOrZero(message = "企业ID不能小于0")
+    private Long estabId;
+
+    /**
      * 系统ID
      */
-    @NotNull(message = "系统ID不能为空")
     @Positive(message = "系统ID必须大于0")
     private Long systemId;
 
     /**
-     * 角色ID（可选，传入后返回授权标记）
+     * 角色ID（可选）
      */
     @Positive(message = "角色ID必须大于0")
     private Long roleId;

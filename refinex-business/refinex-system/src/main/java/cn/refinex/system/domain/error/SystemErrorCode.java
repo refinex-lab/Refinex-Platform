@@ -43,6 +43,7 @@ public enum SystemErrorCode implements ErrorCode {
     TEAM_USER_DUPLICATED("SYSTEM_409_TEAM_USER", "团队成员关系已存在"),
     MENU_NOT_FOUND("SYSTEM_404_MENU", "菜单不存在"),
     MENU_OP_NOT_FOUND("SYSTEM_404_MENU_OP", "菜单操作不存在"),
+    MENU_BUILTIN_FORBIDDEN("SYSTEM_409_MENU_BUILTIN", "内建菜单不允许删除"),
     MENU_HAS_CHILDREN("SYSTEM_409_MENU_CHILDREN", "菜单存在子节点，不允许删除"),
     MENU_HAS_OPS("SYSTEM_409_MENU_OPS", "菜单存在操作项，不允许删除"),
     ESTAB_HAS_USERS("SYSTEM_409_ESTAB_USERS", "企业下存在成员，不允许删除"),

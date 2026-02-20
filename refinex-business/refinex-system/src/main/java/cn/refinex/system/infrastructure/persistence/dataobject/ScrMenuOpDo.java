@@ -31,21 +31,6 @@ public class ScrMenuOpDo extends BaseEntity {
     private String opName;
 
     /**
-     * HTTP方法
-     */
-    private String httpMethod;
-
-    /**
-     * 接口路径(支持通配)
-     */
-    private String pathPattern;
-
-    /**
-     * 权限标识(操作级)
-     */
-    private String permissionKey;
-
-    /**
      * 状态 1启用 2停用
      */
     private Integer status;

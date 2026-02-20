@@ -26,16 +26,6 @@ public class UpdateRoleCommand {
     private Integer roleType;
 
     /**
-     * 数据范围 0全部 1本人 2团队/部门 3自定义
-     */
-    private Integer dataScopeType;
-
-    /**
-     * 父角色ID
-     */
-    private Long parentRoleId;
-
-    /**
      * 是否内置 1是 0否
      */
     private Integer isBuiltin;

@@ -48,13 +48,10 @@ export interface SystemUpdateRequest {
 
 export interface Role {
   id?: number
-  systemId?: number
   estabId?: number
   roleCode?: string
   roleName?: string
   roleType?: number
-  dataScopeType?: number
-  parentRoleId?: number
   isBuiltin?: number
   status?: number
   sort?: number
@@ -62,20 +59,16 @@ export interface Role {
 }
 
 export interface RoleListQuery extends PaginationQuery {
-  systemId?: number
   estabId?: number
   status?: number
   keyword?: string
 }
 
 export interface RoleCreateRequest {
-  systemId?: number
   estabId?: number
   roleCode?: string
   roleName: string
   roleType?: number
-  dataScopeType?: number
-  parentRoleId?: number
   isBuiltin?: number
   status?: number
   sort?: number
@@ -85,8 +78,6 @@ export interface RoleCreateRequest {
 export interface RoleUpdateRequest {
   roleName: string
   roleType?: number
-  dataScopeType?: number
-  parentRoleId?: number
   isBuiltin?: number
   status?: number
   sort?: number
@@ -120,18 +111,17 @@ export interface AssignRolePermissionsRequest {
 
 export interface Menu {
   id?: number
+  estabId?: number
   systemId?: number
   parentId?: number
   menuCode?: string
   menuName?: string
   menuType?: number
   path?: string
-  component?: string
-  permissionKey?: string
   icon?: string
+  isBuiltin?: number
   visible?: number
   isFrame?: number
-  isCache?: number
   status?: number
   sort?: number
 }
@@ -140,9 +130,6 @@ export interface MenuOp {
   id?: number
   opCode?: string
   opName?: string
-  httpMethod?: string
-  pathPattern?: string
-  permissionKey?: string
   status?: number
   sort?: number
   assigned?: boolean
@@ -153,9 +140,6 @@ export interface MenuOpManage {
   menuId?: number
   opCode?: string
   opName?: string
-  httpMethod?: string
-  pathPattern?: string
-  permissionKey?: string
   status?: number
   sort?: number
 }
@@ -167,12 +151,10 @@ export interface MenuTreeNode {
   menuName?: string
   menuType?: number
   path?: string
-  component?: string
-  permissionKey?: string
   icon?: string
+  isBuiltin?: number
   visible?: number
   isFrame?: number
-  isCache?: number
   status?: number
   sort?: number
   assigned?: boolean
@@ -181,23 +163,23 @@ export interface MenuTreeNode {
 }
 
 export interface MenuTreeQuery {
+  estabId?: number
   systemId: number
   roleId?: number
 }
 
 export interface MenuCreateRequest {
+  estabId?: number
   systemId: number
   parentId?: number
   menuCode?: string
   menuName: string
   menuType?: number
   path?: string
-  component?: string
-  permissionKey?: string
   icon?: string
+  isBuiltin?: number
   visible?: number
   isFrame?: number
-  isCache?: number
   status?: number
   sort?: number
 }
@@ -208,12 +190,10 @@ export interface MenuUpdateRequest {
   menuName: string
   menuType?: number
   path?: string
-  component?: string
-  permissionKey?: string
   icon?: string
+  isBuiltin?: number
   visible?: number
   isFrame?: number
-  isCache?: number
   status?: number
   sort?: number
 }
@@ -221,9 +201,6 @@ export interface MenuUpdateRequest {
 export interface MenuOpCreateRequest {
   opCode?: string
   opName: string
-  httpMethod?: string
-  pathPattern?: string
-  permissionKey?: string
   status?: number
   sort?: number
 }
@@ -231,9 +208,6 @@ export interface MenuOpCreateRequest {
 export interface MenuOpUpdateRequest {
   opCode: string
   opName: string
-  httpMethod?: string
-  pathPattern?: string
-  permissionKey?: string
   status?: number
   sort?: number
 }
@@ -304,11 +278,8 @@ export interface ValueUpdateRequest {
 
 export interface DataResource {
   id?: number
-  systemId?: number
   drsCode?: string
   drsName?: string
-  drsType?: number
-  resourceUri?: string
   ownerEstabId?: number
   dataOwnerType?: number
   status?: number
@@ -316,19 +287,15 @@ export interface DataResource {
 }
 
 export interface DataResourceListQuery extends PaginationQuery {
-  systemId?: number
   status?: number
-  drsType?: number
   ownerEstabId?: number
+  dataOwnerType?: number
   keyword?: string
 }
 
 export interface DataResourceCreateRequest {
-  systemId: number
   drsCode?: string
   drsName: string
-  drsType?: number
-  resourceUri?: string
   ownerEstabId?: number
   dataOwnerType?: number
   status?: number
@@ -337,8 +304,6 @@ export interface DataResourceCreateRequest {
 
 export interface DataResourceUpdateRequest {
   drsName: string
-  drsType?: number
-  resourceUri?: string
   ownerEstabId?: number
   dataOwnerType?: number
   status?: number
@@ -350,9 +315,7 @@ export interface DataResourceInterface {
   drsId?: number
   interfaceCode?: string
   interfaceName?: string
-  httpMethod?: string
-  pathPattern?: string
-  permissionKey?: string
+  interfaceSql?: string
   status?: number
   sort?: number
 }
@@ -366,9 +329,7 @@ export interface DataResourceInterfaceListQuery extends PaginationQuery {
 export interface DataResourceInterfaceCreateRequest {
   interfaceCode?: string
   interfaceName: string
-  httpMethod?: string
-  pathPattern?: string
-  permissionKey?: string
+  interfaceSql?: string
   status?: number
   sort?: number
 }
@@ -376,9 +337,7 @@ export interface DataResourceInterfaceCreateRequest {
 export interface DataResourceInterfaceUpdateRequest {
   interfaceCode: string
   interfaceName: string
-  httpMethod?: string
-  pathPattern?: string
-  permissionKey?: string
+  interfaceSql?: string
   status?: number
   sort?: number
 }

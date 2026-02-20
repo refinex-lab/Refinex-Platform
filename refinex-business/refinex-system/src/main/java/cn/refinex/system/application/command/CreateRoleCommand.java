@@ -11,11 +11,6 @@ import lombok.Data;
 public class CreateRoleCommand {
 
     /**
-     * 系统ID
-     */
-    private Long systemId;
-
-    /**
      * 企业ID
      */
     private Long estabId;
@@ -34,16 +29,6 @@ public class CreateRoleCommand {
      * 角色类型 0系统内置 1租户内置 2自定义
      */
     private Integer roleType;
-
-    /**
-     * 数据范围 0全部 1本人 2团队/部门 3自定义
-     */
-    private Integer dataScopeType;
-
-    /**
-     * 父角色ID
-     */
-    private Long parentRoleId;
 
     /**
      * 是否内置 1是 0否

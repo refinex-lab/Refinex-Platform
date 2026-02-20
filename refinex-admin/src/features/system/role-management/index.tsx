@@ -82,6 +82,7 @@ import {
 import { toOptionalNumber, toOptionalString } from '@/features/system/common'
 import { PageToolbar } from '@/features/system/components/page-toolbar'
 import { handleServerError } from '@/lib/handle-server-error'
+import { useAuthStore } from '@/stores/auth-store'
 
 const USER_CANDIDATE_LIMIT = 10
 const SYSTEM_OPTION_PAGE_SIZE = 200
@@ -89,11 +90,8 @@ const DATA_RESOURCE_PAGE_SIZE = 200
 const DATA_RESOURCE_INTERFACE_PAGE_SIZE = 200
 
 const roleFormSchema = z.object({
-  systemId: z.string().trim().min(1, '请选择所属系统'),
-  estabId: z.string().trim().max(20, '企业ID格式非法').optional(),
   roleName: z.string().trim().min(1, '角色名称不能为空').max(128, '角色名称最长 128 位'),
   roleType: z.enum(['0', '1', '2']),
-  dataScopeType: z.enum(['0', '1', '2', '3']),
   status: z.enum(['1', '2']),
   sort: z.string().trim().max(6, '排序值过大').optional(),
   remark: z.string().trim().max(255, '备注最长 255 位').optional(),
@@ -102,34 +100,17 @@ const roleFormSchema = z.object({
 type RoleFormValues = z.infer<typeof roleFormSchema>
 
 const DEFAULT_ROLE_FORM: RoleFormValues = {
-  systemId: '',
-  estabId: '',
   roleName: '',
   roleType: '2',
-  dataScopeType: '0',
   status: '1',
   sort: '0',
   remark: '',
-}
-
-function parsePositiveLong(value?: string): number | undefined {
-  const parsed = toOptionalNumber(value)
-  if (parsed == null || parsed <= 0) return undefined
-  return parsed
 }
 
 function toRoleTypeLabel(value?: number): string {
   if (value === 0) return '系统内置'
   if (value === 1) return '租户内置'
   if (value === 2) return '自定义'
-  return '-'
-}
-
-function toDataScopeLabel(value?: number): string {
-  if (value === 0) return '全部'
-  if (value === 1) return '本人'
-  if (value === 2) return '团队/部门'
-  if (value === 3) return '自定义'
   return '-'
 }
 
@@ -142,15 +123,6 @@ function toStatusLabel(value?: number): string {
 function toMenuTypeLabel(value?: number): string {
   if (value === 0) return '目录'
   if (value === 1) return '菜单'
-  if (value === 2) return '按钮'
-  return '-'
-}
-
-function toDataResourceTypeLabel(value?: number): string {
-  if (value === 0) return '数据库表'
-  if (value === 1) return '接口资源'
-  if (value === 2) return '文件'
-  if (value === 3) return '其他'
   return '-'
 }
 
@@ -160,13 +132,23 @@ function toUserDisplay(user: RoleBindingUser): string {
 }
 
 export function RoleManagementPage() {
+  const loginUser = useAuthStore((state) => state.auth.user)
+  const activeEstabId = loginUser?.estabId ?? loginUser?.primaryEstabId ?? 0
+  const isPlatformAdmin = Boolean(loginUser?.roleCodes?.includes('PLATFORM_SUPER_ADMIN'))
+  const roleQueryEstabId = isPlatformAdmin ? undefined : activeEstabId
+
   const [systems, setSystems] = useState<SystemDefinition[]>([])
   const [systemLoading, setSystemLoading] = useState(false)
+  const [permissionSystemId, setPermissionSystemId] = useState<number | undefined>(undefined)
 
   const [roles, setRoles] = useState<Role[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
-  const [query, setQuery] = useState<RoleListQuery>({ currentPage: 1, pageSize: 10 })
+  const [query, setQuery] = useState<RoleListQuery>({
+    estabId: roleQueryEstabId,
+    currentPage: 1,
+    pageSize: 10,
+  })
 
   const [keywordInput, setKeywordInput] = useState('')
   const [statusInput, setStatusInput] = useState<'all' | '1' | '2'>('all')
@@ -201,13 +183,10 @@ export function RoleManagementPage() {
     mode: 'onChange',
   })
 
-  const watchedSystemId = form.watch('systemId')
-
   const selectedSystemName = useMemo(() => {
-    const systemId = parsePositiveLong(watchedSystemId)
-    const matched = systems.find((item) => item.id === systemId)
+    const matched = systems.find((item) => item.id === permissionSystemId)
     return matched?.systemName || '-'
-  }, [systems, watchedSystemId])
+  }, [systems, permissionSystemId])
 
   async function loadSystems() {
     setSystemLoading(true)
@@ -218,10 +197,7 @@ export function RoleManagementPage() {
       })
       const rows = pageData.data ?? []
       setSystems(rows)
-      setQuery((prev) => {
-        if (prev.systemId) return prev
-        return { ...prev, systemId: rows[0]?.id }
-      })
+      setPermissionSystemId((prev) => prev ?? rows[0]?.id)
     } catch (error) {
       handleServerError(error)
     } finally {
@@ -230,11 +206,6 @@ export function RoleManagementPage() {
   }
 
   async function loadRoles(activeQuery: RoleListQuery = query) {
-    if (!activeQuery.systemId) {
-      setRoles([])
-      setTotal(0)
-      return
-    }
     setLoading(true)
     try {
       const pageData = await listRoles(activeQuery)
@@ -263,11 +234,11 @@ export function RoleManagementPage() {
     }
   }
 
-  async function loadMenuTree(systemId: number, roleId?: number) {
+  async function loadMenuTree(systemId: number, roleId?: number, estabId?: number) {
     setMenuTreeLoading(true)
     try {
       const tree = await getMenuTree(
-        roleId ? { systemId, roleId } : { systemId }
+        roleId ? { systemId, roleId, estabId } : { systemId, estabId }
       )
       setMenuTree(tree)
     } catch (error) {
@@ -277,12 +248,12 @@ export function RoleManagementPage() {
     }
   }
 
-  async function loadDataResources(systemId: number) {
+  async function loadDataResources(ownerEstabId?: number) {
     setDataResourcesLoading(true)
     try {
       const pageData = await listDataResources({
-        systemId,
         status: 1,
+        ownerEstabId,
         currentPage: 1,
         pageSize: DATA_RESOURCE_PAGE_SIZE,
       })
@@ -322,23 +293,32 @@ export function RoleManagementPage() {
   }, [])
 
   useEffect(() => {
+    setQuery((prev) => ({
+      ...prev,
+      estabId: roleQueryEstabId,
+      currentPage: 1,
+    }))
+  }, [roleQueryEstabId])
+
+  useEffect(() => {
     void loadRoles(query)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query])
 
   useEffect(() => {
     if (!dialogOpen) return
-    const systemId = parsePositiveLong(watchedSystemId)
+    const systemId = permissionSystemId
     if (!systemId) return
-    void loadMenuTree(systemId, editingRole?.id)
-    void loadDataResources(systemId)
+    const roleEstabId = editingRole?.estabId ?? roleQueryEstabId ?? 0
+    void loadMenuTree(systemId, editingRole?.id, roleEstabId)
+    void loadDataResources(roleEstabId)
     if (!editingRole) {
       setSelectedMenuIds(new Set())
       setSelectedMenuOpIds(new Set())
       setSelectedDrsInterfaceIds(new Set())
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dialogOpen, watchedSystemId, editingRole?.id])
+  }, [dialogOpen, permissionSystemId, editingRole?.id, editingRole?.estabId, roleQueryEstabId])
 
   useEffect(() => {
     if (!dialogOpen || !selectedDrsId) {
@@ -357,9 +337,6 @@ export function RoleManagementPage() {
     }
 
     const timer = window.setTimeout(async () => {
-      const systemId = parsePositiveLong(form.getValues('systemId'))
-      if (!systemId) return
-
       setUserSearching(true)
       try {
         const pageData = await listSystemUsers({
@@ -391,7 +368,7 @@ export function RoleManagementPage() {
 
   function applyFilter() {
     setQuery((prev) => ({
-      systemId: prev.systemId,
+      estabId: prev.estabId,
       keyword: toOptionalString(keywordInput),
       status: statusInput === 'all' ? undefined : Number(statusInput),
       currentPage: 1,
@@ -403,7 +380,7 @@ export function RoleManagementPage() {
     setKeywordInput('')
     setStatusInput('all')
     setQuery((prev) => ({
-      systemId: prev.systemId,
+      estabId: prev.estabId,
       currentPage: 1,
       pageSize: prev.pageSize ?? 10,
     }))
@@ -429,10 +406,8 @@ export function RoleManagementPage() {
     setSelectedDrsInterfaceIds(new Set())
     setInterfaceKeyword('')
 
-    form.reset({
-      ...DEFAULT_ROLE_FORM,
-      systemId: query.systemId ? String(query.systemId) : systems[0]?.id ? String(systems[0].id) : '',
-    })
+    form.reset(DEFAULT_ROLE_FORM)
+    setPermissionSystemId((prev) => prev ?? systems[0]?.id)
     setDialogOpen(true)
   }
 
@@ -449,15 +424,13 @@ export function RoleManagementPage() {
     setSelectedDrsInterfaceIds(new Set())
 
     form.reset({
-      systemId: String(role.systemId ?? query.systemId ?? ''),
-      estabId: role.estabId == null || role.estabId === 0 ? '' : String(role.estabId),
       roleName: role.roleName ?? '',
       roleType: String(role.roleType ?? 2) as '0' | '1' | '2',
-      dataScopeType: String(role.dataScopeType ?? 0) as '0' | '1' | '2' | '3',
       status: String(role.status ?? 1) as '1' | '2',
       sort: String(role.sort ?? 0),
       remark: role.remark ?? '',
     })
+    setPermissionSystemId((prev) => prev ?? systems[0]?.id)
     setDialogOpen(true)
     if (role.id) {
       void loadRoleBindings(role.id)
@@ -472,20 +445,12 @@ export function RoleManagementPage() {
   }
 
   async function submitRole(values: RoleFormValues) {
-    const systemId = parsePositiveLong(values.systemId)
-    if (!systemId) {
-      toast.error('请先选择所属系统')
-      return
-    }
-
     setSaving(true)
     try {
       const basePayload: RoleUpdateRequest = {
         roleName: values.roleName.trim(),
         roleType: Number(values.roleType),
-        dataScopeType: Number(values.dataScopeType),
         status: Number(values.status),
-        parentRoleId: 0,
         isBuiltin: editingRole?.isBuiltin ?? 0,
         sort: toOptionalNumber(values.sort),
         remark: toOptionalString(values.remark),
@@ -496,13 +461,10 @@ export function RoleManagementPage() {
         await updateRole(editingRole.id, basePayload)
       } else {
         const createPayload: RoleCreateRequest = {
-          systemId,
-          estabId: parsePositiveLong(values.estabId),
+          estabId: roleQueryEstabId ?? 0,
           roleName: values.roleName.trim(),
           roleType: Number(values.roleType),
-          dataScopeType: Number(values.dataScopeType),
           status: Number(values.status),
-          parentRoleId: 0,
           isBuiltin: 0,
           sort: toOptionalNumber(values.sort),
           remark: toOptionalString(values.remark),
@@ -601,9 +563,6 @@ export function RoleManagementPage() {
               />
               <span className='font-medium'>{node.menuName || '-'}</span>
               <Badge variant='outline'>{toMenuTypeLabel(node.menuType)}</Badge>
-              {node.permissionKey ? (
-                <span className='text-xs text-muted-foreground'>{node.permissionKey}</span>
-              ) : null}
             </div>
           </div>
 
@@ -619,9 +578,6 @@ export function RoleManagementPage() {
                     onCheckedChange={(checked) => toggleMenuOp(operation.id, checked === true)}
                   />
                   <span>{operation.opName || operation.opCode || '-'}</span>
-                  {operation.permissionKey ? (
-                    <span className='text-muted-foreground'>{operation.permissionKey}</span>
-                  ) : null}
                 </label>
               ))}
             </div>
@@ -645,28 +601,7 @@ export function RoleManagementPage() {
 
       <Main fixed fluid>
         <Card className='py-3 gap-3'>
-          <CardContent className='pt-0 grid gap-3 lg:grid-cols-[220px_180px_1fr_auto]'>
-            <Select
-              value={query.systemId ? String(query.systemId) : ''}
-              onValueChange={(value) =>
-                setQuery((prev) => ({
-                  ...prev,
-                  systemId: Number(value),
-                  currentPage: 1,
-                }))
-              }
-            >
-              <SelectTrigger disabled={systemLoading}>
-                <SelectValue placeholder='选择所属系统' />
-              </SelectTrigger>
-              <SelectContent>
-                {systems.map((system) => (
-                  <SelectItem key={system.id} value={String(system.id)}>
-                    {system.systemName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <CardContent className='pt-0 grid gap-3 lg:grid-cols-[180px_1fr_auto]'>
             <Select value={statusInput} onValueChange={(value) => setStatusInput(value as 'all' | '1' | '2')}>
               <SelectTrigger>
                 <SelectValue placeholder='状态' />
@@ -714,7 +649,6 @@ export function RoleManagementPage() {
                     <TableHead>角色编码</TableHead>
                     <TableHead>角色名称</TableHead>
                     <TableHead>角色类型</TableHead>
-                    <TableHead>数据范围</TableHead>
                     <TableHead>状态</TableHead>
                     <TableHead>排序</TableHead>
                     <TableHead>备注</TableHead>
@@ -724,7 +658,7 @@ export function RoleManagementPage() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={8}>
+                      <TableCell colSpan={7}>
                         <div className='flex items-center justify-center gap-2 py-6 text-muted-foreground'>
                           <Loader2 className='h-4 w-4 animate-spin' />
                           正在加载角色列表...
@@ -733,7 +667,7 @@ export function RoleManagementPage() {
                     </TableRow>
                   ) : roles.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className='py-6 text-center text-muted-foreground'>
+                      <TableCell colSpan={7} className='py-6 text-center text-muted-foreground'>
                         暂无角色数据
                       </TableCell>
                     </TableRow>
@@ -743,7 +677,6 @@ export function RoleManagementPage() {
                         <TableCell>{role.roleCode || '-'}</TableCell>
                         <TableCell>{role.roleName || '-'}</TableCell>
                         <TableCell>{toRoleTypeLabel(role.roleType)}</TableCell>
-                        <TableCell>{toDataScopeLabel(role.dataScopeType)}</TableCell>
                         <TableCell>
                           <Badge variant={role.status === 1 ? 'default' : 'secondary'}>
                             {toStatusLabel(role.status)}
@@ -792,36 +725,7 @@ export function RoleManagementPage() {
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(submitRole)} className='space-y-4'>
-              <div className='grid gap-4 md:grid-cols-3'>
-                <FormField
-                  control={form.control}
-                  name='systemId'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>所属系统</FormLabel>
-                      <Select
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        disabled={Boolean(editingRole?.id)}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder='请选择系统' />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {systems.map((system) => (
-                            <SelectItem key={system.id} value={String(system.id)}>
-                              {system.systemName}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
+              <div className='grid gap-4 md:grid-cols-2'>
                 <FormField
                   control={form.control}
                   name='roleName'
@@ -835,23 +739,9 @@ export function RoleManagementPage() {
                     </FormItem>
                   )}
                 />
-
-                <FormField
-                  control={form.control}
-                  name='estabId'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>企业ID（可选）</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder='留空表示平台级角色' />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </div>
 
-              <div className='grid gap-4 md:grid-cols-4'>
+              <div className='grid gap-4 md:grid-cols-3'>
                 <FormField
                   control={form.control}
                   name='roleType'
@@ -868,30 +758,6 @@ export function RoleManagementPage() {
                           <SelectItem value='0'>系统内置</SelectItem>
                           <SelectItem value='1'>租户内置</SelectItem>
                           <SelectItem value='2'>自定义</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name='dataScopeType'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>数据范围</FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder='请选择数据范围' />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value='0'>全部</SelectItem>
-                          <SelectItem value='1'>本人</SelectItem>
-                          <SelectItem value='2'>团队/部门</SelectItem>
-                          <SelectItem value='3'>自定义</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -956,6 +822,24 @@ export function RoleManagementPage() {
                   <TabsTrigger value='resources'>数据资源</TabsTrigger>
                   <TabsTrigger value='menus'>菜单权限</TabsTrigger>
                 </TabsList>
+                <div className='flex items-center gap-2'>
+                  <span className='text-sm text-muted-foreground'>权限系统</span>
+                  <Select
+                    value={permissionSystemId ? String(permissionSystemId) : ''}
+                    onValueChange={(value) => setPermissionSystemId(Number(value))}
+                  >
+                    <SelectTrigger className='w-[260px]' disabled={systemLoading}>
+                      <SelectValue placeholder='请选择系统' />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {systems.map((system) => (
+                        <SelectItem key={system.id} value={String(system.id)}>
+                          {system.systemName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
                 <TabsContent value='users' className='space-y-3'>
                   <div className='grid gap-3 lg:grid-cols-2'>
@@ -1091,7 +975,7 @@ export function RoleManagementPage() {
                           <SelectContent>
                             {dataResources.map((resource) => (
                               <SelectItem key={resource.id} value={String(resource.id)}>
-                                {resource.drsName}（{toDataResourceTypeLabel(resource.drsType)}）
+                                {resource.drsName}（{resource.drsCode}）
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -1109,15 +993,14 @@ export function RoleManagementPage() {
                               <TableHead className='w-[64px] text-center'>授权</TableHead>
                               <TableHead>接口编码</TableHead>
                               <TableHead>接口名称</TableHead>
-                              <TableHead>方法</TableHead>
-                              <TableHead>路径</TableHead>
-                              <TableHead>权限标识</TableHead>
+                              <TableHead>SQL 过滤表达式</TableHead>
+                              <TableHead>状态</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {drsInterfacesLoading ? (
                               <TableRow>
-                                <TableCell colSpan={6}>
+                                <TableCell colSpan={5}>
                                   <div className='flex items-center justify-center gap-2 py-4 text-muted-foreground'>
                                     <Loader2 className='h-4 w-4 animate-spin' />
                                     正在加载接口列表...
@@ -1126,7 +1009,7 @@ export function RoleManagementPage() {
                               </TableRow>
                             ) : drsInterfaces.length === 0 ? (
                               <TableRow>
-                                <TableCell colSpan={6} className='py-4 text-center text-muted-foreground'>
+                                <TableCell colSpan={5} className='py-4 text-center text-muted-foreground'>
                                   当前数据资源暂无接口定义
                                 </TableCell>
                               </TableRow>
@@ -1141,9 +1024,12 @@ export function RoleManagementPage() {
                                   </TableCell>
                                   <TableCell>{item.interfaceCode || '-'}</TableCell>
                                   <TableCell>{item.interfaceName || '-'}</TableCell>
-                                  <TableCell>{item.httpMethod || '-'}</TableCell>
-                                  <TableCell>{item.pathPattern || '-'}</TableCell>
-                                  <TableCell>{item.permissionKey || '-'}</TableCell>
+                                  <TableCell className='max-w-[420px] truncate'>{item.interfaceSql || '-'}</TableCell>
+                                  <TableCell>
+                                    <Badge variant={item.status === 1 ? 'default' : 'secondary'}>
+                                      {toStatusLabel(item.status)}
+                                    </Badge>
+                                  </TableCell>
                                 </TableRow>
                               ))
                             )}

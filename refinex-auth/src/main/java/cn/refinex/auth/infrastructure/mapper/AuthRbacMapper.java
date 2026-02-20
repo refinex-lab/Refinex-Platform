@@ -16,11 +16,6 @@ public interface AuthRbacMapper {
 
     /**
      * 查询用户角色
-     *
-     * @param userId   用户ID
-     * @param estabId  机构ID
-     * @param systemId 系统ID
-     * @return 角色集合
      */
     @Select({
             "<script>",
@@ -31,26 +26,17 @@ public interface AuthRbacMapper {
             "  AND ru.deleted = 0 AND r.deleted = 0",
             "  AND ru.status = 1 AND r.status = 1",
             "  AND (ru.estab_id = #{estabId} OR ru.estab_id = 0)",
-            "<if test='systemId != null'>",
-            "  AND r.system_id = #{systemId}",
-            "</if>",
             "</script>"
     })
     List<String> findRoleCodes(@Param("userId") Long userId,
-                               @Param("estabId") Long estabId,
-                               @Param("systemId") Long systemId);
+                               @Param("estabId") Long estabId);
 
     /**
-     * 查询用户权限
-     *
-     * @param userId   用户ID
-     * @param estabId  机构ID
-     * @param systemId 系统ID
-     * @return 权限集合
+     * 查询用户权限编码
      */
     @Select({
             "<script>",
-            "SELECT DISTINCT m.permission_key",
+            "SELECT DISTINCT CONCAT('menu:', m.menu_code)",
             "FROM scr_role_user ru",
             "JOIN scr_role r ON ru.role_id = r.id",
             "JOIN scr_role_menu rm ON rm.role_id = r.id",
@@ -59,12 +45,9 @@ public interface AuthRbacMapper {
             "  AND ru.deleted = 0 AND r.deleted = 0 AND rm.deleted = 0 AND m.deleted = 0",
             "  AND ru.status = 1 AND r.status = 1 AND m.status = 1",
             "  AND (ru.estab_id = #{estabId} OR ru.estab_id = 0)",
-            "  AND m.permission_key IS NOT NULL AND m.permission_key &lt;&gt; ''",
-            "<if test='systemId != null'>",
-            "  AND m.system_id = #{systemId}",
-            "</if>",
+            "  AND (m.estab_id = #{estabId} OR m.estab_id = 0)",
             "UNION",
-            "SELECT DISTINCT mo.permission_key",
+            "SELECT DISTINCT CONCAT(m2.menu_code, ':', mo.op_code)",
             "FROM scr_role_user ru",
             "JOIN scr_role r ON ru.role_id = r.id",
             "JOIN scr_role_menu_op rmo ON rmo.role_id = r.id",
@@ -74,28 +57,21 @@ public interface AuthRbacMapper {
             "  AND ru.deleted = 0 AND r.deleted = 0 AND rmo.deleted = 0 AND mo.deleted = 0 AND m2.deleted = 0",
             "  AND ru.status = 1 AND r.status = 1 AND mo.status = 1 AND m2.status = 1",
             "  AND (ru.estab_id = #{estabId} OR ru.estab_id = 0)",
-            "  AND mo.permission_key IS NOT NULL AND mo.permission_key &lt;&gt; ''",
-            "<if test='systemId != null'>",
-            "  AND m2.system_id = #{systemId}",
-            "</if>",
+            "  AND (m2.estab_id = #{estabId} OR m2.estab_id = 0)",
             "UNION",
-            "SELECT DISTINCT di.permission_key",
+            "SELECT DISTINCT CONCAT(d.drs_code, ':', di.interface_code)",
             "FROM scr_role_user ru",
             "JOIN scr_role r ON ru.role_id = r.id",
-            "JOIN scr_role_drs_interface rdi ON rdi.role_id = r.id",
-            "JOIN scr_drs_interface di ON di.id = rdi.drs_interface_id",
+            "JOIN scr_role_drs rd ON rd.role_id = r.id",
+            "JOIN scr_drs_interface di ON di.id = rd.drs_interface_id",
             "JOIN scr_drs d ON d.id = di.drs_id",
             "WHERE ru.user_id = #{userId}",
-            "  AND ru.deleted = 0 AND r.deleted = 0 AND rdi.deleted = 0 AND di.deleted = 0 AND d.deleted = 0",
+            "  AND ru.deleted = 0 AND r.deleted = 0 AND rd.deleted = 0 AND di.deleted = 0 AND d.deleted = 0",
             "  AND ru.status = 1 AND r.status = 1 AND di.status = 1 AND d.status = 1",
             "  AND (ru.estab_id = #{estabId} OR ru.estab_id = 0)",
-            "  AND di.permission_key IS NOT NULL AND di.permission_key &lt;&gt; ''",
-            "<if test='systemId != null'>",
-            "  AND d.system_id = #{systemId}",
-            "</if>",
+            "  AND (d.owner_estab_id = #{estabId} OR d.owner_estab_id = 0)",
             "</script>"
     })
     List<String> findPermissionKeys(@Param("userId") Long userId,
-                                    @Param("estabId") Long estabId,
-                                    @Param("systemId") Long systemId);
+                                    @Param("estabId") Long estabId);
 }

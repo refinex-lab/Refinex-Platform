@@ -15,6 +15,8 @@ import lombok.EqualsAndHashCode;
 @TableName("scr_menu")
 public class ScrMenu extends BaseEntity {
 
+    private Long estabId;
+
     private Long systemId;
 
     private Long parentId;
@@ -27,17 +29,13 @@ public class ScrMenu extends BaseEntity {
 
     private String path;
 
-    private String component;
-
-    private String permissionKey;
-
     private String icon;
+
+    private Integer isBuiltin;
 
     private Integer visible;
 
     private Integer isFrame;
-
-    private Integer isCache;
 
     private Integer status;
 

@@ -14,11 +14,6 @@ import lombok.EqualsAndHashCode;
 public class QueryRoleListCommand extends PageRequest {
 
     /**
-     * 系统ID
-     */
-    private Long systemId;
-
-    /**
      * 企业ID
      */
     private Long estabId;

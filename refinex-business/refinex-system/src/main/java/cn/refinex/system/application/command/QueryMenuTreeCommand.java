@@ -11,6 +11,11 @@ import lombok.Data;
 public class QueryMenuTreeCommand {
 
     /**
+     * 企业ID
+     */
+    private Long estabId;
+
+    /**
      * 系统ID
      */
     private Long systemId;

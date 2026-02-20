@@ -29,22 +29,10 @@ public class DrsInterfaceUpdateRequest {
     private String interfaceName;
 
     /**
-     * HTTP方法
+     * 数据资源SQL
      */
-    @Size(max = 16, message = "HTTP方法长度不能超过16个字符")
-    private String httpMethod;
-
-    /**
-     * 接口路径模式
-     */
-    @Size(max = 255, message = "路径模式长度不能超过255个字符")
-    private String pathPattern;
-
-    /**
-     * 权限标识
-     */
-    @Size(max = 128, message = "权限标识长度不能超过128个字符")
-    private String permissionKey;
+    @Size(max = 5000, message = "数据资源SQL长度不能超过5000个字符")
+    private String interfaceSql;
 
     /**
      * 状态 1启用 2停用

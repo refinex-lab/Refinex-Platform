@@ -10,7 +10,7 @@ import org.apache.ibatis.annotations.Select;
 import java.util.List;
 
 /**
- * 角色数据资源接口授权 Mapper
+ * 角色数据资源授权 Mapper
  *
  * @author refinex
  */
@@ -19,13 +19,10 @@ public interface ScrRoleDrsInterfaceMapper extends BaseMapper<ScrRoleDrsInterfac
 
     /**
      * 查询角色授权数据资源接口ID
-     *
-     * @param roleId 角色ID
-     * @return 数据资源接口ID列表
      */
     @Select("""
             SELECT drs_interface_id
-            FROM scr_role_drs_interface
+            FROM scr_role_drs
             WHERE role_id = #{roleId}
               AND deleted = 0
             ORDER BY id ASC
@@ -33,11 +30,8 @@ public interface ScrRoleDrsInterfaceMapper extends BaseMapper<ScrRoleDrsInterfac
     List<Long> selectDrsInterfaceIdsByRoleId(@Param("roleId") Long roleId);
 
     /**
-     * 物理删除角色数据资源接口授权
-     *
-     * @param roleId 角色ID
-     * @return 影响行数
+     * 物理删除角色数据资源授权
      */
-    @Delete("DELETE FROM scr_role_drs_interface WHERE role_id = #{roleId}")
+    @Delete("DELETE FROM scr_role_drs WHERE role_id = #{roleId}")
     int deleteByRoleIdHard(@Param("roleId") Long roleId);
 }

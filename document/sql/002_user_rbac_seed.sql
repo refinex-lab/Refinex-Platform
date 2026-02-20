@@ -2,7 +2,7 @@
 -- Refinex Platform 用户与 RBAC 初始化数据（幂等）
 -- 说明：
 -- 1) 本脚本依赖 document/sql/001_user_rbac_schema.sql 已执行完成。
--- 2) 目标：初始化超级管理员 Refinex，并完成企业/团队/部门/角色绑定。
+-- 2) 目标：初始化超级管理员 Refinex，并完成企业/组织/RBAC基础数据。
 -- 3) 本脚本使用 UPSERT（ON DUPLICATE KEY UPDATE）与 NOT EXISTS，支持重复执行。
 -- ============================================================================
 
@@ -19,7 +19,6 @@ SET @seed_operator_id := 0;
 SET @seed_now := NOW(3);
 SET @seed_password_hash := '$2y$10$.4mReaBZKJN9VfE9AxAotuNFz86HrxxVTJBg7sopQaXT1joqZ6QWq';
 -- 默认密码（仅用于初始化）: Refinex@2026!
--- 强烈建议：首次登录后立即修改密码，并轮换为企业安全策略口令。
 
 -- ----------------------------------------
 -- 通用字典（值集）初始化
@@ -38,8 +37,7 @@ VALUES
   ('login_source', '登录来源', 1, 60, '登录来源枚举', @seed_operator_id, @seed_operator_id, 0, 0),
   ('role_type', '角色类型', 1, 70, '角色类型枚举', @seed_operator_id, @seed_operator_id, 0, 0),
   ('menu_type', '菜单类型', 1, 80, '菜单类型枚举', @seed_operator_id, @seed_operator_id, 0, 0),
-  ('data_scope', '数据范围', 1, 90, '数据范围枚举', @seed_operator_id, @seed_operator_id, 0, 0),
-  ('estab_type', '组织类型', 1, 100, '组织类型枚举', @seed_operator_id, @seed_operator_id, 0, 0)
+  ('estab_type', '组织类型', 1, 90, '组织类型枚举', @seed_operator_id, @seed_operator_id, 0, 0)
 ON DUPLICATE KEY UPDATE
   set_name = VALUES(set_name),
   status = VALUES(status),
@@ -96,12 +94,6 @@ VALUES
 
   ('menu_type', '0', '目录', NULL, 1, 0, 10, @seed_operator_id, @seed_operator_id, 0, 0),
   ('menu_type', '1', '菜单', NULL, 1, 1, 20, @seed_operator_id, @seed_operator_id, 0, 0),
-  ('menu_type', '2', '按钮', NULL, 1, 0, 30, @seed_operator_id, @seed_operator_id, 0, 0),
-
-  ('data_scope', '0', '全部', NULL, 1, 1, 10, @seed_operator_id, @seed_operator_id, 0, 0),
-  ('data_scope', '1', '本人', NULL, 1, 0, 20, @seed_operator_id, @seed_operator_id, 0, 0),
-  ('data_scope', '2', '团队/部门', NULL, 1, 0, 30, @seed_operator_id, @seed_operator_id, 0, 0),
-  ('data_scope', '3', '自定义', NULL, 1, 0, 40, @seed_operator_id, @seed_operator_id, 0, 0),
 
   ('estab_type', '0', '平台', NULL, 1, 0, 10, @seed_operator_id, @seed_operator_id, 0, 0),
   ('estab_type', '1', '租户', NULL, 1, 1, 20, @seed_operator_id, @seed_operator_id, 0, 0),
@@ -116,7 +108,7 @@ ON DUPLICATE KEY UPDATE
   update_by = VALUES(update_by);
 
 -- ----------------------------------------
--- 系统定义（平台 + 租户）
+-- 系统定义
 -- ----------------------------------------
 INSERT INTO scr_system
 (
@@ -125,7 +117,8 @@ INSERT INTO scr_system
 )
 VALUES
   ('platform', '平台管理系统', 0, NULL, 1, 1, '平台级后台系统', @seed_operator_id, @seed_operator_id, 0, 0),
-  ('tenant',   '租户业务系统', 1, NULL, 1, 2, '租户级业务系统', @seed_operator_id, @seed_operator_id, 0, 0)
+  ('tenant', '租户业务系统', 1, NULL, 1, 2, '租户级业务系统', @seed_operator_id, @seed_operator_id, 0, 0),
+  ('system_management', '系统管理', 0, NULL, 1, 3, '系统后台配置管理', @seed_operator_id, @seed_operator_id, 0, 0)
 ON DUPLICATE KEY UPDATE
   system_name = VALUES(system_name),
   system_type = VALUES(system_type),
@@ -137,6 +130,7 @@ ON DUPLICATE KEY UPDATE
 
 SELECT id INTO @system_platform_id FROM scr_system WHERE system_code = 'platform' AND deleted = 0 LIMIT 1;
 SELECT id INTO @system_tenant_id FROM scr_system WHERE system_code = 'tenant' AND deleted = 0 LIMIT 1;
+SELECT id INTO @system_management_id FROM scr_system WHERE system_code = 'system_management' AND deleted = 0 LIMIT 1;
 
 -- ----------------------------------------
 -- 企业（组织）初始化
@@ -236,7 +230,6 @@ WHERE NOT EXISTS (
 -- ----------------------------------------
 -- 超级管理员用户初始化
 -- ----------------------------------------
--- 年龄 25：以 2026-02-18 为参考，落库生日取 2001-01-01（年龄按实时日期自动变化）
 INSERT INTO def_user
 (
   user_code, username, display_name, nickname, avatar_url,
@@ -299,7 +292,6 @@ SET primary_estab_id = @estab_id,
     deleted = 0
 WHERE id = @super_user_id;
 
--- 身份 1：用户名密码（用于后台首次登录）
 INSERT INTO def_user_identity
 (
   user_id, identity_type, identifier, issuer,
@@ -309,13 +301,9 @@ INSERT INTO def_user_identity
   create_by, update_by, deleted, lock_version
 )
 VALUES
-(
-  @super_user_id, 1, 'refinex', '',
-  @seed_password_hash, 'bcrypt',
-  1, 1, @seed_now, @seed_now,
-  1, JSON_OBJECT('seed', '002_user_rbac_seed'),
-  @super_user_id, @super_user_id, 0, 0
-)
+(@super_user_id, 1, 'refinex', '', @seed_password_hash, 'bcrypt', 1, 1, @seed_now, @seed_now, 1, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
+(@super_user_id, 2, '13386271152', '', NULL, NULL, 0, 1, @seed_now, @seed_now, 1, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
+(@super_user_id, 3, 'refinex@163.com', '', @seed_password_hash, 'bcrypt', 0, 1, @seed_now, @seed_now, 1, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0)
 ON DUPLICATE KEY UPDATE
   user_id = VALUES(user_id),
   credential = VALUES(credential),
@@ -328,61 +316,6 @@ ON DUPLICATE KEY UPDATE
   deleted = 0,
   update_by = VALUES(update_by);
 
--- 身份 2：手机号短信登录
-INSERT INTO def_user_identity
-(
-  user_id, identity_type, identifier, issuer,
-  credential, credential_alg,
-  is_primary, verified, verified_at, bind_time,
-  status, ext_json,
-  create_by, update_by, deleted, lock_version
-)
-VALUES
-(
-  @super_user_id, 2, '13386271152', '',
-  NULL, NULL,
-  0, 1, @seed_now, @seed_now,
-  1, JSON_OBJECT('seed', '002_user_rbac_seed'),
-  @super_user_id, @super_user_id, 0, 0
-)
-ON DUPLICATE KEY UPDATE
-  user_id = VALUES(user_id),
-  verified = VALUES(verified),
-  verified_at = VALUES(verified_at),
-  bind_time = VALUES(bind_time),
-  status = VALUES(status),
-  deleted = 0,
-  update_by = VALUES(update_by);
-
--- 身份 3：邮箱密码登录
-INSERT INTO def_user_identity
-(
-  user_id, identity_type, identifier, issuer,
-  credential, credential_alg,
-  is_primary, verified, verified_at, bind_time,
-  status, ext_json,
-  create_by, update_by, deleted, lock_version
-)
-VALUES
-(
-  @super_user_id, 3, 'refinex@163.com', '',
-  @seed_password_hash, 'bcrypt',
-  0, 1, @seed_now, @seed_now,
-  1, JSON_OBJECT('seed', '002_user_rbac_seed'),
-  @super_user_id, @super_user_id, 0, 0
-)
-ON DUPLICATE KEY UPDATE
-  user_id = VALUES(user_id),
-  credential = VALUES(credential),
-  credential_alg = VALUES(credential_alg),
-  verified = VALUES(verified),
-  verified_at = VALUES(verified_at),
-  bind_time = VALUES(bind_time),
-  status = VALUES(status),
-  deleted = 0,
-  update_by = VALUES(update_by);
-
--- 企业成员关系（超级管理员）
 INSERT INTO def_estab_user
 (
   estab_id, user_id, member_type, is_admin, status, join_time, leave_time, position_title,
@@ -413,11 +346,8 @@ INSERT INTO def_team
   ext_json, create_by, update_by, deleted, lock_version
 )
 VALUES
-(
-  @estab_id, 'TEAM_REFINEX', 'Refinex 团队', 0, @super_user_id, 1, 10, '系统初始化默认团队',
-  JSON_OBJECT('seed', '002_user_rbac_seed'),
-  @super_user_id, @super_user_id, 0, 0
-)
+(@estab_id, 'TEAM_REFINEX', 'Refinex 团队', 0, @super_user_id, 1, 10, '系统初始化默认团队', JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
+(@estab_id, 'DEPT_PLATFORM_RD', '平台研发部', 0, @super_user_id, 1, 20, '系统初始化默认部门', JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0)
 ON DUPLICATE KEY UPDATE
   team_name = VALUES(team_name),
   leader_user_id = VALUES(leader_user_id),
@@ -427,36 +357,14 @@ ON DUPLICATE KEY UPDATE
   deleted = 0,
   update_by = VALUES(update_by);
 
-SELECT id INTO @team_root_id
-FROM def_team
-WHERE estab_id = @estab_id AND team_code = 'TEAM_REFINEX' AND deleted = 0
-LIMIT 1;
+SELECT id INTO @team_root_id FROM def_team WHERE estab_id = @estab_id AND team_code = 'TEAM_REFINEX' AND deleted = 0 LIMIT 1;
+SELECT id INTO @team_dept_id FROM def_team WHERE estab_id = @estab_id AND team_code = 'DEPT_PLATFORM_RD' AND deleted = 0 LIMIT 1;
 
-INSERT INTO def_team
-(
-  estab_id, team_code, team_name, parent_id, leader_user_id, status, sort, remark,
-  ext_json, create_by, update_by, deleted, lock_version
-)
-VALUES
-(
-  @estab_id, 'DEPT_PLATFORM_RD', '平台研发部', IFNULL(@team_root_id, 0), @super_user_id, 1, 20, '系统初始化默认部门',
-  JSON_OBJECT('seed', '002_user_rbac_seed'),
-  @super_user_id, @super_user_id, 0, 0
-)
-ON DUPLICATE KEY UPDATE
-  team_name = VALUES(team_name),
-  parent_id = VALUES(parent_id),
-  leader_user_id = VALUES(leader_user_id),
-  status = VALUES(status),
-  sort = VALUES(sort),
-  remark = VALUES(remark),
-  deleted = 0,
-  update_by = VALUES(update_by);
-
-SELECT id INTO @team_dept_id
-FROM def_team
-WHERE estab_id = @estab_id AND team_code = 'DEPT_PLATFORM_RD' AND deleted = 0
-LIMIT 1;
+UPDATE def_team
+SET parent_id = @team_root_id,
+    update_by = @super_user_id,
+    deleted = 0
+WHERE id = @team_dept_id;
 
 INSERT INTO def_team_user
 (
@@ -464,11 +372,8 @@ INSERT INTO def_team_user
   ext_json, create_by, update_by, deleted, lock_version
 )
 VALUES
-(
-  @team_root_id, @super_user_id, 1, 1, @seed_now,
-  JSON_OBJECT('seed', '002_user_rbac_seed', 'scope', 'team'),
-  @super_user_id, @super_user_id, 0, 0
-)
+(@team_root_id, @super_user_id, 1, 1, @seed_now, JSON_OBJECT('seed', '002_user_rbac_seed', 'scope', 'team'), @super_user_id, @super_user_id, 0, 0),
+(@team_dept_id, @super_user_id, 1, 1, @seed_now, JSON_OBJECT('seed', '002_user_rbac_seed', 'scope', 'department'), @super_user_id, @super_user_id, 0, 0)
 ON DUPLICATE KEY UPDATE
   role_in_team = VALUES(role_in_team),
   status = VALUES(status),
@@ -476,25 +381,9 @@ ON DUPLICATE KEY UPDATE
   deleted = 0,
   update_by = VALUES(update_by);
 
-INSERT INTO def_team_user
-(
-  team_id, user_id, role_in_team, status, join_time,
-  ext_json, create_by, update_by, deleted, lock_version
-)
-VALUES
-(
-  @team_dept_id, @super_user_id, 1, 1, @seed_now,
-  JSON_OBJECT('seed', '002_user_rbac_seed', 'scope', 'department'),
-  @super_user_id, @super_user_id, 0, 0
-)
-ON DUPLICATE KEY UPDATE
-  role_in_team = VALUES(role_in_team),
-  status = VALUES(status),
-  join_time = VALUES(join_time),
-  deleted = 0,
-  update_by = VALUES(update_by);
-
--- 内置操作码定义
+-- ----------------------------------------
+-- 操作定义初始化（def_op）
+-- ----------------------------------------
 INSERT INTO def_op
 (
   op_code, op_name, op_desc, is_builtin, status, sort, remark, ext_json,
@@ -502,10 +391,10 @@ INSERT INTO def_op
 )
 VALUES
   ('VIEW', '查看', '查看详情或列表数据', 1, 1, 10, '系统初始化内置操作码', JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
-  ('CREATE', '新增', '新增业务数据', 1, 1, 20, '系统初始化内置操作码', JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
-  ('UPDATE', '编辑', '编辑已存在业务数据', 1, 1, 30, '系统初始化内置操作码', JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
+  ('ADD', '新增', '新增业务数据', 1, 1, 20, '系统初始化内置操作码', JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
+  ('EDIT', '编辑', '编辑业务数据', 1, 1, 30, '系统初始化内置操作码', JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
   ('DELETE', '删除', '删除业务数据', 1, 1, 40, '系统初始化内置操作码', JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
-  ('SUBMIT', '提交', '提交业务单据或流程', 1, 1, 50, '系统初始化内置操作码', JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
+  ('SUBMIT', '提交', '提交业务流程', 1, 1, 50, '系统初始化内置操作码', JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
   ('REEDIT', '重新编辑', '驳回后重新编辑', 1, 1, 60, '系统初始化内置操作码', JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0)
 ON DUPLICATE KEY UPDATE
   op_name = VALUES(op_name),
@@ -519,76 +408,23 @@ ON DUPLICATE KEY UPDATE
   update_by = VALUES(update_by);
 
 -- ----------------------------------------
--- 角色初始化（所有人员 + 超级管理员）
+-- 角色初始化（仅平台超级管理员）
 -- ----------------------------------------
--- 平台级：超级管理员
 INSERT INTO scr_role
 (
-  system_id, estab_id, role_code, role_name, role_type,
-  data_scope_type, parent_role_id, is_builtin, status, sort, remark, ext_json,
+  estab_id, role_code, role_name, role_type,
+  is_builtin, status, sort, remark, ext_json,
   create_by, update_by, deleted, lock_version
 )
 VALUES
 (
-  @system_platform_id, 0, 'PLATFORM_SUPER_ADMIN', '平台超级管理员', 0,
-  0, 0, 1, 1, 10, '系统初始化内置角色',
-  JSON_OBJECT('seed', '002_user_rbac_seed'),
+  0, 'PLATFORM_SUPER_ADMIN', '平台超级管理员', 0,
+  1, 1, 10, '系统初始化内置角色', JSON_OBJECT('seed', '002_user_rbac_seed'),
   @super_user_id, @super_user_id, 0, 0
 )
 ON DUPLICATE KEY UPDATE
   role_name = VALUES(role_name),
   role_type = VALUES(role_type),
-  data_scope_type = VALUES(data_scope_type),
-  is_builtin = VALUES(is_builtin),
-  status = VALUES(status),
-  sort = VALUES(sort),
-  remark = VALUES(remark),
-  deleted = 0,
-  update_by = VALUES(update_by);
-
--- 租户级：超级管理员（企业管理员）
-INSERT INTO scr_role
-(
-  system_id, estab_id, role_code, role_name, role_type,
-  data_scope_type, parent_role_id, is_builtin, status, sort, remark, ext_json,
-  create_by, update_by, deleted, lock_version
-)
-VALUES
-(
-  @system_tenant_id, @estab_id, 'TENANT_ADMIN', '企业超级管理员', 1,
-  0, 0, 1, 1, 10, '系统初始化内置角色',
-  JSON_OBJECT('seed', '002_user_rbac_seed'),
-  @super_user_id, @super_user_id, 0, 0
-)
-ON DUPLICATE KEY UPDATE
-  role_name = VALUES(role_name),
-  role_type = VALUES(role_type),
-  data_scope_type = VALUES(data_scope_type),
-  is_builtin = VALUES(is_builtin),
-  status = VALUES(status),
-  sort = VALUES(sort),
-  remark = VALUES(remark),
-  deleted = 0,
-  update_by = VALUES(update_by);
-
--- 租户级：所有人员默认角色
-INSERT INTO scr_role
-(
-  system_id, estab_id, role_code, role_name, role_type,
-  data_scope_type, parent_role_id, is_builtin, status, sort, remark, ext_json,
-  create_by, update_by, deleted, lock_version
-)
-VALUES
-(
-  @system_tenant_id, @estab_id, 'TENANT_USER', '所有人员', 1,
-  1, 0, 1, 1, 20, '系统初始化内置角色（默认成员角色）',
-  JSON_OBJECT('seed', '002_user_rbac_seed'),
-  @super_user_id, @super_user_id, 0, 0
-)
-ON DUPLICATE KEY UPDATE
-  role_name = VALUES(role_name),
-  role_type = VALUES(role_type),
-  data_scope_type = VALUES(data_scope_type),
   is_builtin = VALUES(is_builtin),
   status = VALUES(status),
   sort = VALUES(sort),
@@ -598,20 +434,9 @@ ON DUPLICATE KEY UPDATE
 
 SELECT id INTO @role_platform_super_id
 FROM scr_role
-WHERE system_id = @system_platform_id AND estab_id = 0 AND role_code = 'PLATFORM_SUPER_ADMIN' AND deleted = 0
+WHERE estab_id = 0 AND role_code = 'PLATFORM_SUPER_ADMIN' AND deleted = 0
 LIMIT 1;
 
-SELECT id INTO @role_tenant_admin_id
-FROM scr_role
-WHERE system_id = @system_tenant_id AND estab_id = @estab_id AND role_code = 'TENANT_ADMIN' AND deleted = 0
-LIMIT 1;
-
-SELECT id INTO @role_tenant_user_id
-FROM scr_role
-WHERE system_id = @system_tenant_id AND estab_id = @estab_id AND role_code = 'TENANT_USER' AND deleted = 0
-LIMIT 1;
-
--- 超级管理员绑定角色：平台超管 + 企业超管 + 企业所有人员
 INSERT INTO scr_role_user
 (
   role_id, user_id, estab_id, granted_by, granted_time, status,
@@ -629,121 +454,70 @@ ON DUPLICATE KEY UPDATE
   deleted = 0,
   update_by = VALUES(update_by);
 
-INSERT INTO scr_role_user
-(
-  role_id, user_id, estab_id, granted_by, granted_time, status,
-  create_by, update_by, deleted, lock_version
-)
-VALUES
-(
-  @role_tenant_admin_id, @super_user_id, @estab_id, @super_user_id, @seed_now, 1,
-  @super_user_id, @super_user_id, 0, 0
-)
-ON DUPLICATE KEY UPDATE
-  status = VALUES(status),
-  granted_by = VALUES(granted_by),
-  granted_time = VALUES(granted_time),
-  deleted = 0,
-  update_by = VALUES(update_by);
-
-INSERT INTO scr_role_user
-(
-  role_id, user_id, estab_id, granted_by, granted_time, status,
-  create_by, update_by, deleted, lock_version
-)
-VALUES
-(
-  @role_tenant_user_id, @super_user_id, @estab_id, @super_user_id, @seed_now, 1,
-  @super_user_id, @super_user_id, 0, 0
-)
-ON DUPLICATE KEY UPDATE
-  status = VALUES(status),
-  granted_by = VALUES(granted_by),
-  granted_time = VALUES(granted_time),
-  deleted = 0,
-  update_by = VALUES(update_by);
-
 -- ----------------------------------------
--- 通用菜单与操作初始化
+-- 内置菜单初始化（平台 + 默认企业）
 -- ----------------------------------------
 INSERT INTO scr_menu
 (
-  system_id, parent_id, menu_code, menu_name, menu_type, path, component, permission_key,
-  icon, visible, is_frame, is_cache, status, sort, ext_json,
+  estab_id, system_id, parent_id, menu_code, menu_name, menu_type, path,
+  icon, is_builtin, visible, is_frame, status, sort,
   create_by, update_by, deleted, lock_version
 )
 VALUES
-  (@system_platform_id, 0, 'PLATFORM_ROOT', '平台管理', 0, '/platform', NULL, NULL, 'setting', 1, 0, 0, 1, 10, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
-  (@system_platform_id, 0, 'PLATFORM_USER_MGMT', '平台用户管理', 1, '/platform/users', 'platform/user/index', 'platform:user:view', 'user', 1, 0, 0, 1, 20, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
-  (@system_platform_id, 0, 'PLATFORM_ROLE_MGMT', '平台角色管理', 1, '/platform/roles', 'platform/role/index', 'platform:role:view', 'lock', 1, 0, 0, 1, 30, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
-
-  (@system_tenant_id, 0, 'TENANT_ROOT', '租户管理', 0, '/tenant', NULL, NULL, 'office', 1, 0, 0, 1, 10, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
-  (@system_tenant_id, 0, 'TENANT_DASHBOARD', '租户首页', 1, '/tenant/dashboard', 'tenant/dashboard/index', 'tenant:dashboard:view', 'dashboard', 1, 0, 0, 1, 20, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
-  (@system_tenant_id, 0, 'TENANT_MEMBER_MGMT', '成员管理', 1, '/tenant/members', 'tenant/member/index', 'tenant:member:view', 'team', 1, 0, 0, 1, 30, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
-  (@system_tenant_id, 0, 'TENANT_ROLE_MGMT', '角色管理', 1, '/tenant/roles', 'tenant/role/index', 'tenant:role:view', 'safety', 1, 0, 0, 1, 40, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0)
+  (0, @system_platform_id, 0, 'PLATFORM_MENU_ROOT', '菜单管理', 0, '/platform', 'settings', 1, 1, 0, 1, 0, @super_user_id, @super_user_id, 0, 0),
+  (0, @system_platform_id, 0, 'PLATFORM_USER_MGMT', '平台用户管理', 1, '/platform/users', 'user', 1, 1, 0, 1, 10, @super_user_id, @super_user_id, 0, 0),
+  (@estab_id, @system_tenant_id, 0, 'TENANT_MENU_ROOT', '菜单管理', 0, '/tenant', 'office', 1, 1, 0, 1, 0, @super_user_id, @super_user_id, 0, 0),
+  (@estab_id, @system_tenant_id, 0, 'TENANT_DASHBOARD', '租户首页', 1, '/tenant/dashboard', 'layout-dashboard', 1, 1, 0, 1, 10, @super_user_id, @super_user_id, 0, 0),
+  (@estab_id, @system_management_id, 0, 'SYSTEM_MANAGEMENT_ROOT', '系统管理', 0, '/system-management', 'settings', 1, 1, 0, 1, 0, @super_user_id, @super_user_id, 0, 0),
+  (@estab_id, @system_management_id, 0, 'SYSTEM_DEFINITION', '系统定义', 1, '/system-management/systems', 'settings-2', 1, 1, 0, 1, 10, @super_user_id, @super_user_id, 0, 0),
+  (@estab_id, @system_management_id, 0, 'ROLE_MANAGEMENT', '角色管理', 1, '/system-management/roles', 'shield', 1, 1, 0, 1, 20, @super_user_id, @super_user_id, 0, 0),
+  (@estab_id, @system_management_id, 0, 'DATA_RESOURCE_MANAGEMENT', '数据资源', 1, '/system-management/data-resources', 'database', 1, 1, 0, 1, 30, @super_user_id, @super_user_id, 0, 0),
+  (@estab_id, @system_management_id, 0, 'MENU_MANAGEMENT', '菜单管理', 1, '/system-management/menus', 'menu', 1, 1, 0, 1, 40, @super_user_id, @super_user_id, 0, 0)
 ON DUPLICATE KEY UPDATE
   parent_id = VALUES(parent_id),
   menu_name = VALUES(menu_name),
   menu_type = VALUES(menu_type),
   path = VALUES(path),
-  component = VALUES(component),
-  permission_key = VALUES(permission_key),
   icon = VALUES(icon),
+  is_builtin = VALUES(is_builtin),
   visible = VALUES(visible),
   is_frame = VALUES(is_frame),
-  is_cache = VALUES(is_cache),
   status = VALUES(status),
   sort = VALUES(sort),
   deleted = 0,
   update_by = VALUES(update_by);
 
-SELECT id INTO @menu_platform_root_id FROM scr_menu WHERE system_id = @system_platform_id AND menu_code = 'PLATFORM_ROOT' AND deleted = 0 LIMIT 1;
-SELECT id INTO @menu_platform_user_id FROM scr_menu WHERE system_id = @system_platform_id AND menu_code = 'PLATFORM_USER_MGMT' AND deleted = 0 LIMIT 1;
-SELECT id INTO @menu_platform_role_id FROM scr_menu WHERE system_id = @system_platform_id AND menu_code = 'PLATFORM_ROLE_MGMT' AND deleted = 0 LIMIT 1;
-SELECT id INTO @menu_tenant_root_id FROM scr_menu WHERE system_id = @system_tenant_id AND menu_code = 'TENANT_ROOT' AND deleted = 0 LIMIT 1;
-SELECT id INTO @menu_tenant_dashboard_id FROM scr_menu WHERE system_id = @system_tenant_id AND menu_code = 'TENANT_DASHBOARD' AND deleted = 0 LIMIT 1;
-SELECT id INTO @menu_tenant_member_id FROM scr_menu WHERE system_id = @system_tenant_id AND menu_code = 'TENANT_MEMBER_MGMT' AND deleted = 0 LIMIT 1;
-SELECT id INTO @menu_tenant_role_id FROM scr_menu WHERE system_id = @system_tenant_id AND menu_code = 'TENANT_ROLE_MGMT' AND deleted = 0 LIMIT 1;
+SELECT id INTO @menu_platform_user_id FROM scr_menu WHERE estab_id = 0 AND system_id = @system_platform_id AND menu_code = 'PLATFORM_USER_MGMT' AND deleted = 0 LIMIT 1;
+SELECT id INTO @menu_tenant_dashboard_id FROM scr_menu WHERE estab_id = @estab_id AND system_id = @system_tenant_id AND menu_code = 'TENANT_DASHBOARD' AND deleted = 0 LIMIT 1;
+SELECT id INTO @menu_system_definition_id FROM scr_menu WHERE estab_id = @estab_id AND system_id = @system_management_id AND menu_code = 'SYSTEM_DEFINITION' AND deleted = 0 LIMIT 1;
+SELECT id INTO @menu_role_management_id FROM scr_menu WHERE estab_id = @estab_id AND system_id = @system_management_id AND menu_code = 'ROLE_MANAGEMENT' AND deleted = 0 LIMIT 1;
+SELECT id INTO @menu_drs_management_id FROM scr_menu WHERE estab_id = @estab_id AND system_id = @system_management_id AND menu_code = 'DATA_RESOURCE_MANAGEMENT' AND deleted = 0 LIMIT 1;
+SELECT id INTO @menu_menu_management_id FROM scr_menu WHERE estab_id = @estab_id AND system_id = @system_management_id AND menu_code = 'MENU_MANAGEMENT' AND deleted = 0 LIMIT 1;
 
 INSERT INTO scr_menu_op
 (
-  menu_id, op_code, op_name, http_method, path_pattern, permission_key,
-  status, sort, ext_json,
+  menu_id, op_code, op_name, status, sort, ext_json,
   create_by, update_by, deleted, lock_version
 )
 VALUES
-  (@menu_platform_user_id, 'VIEW',   '查看', 'GET',    '/api/platform/users/**', 'platform:user:view',   1, 10, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
-  (@menu_platform_user_id, 'CREATE', '新增', 'POST',   '/api/platform/users',    'platform:user:create', 1, 20, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
-  (@menu_platform_user_id, 'UPDATE', '修改', 'PUT',    '/api/platform/users/**', 'platform:user:update', 1, 30, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
-  (@menu_platform_user_id, 'DELETE', '删除', 'DELETE', '/api/platform/users/**', 'platform:user:delete', 1, 40, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
-
-  (@menu_platform_role_id, 'VIEW',   '查看', 'GET',    '/api/platform/roles/**', 'platform:role:view',   1, 10, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
-  (@menu_platform_role_id, 'CREATE', '新增', 'POST',   '/api/platform/roles',    'platform:role:create', 1, 20, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
-  (@menu_platform_role_id, 'UPDATE', '修改', 'PUT',    '/api/platform/roles/**', 'platform:role:update', 1, 30, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
-  (@menu_platform_role_id, 'DELETE', '删除', 'DELETE', '/api/platform/roles/**', 'platform:role:delete', 1, 40, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
-
-  (@menu_tenant_dashboard_id, 'VIEW', '查看', 'GET', '/api/tenant/dashboard/**', 'tenant:dashboard:view', 1, 10, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
-
-  (@menu_tenant_member_id, 'VIEW',   '查看', 'GET',    '/api/tenant/members/**', 'tenant:member:view',   1, 10, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
-  (@menu_tenant_member_id, 'CREATE', '新增', 'POST',   '/api/tenant/members',    'tenant:member:create', 1, 20, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
-  (@menu_tenant_member_id, 'UPDATE', '修改', 'PUT',    '/api/tenant/members/**', 'tenant:member:update', 1, 30, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
-  (@menu_tenant_member_id, 'DELETE', '删除', 'DELETE', '/api/tenant/members/**', 'tenant:member:delete', 1, 40, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
-
-  (@menu_tenant_role_id, 'VIEW',   '查看', 'GET',    '/api/tenant/roles/**', 'tenant:role:view',   1, 10, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
-  (@menu_tenant_role_id, 'CREATE', '新增', 'POST',   '/api/tenant/roles',    'tenant:role:create', 1, 20, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
-  (@menu_tenant_role_id, 'UPDATE', '修改', 'PUT',    '/api/tenant/roles/**', 'tenant:role:update', 1, 30, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
-  (@menu_tenant_role_id, 'DELETE', '删除', 'DELETE', '/api/tenant/roles/**', 'tenant:role:delete', 1, 40, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0)
+  (@menu_platform_user_id, 'VIEW', '查看', 1, 10, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
+  (@menu_platform_user_id, 'ADD', '新增', 1, 20, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
+  (@menu_platform_user_id, 'EDIT', '编辑', 1, 30, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
+  (@menu_platform_user_id, 'DELETE', '删除', 1, 40, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
+  (@menu_tenant_dashboard_id, 'VIEW', '查看', 1, 10, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
+  (@menu_system_definition_id, 'VIEW', '查看', 1, 10, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
+  (@menu_role_management_id, 'VIEW', '查看', 1, 10, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
+  (@menu_drs_management_id, 'VIEW', '查看', 1, 10, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
+  (@menu_menu_management_id, 'VIEW', '查看', 1, 10, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0)
 ON DUPLICATE KEY UPDATE
   op_name = VALUES(op_name),
-  http_method = VALUES(http_method),
-  path_pattern = VALUES(path_pattern),
-  permission_key = VALUES(permission_key),
   status = VALUES(status),
   sort = VALUES(sort),
+  ext_json = VALUES(ext_json),
   deleted = 0,
   update_by = VALUES(update_by);
 
--- 平台超管 -> 全平台菜单
+-- 平台超管 -> 全菜单
 INSERT INTO scr_role_menu
 (
   role_id, menu_id, granted_by, granted_time,
@@ -753,15 +527,14 @@ SELECT
   @role_platform_super_id, m.id, @super_user_id, @seed_now,
   @super_user_id, @super_user_id, 0, 0
 FROM scr_menu m
-WHERE m.system_id = @system_platform_id
-  AND m.deleted = 0
+WHERE m.deleted = 0
 ON DUPLICATE KEY UPDATE
   granted_by = VALUES(granted_by),
   granted_time = VALUES(granted_time),
   deleted = 0,
   update_by = VALUES(update_by);
 
--- 平台超管 -> 全平台操作
+-- 平台超管 -> 全菜单操作
 INSERT INTO scr_role_menu_op
 (
   role_id, menu_op_id, granted_by, granted_time,
@@ -772,79 +545,7 @@ SELECT
   @super_user_id, @super_user_id, 0, 0
 FROM scr_menu_op mo
 JOIN scr_menu m ON m.id = mo.menu_id
-WHERE m.system_id = @system_platform_id
-  AND m.deleted = 0
-  AND mo.deleted = 0
-ON DUPLICATE KEY UPDATE
-  granted_by = VALUES(granted_by),
-  granted_time = VALUES(granted_time),
-  deleted = 0,
-  update_by = VALUES(update_by);
-
--- 租户管理员 -> 全租户菜单
-INSERT INTO scr_role_menu
-(
-  role_id, menu_id, granted_by, granted_time,
-  create_by, update_by, deleted, lock_version
-)
-SELECT
-  @role_tenant_admin_id, m.id, @super_user_id, @seed_now,
-  @super_user_id, @super_user_id, 0, 0
-FROM scr_menu m
-WHERE m.system_id = @system_tenant_id
-  AND m.deleted = 0
-ON DUPLICATE KEY UPDATE
-  granted_by = VALUES(granted_by),
-  granted_time = VALUES(granted_time),
-  deleted = 0,
-  update_by = VALUES(update_by);
-
--- 租户管理员 -> 全租户操作
-INSERT INTO scr_role_menu_op
-(
-  role_id, menu_op_id, granted_by, granted_time,
-  create_by, update_by, deleted, lock_version
-)
-SELECT
-  @role_tenant_admin_id, mo.id, @super_user_id, @seed_now,
-  @super_user_id, @super_user_id, 0, 0
-FROM scr_menu_op mo
-JOIN scr_menu m ON m.id = mo.menu_id
-WHERE m.system_id = @system_tenant_id
-  AND m.deleted = 0
-  AND mo.deleted = 0
-ON DUPLICATE KEY UPDATE
-  granted_by = VALUES(granted_by),
-  granted_time = VALUES(granted_time),
-  deleted = 0,
-  update_by = VALUES(update_by);
-
--- 租户所有人员 -> 租户首页菜单与查看操作
-INSERT INTO scr_role_menu
-(
-  role_id, menu_id, granted_by, granted_time,
-  create_by, update_by, deleted, lock_version
-)
-VALUES
-  (@role_tenant_user_id, @menu_tenant_root_id, @super_user_id, @seed_now, @super_user_id, @super_user_id, 0, 0),
-  (@role_tenant_user_id, @menu_tenant_dashboard_id, @super_user_id, @seed_now, @super_user_id, @super_user_id, 0, 0)
-ON DUPLICATE KEY UPDATE
-  granted_by = VALUES(granted_by),
-  granted_time = VALUES(granted_time),
-  deleted = 0,
-  update_by = VALUES(update_by);
-
-INSERT INTO scr_role_menu_op
-(
-  role_id, menu_op_id, granted_by, granted_time,
-  create_by, update_by, deleted, lock_version
-)
-SELECT
-  @role_tenant_user_id, mo.id, @super_user_id, @seed_now,
-  @super_user_id, @super_user_id, 0, 0
-FROM scr_menu_op mo
-WHERE mo.menu_id = @menu_tenant_dashboard_id
-  AND mo.op_code = 'VIEW'
+WHERE m.deleted = 0
   AND mo.deleted = 0
 ON DUPLICATE KEY UPDATE
   granted_by = VALUES(granted_by),
@@ -857,61 +558,58 @@ ON DUPLICATE KEY UPDATE
 -- ----------------------------------------
 INSERT INTO scr_drs
 (
-  system_id, drs_code, drs_name, drs_type, resource_uri,
-  owner_estab_id, data_owner_type, status, remark, ext_json,
+  drs_code, drs_name, owner_estab_id, data_owner_type, status, remark,
   create_by, update_by, deleted, lock_version
 )
 VALUES
-  (@system_tenant_id, 'TENANT_USER_TABLE', '租户用户数据', 0, 'def_user', @estab_id, 1, 1, '系统初始化默认数据资源', JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
-  (@system_tenant_id, 'TENANT_TEAM_TABLE', '租户团队数据', 0, 'def_team', @estab_id, 1, 1, '系统初始化默认数据资源', JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
-  (@system_tenant_id, 'TENANT_ROLE_TABLE', '租户角色数据', 0, 'scr_role', @estab_id, 1, 1, '系统初始化默认数据资源', JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0)
+  ('TENANT_USER_SCOPE', '租户用户数据范围', @estab_id, 1, 1, '系统初始化默认数据资源', @super_user_id, @super_user_id, 0, 0),
+  ('TENANT_TEAM_SCOPE', '租户团队数据范围', @estab_id, 1, 1, '系统初始化默认数据资源', @super_user_id, @super_user_id, 0, 0)
 ON DUPLICATE KEY UPDATE
   drs_name = VALUES(drs_name),
-  drs_type = VALUES(drs_type),
-  resource_uri = VALUES(resource_uri),
-  owner_estab_id = VALUES(owner_estab_id),
   data_owner_type = VALUES(data_owner_type),
   status = VALUES(status),
   remark = VALUES(remark),
   deleted = 0,
   update_by = VALUES(update_by);
 
--- 租户管理员：全部数据范围
-INSERT INTO scr_role_drs
+SELECT id INTO @drs_user_scope_id FROM scr_drs WHERE owner_estab_id = @estab_id AND drs_code = 'TENANT_USER_SCOPE' AND deleted = 0 LIMIT 1;
+SELECT id INTO @drs_team_scope_id FROM scr_drs WHERE owner_estab_id = @estab_id AND drs_code = 'TENANT_TEAM_SCOPE' AND deleted = 0 LIMIT 1;
+
+INSERT INTO scr_drs_interface
 (
-  role_id, drs_id, scope_type, scope_rule,
+  drs_id, interface_code, interface_name, interface_sql, status, sort, ext_json,
   create_by, update_by, deleted, lock_version
 )
-SELECT
-  @role_tenant_admin_id, d.id, 0, NULL,
-  @super_user_id, @super_user_id, 0, 0
-FROM scr_drs d
-WHERE d.system_id = @system_tenant_id
-  AND d.owner_estab_id = @estab_id
-  AND d.deleted = 0
+VALUES
+  (@drs_user_scope_id, 'USER_BY_ESTAB', '按企业过滤用户', 'SELECT id FROM def_user WHERE deleted = 0 AND primary_estab_id = ${estabId}', 1, 10, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0),
+  (@drs_team_scope_id, 'TEAM_BY_ESTAB', '按企业过滤团队', 'SELECT id FROM def_team WHERE deleted = 0 AND estab_id = ${estabId}', 1, 10, JSON_OBJECT('seed', '002_user_rbac_seed'), @super_user_id, @super_user_id, 0, 0)
 ON DUPLICATE KEY UPDATE
-  scope_type = VALUES(scope_type),
-  scope_rule = VALUES(scope_rule),
+  interface_name = VALUES(interface_name),
+  interface_sql = VALUES(interface_sql),
+  status = VALUES(status),
+  sort = VALUES(sort),
+  ext_json = VALUES(ext_json),
   deleted = 0,
   update_by = VALUES(update_by);
 
--- 租户所有人员：仅本人范围（仅限用户数据）
 INSERT INTO scr_role_drs
 (
-  role_id, drs_id, scope_type, scope_rule,
+  role_id, drs_interface_id,
   create_by, update_by, deleted, lock_version
 )
 SELECT
-  @role_tenant_user_id, d.id, 1, JSON_OBJECT('field', 'id', 'operator', '=', 'valueFrom', 'loginUserId'),
-  @super_user_id, @super_user_id, 0, 0
-FROM scr_drs d
-WHERE d.system_id = @system_tenant_id
-  AND d.owner_estab_id = @estab_id
-  AND d.drs_code = 'TENANT_USER_TABLE'
+  @role_platform_super_id,
+  di.id,
+  @super_user_id,
+  @super_user_id,
+  0,
+  0
+FROM scr_drs_interface di
+JOIN scr_drs d ON d.id = di.drs_id
+WHERE d.owner_estab_id = @estab_id
   AND d.deleted = 0
+  AND di.deleted = 0
 ON DUPLICATE KEY UPDATE
-  scope_type = VALUES(scope_type),
-  scope_rule = VALUES(scope_rule),
   deleted = 0,
   update_by = VALUES(update_by);
 

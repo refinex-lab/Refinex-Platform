@@ -36,10 +36,10 @@ public class MenuUpdateRequest {
     private String menuName;
 
     /**
-     * 菜单类型 0目录 1菜单 2按钮
+     * 菜单类型 0目录 1菜单
      */
     @Min(value = 0, message = "菜单类型取值非法")
-    @Max(value = 2, message = "菜单类型取值非法")
+    @Max(value = 1, message = "菜单类型取值非法")
     private Integer menuType;
 
     /**
@@ -49,22 +49,17 @@ public class MenuUpdateRequest {
     private String path;
 
     /**
-     * 前端组件
-     */
-    @Size(max = 255, message = "组件路径长度不能超过255个字符")
-    private String component;
-
-    /**
-     * 权限标识
-     */
-    @Size(max = 128, message = "权限标识长度不能超过128个字符")
-    private String permissionKey;
-
-    /**
      * 图标
      */
     @Size(max = 64, message = "图标长度不能超过64个字符")
     private String icon;
+
+    /**
+     * 是否内建菜单 1是 0否
+     */
+    @Min(value = 0, message = "内建标识取值非法")
+    @Max(value = 1, message = "内建标识取值非法")
+    private Integer isBuiltin;
 
     /**
      * 是否可见 1可见 0隐藏
@@ -79,13 +74,6 @@ public class MenuUpdateRequest {
     @Min(value = 0, message = "外链标识取值非法")
     @Max(value = 1, message = "外链标识取值非法")
     private Integer isFrame;
-
-    /**
-     * 是否缓存 1是 0否
-     */
-    @Min(value = 0, message = "缓存标识取值非法")
-    @Max(value = 1, message = "缓存标识取值非法")
-    private Integer isCache;
 
     /**
      * 状态 1启用 2停用

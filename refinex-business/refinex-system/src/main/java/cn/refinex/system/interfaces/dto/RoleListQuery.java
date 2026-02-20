@@ -1,7 +1,10 @@
 package cn.refinex.system.interfaces.dto;
 
 import cn.refinex.base.request.PageRequest;
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -15,14 +18,7 @@ import lombok.EqualsAndHashCode;
 public class RoleListQuery extends PageRequest {
 
     /**
-     * 系统ID
-     */
-    @NotNull(message = "系统ID不能为空")
-    @Positive(message = "系统ID必须大于0")
-    private Long systemId;
-
-    /**
-     * 企业ID（0表示平台级角色）
+     * 企业ID
      */
     @PositiveOrZero(message = "企业ID不能小于0")
     private Long estabId;

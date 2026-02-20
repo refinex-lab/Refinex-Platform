@@ -31,19 +31,9 @@ public class ScrDrsInterfaceDo extends BaseEntity {
     private String interfaceName;
 
     /**
-     * HTTP方法
+     * 数据资源SQL
      */
-    private String httpMethod;
-
-    /**
-     * 接口路径(支持通配)
-     */
-    private String pathPattern;
-
-    /**
-     * 权限标识(数据接口级)
-     */
-    private String permissionKey;
+    private String interfaceSql;
 
     /**
      * 状态 1启用 2停用

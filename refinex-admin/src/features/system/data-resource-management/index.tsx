@@ -61,7 +61,6 @@ import {
   deleteDataResourceInterface,
   listDataResourceInterfaces,
   listDataResources,
-  listSystems,
   type DataResource,
   type DataResourceCreateRequest,
   type DataResourceInterface,
@@ -69,25 +68,20 @@ import {
   type DataResourceInterfaceUpdateRequest,
   type DataResourceListQuery,
   type DataResourceUpdateRequest,
-  type SystemDefinition,
   updateDataResource,
   updateDataResourceInterface,
 } from '@/features/system/api'
 import { toOptionalNumber, toOptionalString } from '@/features/system/common'
 import { PageToolbar } from '@/features/system/components/page-toolbar'
 import { handleServerError } from '@/lib/handle-server-error'
+import { useAuthStore } from '@/stores/auth-store'
 
-const SYSTEM_OPTION_PAGE_SIZE = 200
 const DATA_RESOURCE_PAGE_SIZE = 10
 const DATA_RESOURCE_INTERFACE_PAGE_SIZE = 10
 
 const resourceFormSchema = z.object({
-  systemId: z.string().trim().min(1, '请选择所属系统'),
   drsName: z.string().trim().min(1, '资源名称不能为空').max(128, '资源名称最长 128 位'),
-  drsType: z.enum(['0', '1', '2', '3']),
-  resourceUri: z.string().trim().max(255, '资源标识最长 255 位').optional(),
-  ownerEstabId: z.string().trim().max(20, '企业ID格式非法').optional(),
-  dataOwnerType: z.enum(['0', '1', '2']),
+  dataOwnerType: z.enum(['0', '1']),
   status: z.enum(['1', '2']),
   remark: z.string().trim().max(255, '备注最长 255 位').optional(),
 })
@@ -95,9 +89,7 @@ const resourceFormSchema = z.object({
 const interfaceFormSchema = z.object({
   interfaceCode: z.string().trim().max(64, '接口编码最长 64 位').optional(),
   interfaceName: z.string().trim().min(1, '接口名称不能为空').max(128, '接口名称最长 128 位'),
-  httpMethod: z.string().trim().max(16, 'HTTP 方法最长 16 位').optional(),
-  pathPattern: z.string().trim().max(255, '路径最长 255 位').optional(),
-  permissionKey: z.string().trim().max(128, '权限标识最长 128 位').optional(),
+  interfaceSql: z.string().trim().max(5000, 'SQL 表达式最长 5000 位').optional(),
   status: z.enum(['1', '2']),
   sort: z.string().trim().max(6, '排序值过大').optional(),
 })
@@ -106,11 +98,7 @@ type ResourceFormValues = z.infer<typeof resourceFormSchema>
 type InterfaceFormValues = z.infer<typeof interfaceFormSchema>
 
 const DEFAULT_RESOURCE_FORM: ResourceFormValues = {
-  systemId: '',
   drsName: '',
-  drsType: '1',
-  resourceUri: '',
-  ownerEstabId: '',
   dataOwnerType: '1',
   status: '1',
   remark: '',
@@ -119,31 +107,14 @@ const DEFAULT_RESOURCE_FORM: ResourceFormValues = {
 const DEFAULT_INTERFACE_FORM: InterfaceFormValues = {
   interfaceCode: '',
   interfaceName: '',
-  httpMethod: '',
-  pathPattern: '',
-  permissionKey: '',
+  interfaceSql: '',
   status: '1',
   sort: '0',
-}
-
-function parsePositiveLong(value?: string): number | undefined {
-  const parsed = toOptionalNumber(value)
-  if (parsed == null || parsed <= 0) return undefined
-  return parsed
-}
-
-function toDrsTypeLabel(value?: number): string {
-  if (value === 0) return '数据库表'
-  if (value === 1) return '接口资源'
-  if (value === 2) return '文件'
-  if (value === 3) return '其他'
-  return '-'
 }
 
 function toOwnerTypeLabel(value?: number): string {
   if (value === 0) return '平台'
   if (value === 1) return '租户'
-  if (value === 2) return '用户'
   return '-'
 }
 
@@ -154,17 +125,21 @@ function toStatusLabel(value?: number): string {
 }
 
 export function DataResourceManagementPage() {
-  const [systems, setSystems] = useState<SystemDefinition[]>([])
-  const [systemLoading, setSystemLoading] = useState(false)
+  const loginUser = useAuthStore((state) => state.auth.user)
+  const activeEstabId = loginUser?.estabId ?? loginUser?.primaryEstabId ?? 0
 
   const [resources, setResources] = useState<DataResource[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
-  const [query, setQuery] = useState<DataResourceListQuery>({ currentPage: 1, pageSize: DATA_RESOURCE_PAGE_SIZE })
+  const [query, setQuery] = useState<DataResourceListQuery>({
+    ownerEstabId: activeEstabId,
+    currentPage: 1,
+    pageSize: DATA_RESOURCE_PAGE_SIZE,
+  })
 
   const [keywordInput, setKeywordInput] = useState('')
   const [statusInput, setStatusInput] = useState<'all' | '1' | '2'>('all')
-  const [typeInput, setTypeInput] = useState<'all' | '0' | '1' | '2' | '3'>('all')
+  const [ownerTypeInput, setOwnerTypeInput] = useState<'all' | '0' | '1'>('all')
 
   const [selectedResource, setSelectedResource] = useState<DataResource | null>(null)
 
@@ -207,33 +182,7 @@ export function DataResourceManagementPage() {
     return `${selectedResource.drsName || '-'}（${selectedResource.drsCode || '-'}）`
   }, [selectedResource])
 
-  async function loadSystems() {
-    setSystemLoading(true)
-    try {
-      const pageData = await listSystems({
-        currentPage: 1,
-        pageSize: SYSTEM_OPTION_PAGE_SIZE,
-      })
-      const rows = pageData.data ?? []
-      setSystems(rows)
-      setQuery((prev) => {
-        if (prev.systemId) return prev
-        return { ...prev, systemId: rows[0]?.id }
-      })
-    } catch (error) {
-      handleServerError(error)
-    } finally {
-      setSystemLoading(false)
-    }
-  }
-
   async function loadResources(activeQuery: DataResourceListQuery = query) {
-    if (!activeQuery.systemId) {
-      setResources([])
-      setTotal(0)
-      setSelectedResource(null)
-      return
-    }
     setLoading(true)
     try {
       const pageData = await listDataResources(activeQuery)
@@ -272,8 +221,12 @@ export function DataResourceManagementPage() {
   }
 
   useEffect(() => {
-    void loadSystems()
-  }, [])
+    setQuery((prev) => ({
+      ...prev,
+      ownerEstabId: activeEstabId,
+      currentPage: 1,
+    }))
+  }, [activeEstabId])
 
   useEffect(() => {
     void loadResources(query)
@@ -292,9 +245,9 @@ export function DataResourceManagementPage() {
 
   function applyFilter() {
     setQuery((prev) => ({
-      systemId: prev.systemId,
+      ownerEstabId: prev.ownerEstabId,
       status: statusInput === 'all' ? undefined : Number(statusInput),
-      drsType: typeInput === 'all' ? undefined : Number(typeInput),
+      dataOwnerType: ownerTypeInput === 'all' ? undefined : Number(ownerTypeInput),
       keyword: toOptionalString(keywordInput),
       currentPage: 1,
       pageSize: prev.pageSize ?? DATA_RESOURCE_PAGE_SIZE,
@@ -304,9 +257,9 @@ export function DataResourceManagementPage() {
   function resetFilter() {
     setKeywordInput('')
     setStatusInput('all')
-    setTypeInput('all')
+    setOwnerTypeInput('all')
     setQuery((prev) => ({
-      systemId: prev.systemId,
+      ownerEstabId: prev.ownerEstabId,
       currentPage: 1,
       pageSize: prev.pageSize ?? DATA_RESOURCE_PAGE_SIZE,
     }))
@@ -332,7 +285,7 @@ export function DataResourceManagementPage() {
     setEditingResource(null)
     resourceForm.reset({
       ...DEFAULT_RESOURCE_FORM,
-      systemId: query.systemId ? String(query.systemId) : systems[0]?.id ? String(systems[0].id) : '',
+      dataOwnerType: activeEstabId === 0 ? '0' : '1',
     })
     setResourceDialogOpen(true)
   }
@@ -340,13 +293,8 @@ export function DataResourceManagementPage() {
   function openEditResourceDialog(resource: DataResource) {
     setEditingResource(resource)
     resourceForm.reset({
-      systemId: String(resource.systemId ?? query.systemId ?? ''),
       drsName: resource.drsName ?? '',
-      drsType: String(resource.drsType ?? 1) as '0' | '1' | '2' | '3',
-      resourceUri: resource.resourceUri ?? '',
-      ownerEstabId:
-        resource.ownerEstabId == null || resource.ownerEstabId === 0 ? '' : String(resource.ownerEstabId),
-      dataOwnerType: String(resource.dataOwnerType ?? 1) as '0' | '1' | '2',
+      dataOwnerType: String(resource.dataOwnerType ?? 1) as '0' | '1',
       status: String(resource.status ?? 1) as '1' | '2',
       remark: resource.remark ?? '',
     })
@@ -360,19 +308,11 @@ export function DataResourceManagementPage() {
   }
 
   async function submitResource(values: ResourceFormValues) {
-    const systemId = parsePositiveLong(values.systemId)
-    if (!systemId) {
-      toast.error('请选择所属系统')
-      return
-    }
-
     setSavingResource(true)
     try {
       const basePayload: DataResourceUpdateRequest = {
         drsName: values.drsName.trim(),
-        drsType: Number(values.drsType),
-        resourceUri: toOptionalString(values.resourceUri),
-        ownerEstabId: parsePositiveLong(values.ownerEstabId),
+        ownerEstabId: activeEstabId,
         dataOwnerType: Number(values.dataOwnerType),
         status: Number(values.status),
         remark: toOptionalString(values.remark),
@@ -382,11 +322,7 @@ export function DataResourceManagementPage() {
         await updateDataResource(editingResource.id, basePayload)
         toast.success('数据资源更新成功')
       } else {
-        const payload: DataResourceCreateRequest = {
-          systemId,
-          ...basePayload,
-          drsName: values.drsName.trim(),
-        }
+        const payload: DataResourceCreateRequest = basePayload
         await createDataResource(payload)
         toast.success('数据资源创建成功')
       }
@@ -430,9 +366,7 @@ export function DataResourceManagementPage() {
     interfaceForm.reset({
       interfaceCode: item.interfaceCode ?? '',
       interfaceName: item.interfaceName ?? '',
-      httpMethod: item.httpMethod ?? '',
-      pathPattern: item.pathPattern ?? '',
-      permissionKey: item.permissionKey ?? '',
+      interfaceSql: item.interfaceSql ?? '',
       status: String(item.status ?? 1) as '1' | '2',
       sort: String(item.sort ?? 0),
     })
@@ -456,9 +390,7 @@ export function DataResourceManagementPage() {
       const basePayload: DataResourceInterfaceUpdateRequest = {
         interfaceCode: values.interfaceCode?.trim() || editingInterface?.interfaceCode || '',
         interfaceName: values.interfaceName.trim(),
-        httpMethod: toOptionalString(values.httpMethod),
-        pathPattern: toOptionalString(values.pathPattern),
-        permissionKey: toOptionalString(values.permissionKey),
+        interfaceSql: toOptionalString(values.interfaceSql),
         status: Number(values.status),
         sort: toOptionalNumber(values.sort),
       }
@@ -469,9 +401,7 @@ export function DataResourceManagementPage() {
       } else {
         const createPayload: DataResourceInterfaceCreateRequest = {
           interfaceName: values.interfaceName.trim(),
-          httpMethod: toOptionalString(values.httpMethod),
-          pathPattern: toOptionalString(values.pathPattern),
-          permissionKey: toOptionalString(values.permissionKey),
+          interfaceSql: toOptionalString(values.interfaceSql),
           status: Number(values.status),
           sort: toOptionalNumber(values.sort),
         }
@@ -516,25 +446,7 @@ export function DataResourceManagementPage() {
 
       <Main fixed fluid>
         <Card className='py-3 gap-3'>
-          <CardContent className='pt-0 grid gap-3 lg:grid-cols-[220px_180px_180px_1fr_auto]'>
-            <Select
-              value={query.systemId ? String(query.systemId) : ''}
-              onValueChange={(value) =>
-                setQuery((prev) => ({ ...prev, systemId: Number(value), currentPage: 1 }))
-              }
-            >
-              <SelectTrigger disabled={systemLoading}>
-                <SelectValue placeholder='选择所属系统' />
-              </SelectTrigger>
-              <SelectContent>
-                {systems.map((system) => (
-                  <SelectItem key={system.id} value={String(system.id)}>
-                    {system.systemName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
+          <CardContent className='pt-0 grid gap-3 lg:grid-cols-[180px_180px_1fr_auto]'>
             <Select value={statusInput} onValueChange={(value) => setStatusInput(value as 'all' | '1' | '2')}>
               <SelectTrigger>
                 <SelectValue placeholder='状态' />
@@ -546,16 +458,14 @@ export function DataResourceManagementPage() {
               </SelectContent>
             </Select>
 
-            <Select value={typeInput} onValueChange={(value) => setTypeInput(value as 'all' | '0' | '1' | '2' | '3')}>
+            <Select value={ownerTypeInput} onValueChange={(value) => setOwnerTypeInput(value as 'all' | '0' | '1')}>
               <SelectTrigger>
-                <SelectValue placeholder='资源类型' />
+                <SelectValue placeholder='归属类型' />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value='all'>全部类型</SelectItem>
-                <SelectItem value='0'>数据库表</SelectItem>
-                <SelectItem value='1'>接口资源</SelectItem>
-                <SelectItem value='2'>文件</SelectItem>
-                <SelectItem value='3'>其他</SelectItem>
+                <SelectItem value='all'>全部归属</SelectItem>
+                <SelectItem value='0'>平台</SelectItem>
+                <SelectItem value='1'>租户</SelectItem>
               </SelectContent>
             </Select>
 
@@ -596,17 +506,16 @@ export function DataResourceManagementPage() {
                   <TableRow className='bg-muted/30 hover:bg-muted/30'>
                     <TableHead>资源编码</TableHead>
                     <TableHead>资源名称</TableHead>
-                    <TableHead>资源类型</TableHead>
                     <TableHead>归属类型</TableHead>
                     <TableHead>状态</TableHead>
-                    <TableHead>资源标识</TableHead>
+                    <TableHead>所属企业ID</TableHead>
                     <TableHead className='w-[200px] text-center'>操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={7}>
+                      <TableCell colSpan={6}>
                         <div className='flex items-center justify-center gap-2 py-6 text-muted-foreground'>
                           <Loader2 className='h-4 w-4 animate-spin' />
                           正在加载数据资源...
@@ -615,7 +524,7 @@ export function DataResourceManagementPage() {
                     </TableRow>
                   ) : resources.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className='py-6 text-center text-muted-foreground'>
+                      <TableCell colSpan={6} className='py-6 text-center text-muted-foreground'>
                         暂无数据资源
                       </TableCell>
                     </TableRow>
@@ -627,14 +536,13 @@ export function DataResourceManagementPage() {
                       >
                         <TableCell>{resource.drsCode || '-'}</TableCell>
                         <TableCell>{resource.drsName || '-'}</TableCell>
-                        <TableCell>{toDrsTypeLabel(resource.drsType)}</TableCell>
                         <TableCell>{toOwnerTypeLabel(resource.dataOwnerType)}</TableCell>
                         <TableCell>
                           <Badge variant={resource.status === 1 ? 'default' : 'secondary'}>
                             {toStatusLabel(resource.status)}
                           </Badge>
                         </TableCell>
-                        <TableCell className='max-w-[280px] truncate'>{resource.resourceUri || '-'}</TableCell>
+                        <TableCell>{resource.ownerEstabId ?? '-'}</TableCell>
                         <TableCell className='text-center'>
                           <div className='flex items-center justify-center gap-1'>
                             <Button
@@ -728,9 +636,7 @@ export function DataResourceManagementPage() {
                   <TableRow className='bg-muted/30 hover:bg-muted/30'>
                     <TableHead>接口编码</TableHead>
                     <TableHead>接口名称</TableHead>
-                    <TableHead>方法</TableHead>
-                    <TableHead>路径</TableHead>
-                    <TableHead>权限标识</TableHead>
+                    <TableHead>SQL 过滤表达式</TableHead>
                     <TableHead>状态</TableHead>
                     <TableHead>排序</TableHead>
                     <TableHead className='w-[130px] text-center'>操作</TableHead>
@@ -739,13 +645,13 @@ export function DataResourceManagementPage() {
                 <TableBody>
                   {!selectedResource?.id ? (
                     <TableRow>
-                      <TableCell colSpan={8} className='py-6 text-center text-muted-foreground'>
+                      <TableCell colSpan={6} className='py-6 text-center text-muted-foreground'>
                         请先在上方选择一个数据资源
                       </TableCell>
                     </TableRow>
                   ) : interfaceLoading ? (
                     <TableRow>
-                      <TableCell colSpan={8}>
+                      <TableCell colSpan={6}>
                         <div className='flex items-center justify-center gap-2 py-6 text-muted-foreground'>
                           <Loader2 className='h-4 w-4 animate-spin' />
                           正在加载数据接口...
@@ -754,7 +660,7 @@ export function DataResourceManagementPage() {
                     </TableRow>
                   ) : interfaces.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className='py-6 text-center text-muted-foreground'>
+                      <TableCell colSpan={6} className='py-6 text-center text-muted-foreground'>
                         当前资源暂无接口定义
                       </TableCell>
                     </TableRow>
@@ -763,9 +669,7 @@ export function DataResourceManagementPage() {
                       <TableRow key={item.id}>
                         <TableCell>{item.interfaceCode || '-'}</TableCell>
                         <TableCell>{item.interfaceName || '-'}</TableCell>
-                        <TableCell>{item.httpMethod || '-'}</TableCell>
-                        <TableCell>{item.pathPattern || '-'}</TableCell>
-                        <TableCell>{item.permissionKey || '-'}</TableCell>
+                        <TableCell className='max-w-[420px] truncate'>{item.interfaceSql || '-'}</TableCell>
                         <TableCell>
                           <Badge variant={item.status === 1 ? 'default' : 'secondary'}>
                             {toStatusLabel(item.status)}
@@ -815,36 +719,7 @@ export function DataResourceManagementPage() {
           </DialogHeader>
           <Form {...resourceForm}>
             <form onSubmit={resourceForm.handleSubmit(submitResource)} className='grid gap-4'>
-              <div className='grid gap-4 md:grid-cols-2'>
-                <FormField
-                  control={resourceForm.control}
-                  name='systemId'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>所属系统</FormLabel>
-                      <Select
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        disabled={Boolean(editingResource?.id)}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder='请选择系统' />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {systems.map((system) => (
-                            <SelectItem key={system.id} value={String(system.id)}>
-                              {system.systemName}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
+              <div className='grid gap-4 md:grid-cols-1'>
                 <FormField
                   control={resourceForm.control}
                   name='drsName'
@@ -860,31 +735,7 @@ export function DataResourceManagementPage() {
                 />
               </div>
 
-              <div className='grid gap-4 md:grid-cols-3'>
-                <FormField
-                  control={resourceForm.control}
-                  name='drsType'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>资源类型</FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder='请选择类型' />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value='0'>数据库表</SelectItem>
-                          <SelectItem value='1'>接口资源</SelectItem>
-                          <SelectItem value='2'>文件</SelectItem>
-                          <SelectItem value='3'>其他</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
+              <div className='grid gap-4 md:grid-cols-2'>
                 <FormField
                   control={resourceForm.control}
                   name='dataOwnerType'
@@ -900,7 +751,6 @@ export function DataResourceManagementPage() {
                         <SelectContent>
                           <SelectItem value='0'>平台</SelectItem>
                           <SelectItem value='1'>租户</SelectItem>
-                          <SelectItem value='2'>用户</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -925,36 +775,6 @@ export function DataResourceManagementPage() {
                           <SelectItem value='2'>停用</SelectItem>
                         </SelectContent>
                       </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className='grid gap-4 md:grid-cols-2'>
-                <FormField
-                  control={resourceForm.control}
-                  name='resourceUri'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>资源标识</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder='如：/api/orders/** 或订单表名' />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={resourceForm.control}
-                  name='ownerEstabId'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>所属企业ID（可选）</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder='留空默认为平台级' />
-                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -993,11 +813,11 @@ export function DataResourceManagementPage() {
         <DialogContent className='sm:max-w-3xl'>
           <DialogHeader>
             <DialogTitle>{editingInterface?.id ? '编辑数据接口' : '新建数据接口'}</DialogTitle>
-            <DialogDescription>接口编码由后端自动生成，建议重点维护权限标识和路径规范。</DialogDescription>
+            <DialogDescription>接口编码由后端自动生成，重点维护 SQL 过滤表达式。</DialogDescription>
           </DialogHeader>
           <Form {...interfaceForm}>
             <form onSubmit={interfaceForm.handleSubmit(submitInterface)} className='grid gap-4'>
-              <div className='grid gap-4 md:grid-cols-2'>
+              <div className='grid gap-4 md:grid-cols-1'>
                 <FormField
                   control={interfaceForm.control}
                   name='interfaceName'
@@ -1011,45 +831,17 @@ export function DataResourceManagementPage() {
                     </FormItem>
                   )}
                 />
-
-                <FormField
-                  control={interfaceForm.control}
-                  name='httpMethod'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>HTTP 方法</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder='GET / POST / PUT ...' />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </div>
 
-              <div className='grid gap-4 md:grid-cols-2'>
+              <div className='grid gap-4 md:grid-cols-1'>
                 <FormField
                   control={interfaceForm.control}
-                  name='pathPattern'
+                  name='interfaceSql'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>路径模式</FormLabel>
+                      <FormLabel>SQL 过滤表达式</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder='如：/users/**' />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={interfaceForm.control}
-                  name='permissionKey'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>权限标识</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder='如：user:list:view' />
+                        <Textarea {...field} rows={4} placeholder='例如：SELECT id FROM biz_order WHERE owner_id = #{userId}' />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

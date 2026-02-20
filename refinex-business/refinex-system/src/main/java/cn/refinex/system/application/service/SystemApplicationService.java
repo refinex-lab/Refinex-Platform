@@ -7,8 +7,27 @@ import cn.refinex.base.response.PageResponse;
 import cn.refinex.base.utils.PageUtils;
 import cn.refinex.base.utils.UniqueCodeUtils;
 import cn.refinex.system.application.assembler.SystemDomainAssembler;
-import cn.refinex.system.application.command.*;
-import cn.refinex.system.application.dto.*;
+import cn.refinex.system.application.command.AssignRolePermissionsCommand;
+import cn.refinex.system.application.command.AssignRoleUsersCommand;
+import cn.refinex.system.application.command.CreateMenuCommand;
+import cn.refinex.system.application.command.CreateMenuOpCommand;
+import cn.refinex.system.application.command.CreateRoleCommand;
+import cn.refinex.system.application.command.CreateSystemCommand;
+import cn.refinex.system.application.command.QueryMenuTreeCommand;
+import cn.refinex.system.application.command.QueryRoleListCommand;
+import cn.refinex.system.application.command.QuerySystemListCommand;
+import cn.refinex.system.application.command.UpdateMenuCommand;
+import cn.refinex.system.application.command.UpdateMenuOpCommand;
+import cn.refinex.system.application.command.UpdateRoleCommand;
+import cn.refinex.system.application.command.UpdateSystemCommand;
+import cn.refinex.system.application.dto.MenuDTO;
+import cn.refinex.system.application.dto.MenuOpDTO;
+import cn.refinex.system.application.dto.MenuOpManageDTO;
+import cn.refinex.system.application.dto.MenuTreeNodeDTO;
+import cn.refinex.system.application.dto.RoleBindingDTO;
+import cn.refinex.system.application.dto.RoleBindingUserDTO;
+import cn.refinex.system.application.dto.RoleDTO;
+import cn.refinex.system.application.dto.SystemDTO;
 import cn.refinex.system.domain.error.SystemErrorCode;
 import cn.refinex.system.domain.model.entity.MenuEntity;
 import cn.refinex.system.domain.model.entity.MenuOpEntity;
@@ -20,7 +39,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 import static cn.refinex.base.utils.ValueUtils.defaultIfNull;
 import static cn.refinex.base.utils.ValueUtils.isBlank;
@@ -43,9 +69,6 @@ public class SystemApplicationService {
 
     /**
      * 查询系统列表
-     *
-     * @param command 查询命令
-     * @return 系统列表
      */
     public PageResponse<SystemDTO> listSystems(QuerySystemListCommand command) {
         int currentPage = PageUtils.normalizeCurrentPage(command == null ? null : command.getCurrentPage());
@@ -67,9 +90,6 @@ public class SystemApplicationService {
 
     /**
      * 查询系统详情
-     *
-     * @param systemId 系统ID
-     * @return 系统详情
      */
     public SystemDTO getSystem(Long systemId) {
         if (systemId == null) {
@@ -82,9 +102,6 @@ public class SystemApplicationService {
 
     /**
      * 创建系统
-     *
-     * @param command 创建命令
-     * @return 系统详情
      */
     @Transactional(rollbackFor = Exception.class)
     public SystemDTO createSystem(CreateSystemCommand command) {
@@ -114,15 +131,10 @@ public class SystemApplicationService {
 
     /**
      * 更新系统
-     *
-     * @param command 更新命令
-     * @return 系统详情
      */
     @Transactional(rollbackFor = Exception.class)
     public SystemDTO updateSystem(UpdateSystemCommand command) {
-        if (command == null
-                || command.getSystemId() == null
-                || isBlank(command.getSystemName())) {
+        if (command == null || command.getSystemId() == null || isBlank(command.getSystemName())) {
             throw new BizException(SystemErrorCode.INVALID_PARAM);
         }
         SystemEntity existing = requireSystem(command.getSystemId());
@@ -140,25 +152,16 @@ public class SystemApplicationService {
 
     /**
      * 查询角色列表
-     *
-     * @param command 查询命令
-     * @return 角色列表
      */
     public PageResponse<RoleDTO> listRoles(QueryRoleListCommand command) {
-        if (command == null || command.getSystemId() == null) {
-            throw new BizException(SystemErrorCode.INVALID_PARAM);
-        }
-        requireSystem(command.getSystemId());
-
-        int currentPage = PageUtils.normalizeCurrentPage(command.getCurrentPage());
-        int pageSize = PageUtils.normalizePageSize(command.getPageSize(),
+        int currentPage = PageUtils.normalizeCurrentPage(command == null ? null : command.getCurrentPage());
+        int pageSize = PageUtils.normalizePageSize(command == null ? null : command.getPageSize(),
                 PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE);
 
         PageResponse<RoleEntity> entities = systemRepository.listRoles(
-                command.getSystemId(),
-                command.getEstabId(),
-                command.getStatus(),
-                command.getKeyword(),
+                command == null ? null : command.getEstabId(),
+                command == null ? null : command.getStatus(),
+                command == null ? null : command.getKeyword(),
                 currentPage,
                 pageSize
         );
@@ -171,9 +174,6 @@ public class SystemApplicationService {
 
     /**
      * 查询角色详情
-     *
-     * @param roleId 角色ID
-     * @return 角色详情
      */
     public RoleDTO getRole(Long roleId) {
         RoleEntity role = requireRole(roleId);
@@ -182,30 +182,21 @@ public class SystemApplicationService {
 
     /**
      * 创建角色
-     *
-     * @param command 创建命令
-     * @return 角色详情
      */
     @Transactional(rollbackFor = Exception.class)
     public RoleDTO createRole(CreateRoleCommand command) {
-        if (command == null
-                || command.getSystemId() == null
-                || isBlank(command.getRoleName())) {
+        if (command == null || isBlank(command.getRoleName())) {
             throw new BizException(SystemErrorCode.INVALID_PARAM);
         }
-        requireSystem(command.getSystemId());
 
         Long estabId = defaultIfNull(command.getEstabId(), 0L);
-        String roleCode = generateRoleCode(command.getSystemId(), estabId, command.getRoleCode());
+        String roleCode = generateRoleCode(estabId, command.getRoleCode());
 
         RoleEntity entity = new RoleEntity();
-        entity.setSystemId(command.getSystemId());
         entity.setEstabId(estabId);
         entity.setRoleCode(roleCode);
         entity.setRoleName(command.getRoleName().trim());
         entity.setRoleType(defaultIfNull(command.getRoleType(), 2));
-        entity.setDataScopeType(defaultIfNull(command.getDataScopeType(), 0));
-        entity.setParentRoleId(defaultIfNull(command.getParentRoleId(), 0L));
         entity.setIsBuiltin(defaultIfNull(command.getIsBuiltin(), 0));
         entity.setStatus(defaultIfNull(command.getStatus(), 1));
         entity.setSort(defaultIfNull(command.getSort(), 0));
@@ -217,9 +208,6 @@ public class SystemApplicationService {
 
     /**
      * 更新角色
-     *
-     * @param command 更新命令
-     * @return 角色详情
      */
     @Transactional(rollbackFor = Exception.class)
     public RoleDTO updateRole(UpdateRoleCommand command) {
@@ -230,8 +218,6 @@ public class SystemApplicationService {
         RoleEntity existing = requireRole(command.getRoleId());
         existing.setRoleName(command.getRoleName().trim());
         existing.setRoleType(defaultIfNull(command.getRoleType(), existing.getRoleType()));
-        existing.setDataScopeType(defaultIfNull(command.getDataScopeType(), existing.getDataScopeType()));
-        existing.setParentRoleId(defaultIfNull(command.getParentRoleId(), existing.getParentRoleId()));
         existing.setIsBuiltin(defaultIfNull(command.getIsBuiltin(), existing.getIsBuiltin()));
         existing.setStatus(defaultIfNull(command.getStatus(), existing.getStatus()));
         existing.setSort(defaultIfNull(command.getSort(), existing.getSort()));
@@ -242,9 +228,6 @@ public class SystemApplicationService {
 
     /**
      * 查询角色授权信息
-     *
-     * @param roleId 角色ID
-     * @return 角色授权信息
      */
     public RoleBindingDTO getRoleBindings(Long roleId) {
         requireRole(roleId);
@@ -260,8 +243,6 @@ public class SystemApplicationService {
 
     /**
      * 角色授权用户
-     *
-     * @param command 授权命令
      */
     @Transactional(rollbackFor = Exception.class)
     public void assignRoleUsers(AssignRoleUsersCommand command) {
@@ -276,8 +257,6 @@ public class SystemApplicationService {
 
     /**
      * 角色授权菜单与操作
-     *
-     * @param command 授权命令
      */
     @Transactional(rollbackFor = Exception.class)
     public void assignRolePermissions(AssignRolePermissionsCommand command) {
@@ -288,7 +267,7 @@ public class SystemApplicationService {
 
         List<Long> menuIds = normalizeIdList(command.getMenuIds());
         if (!menuIds.isEmpty()) {
-            long existingMenuCount = systemRepository.countMenusByIdsAndSystemId(role.getSystemId(), menuIds);
+            long existingMenuCount = systemRepository.countMenusByIdsAndEstabId(role.getEstabId(), menuIds);
             if (existingMenuCount != menuIds.size()) {
                 throw new BizException(SystemErrorCode.MENU_NOT_FOUND);
             }
@@ -296,7 +275,7 @@ public class SystemApplicationService {
 
         List<Long> menuOpIds = normalizeIdList(command.getMenuOpIds());
         if (!menuOpIds.isEmpty()) {
-            long existingOpCount = systemRepository.countMenuOpsByIdsAndSystemId(role.getSystemId(), menuOpIds);
+            long existingOpCount = systemRepository.countMenuOpsByIdsAndEstabId(role.getEstabId(), menuOpIds);
             if (existingOpCount != menuOpIds.size()) {
                 throw new BizException(SystemErrorCode.MENU_OP_NOT_FOUND);
             }
@@ -304,8 +283,8 @@ public class SystemApplicationService {
 
         List<Long> drsInterfaceIds = normalizeIdList(command.getDrsInterfaceIds());
         if (!drsInterfaceIds.isEmpty()) {
-            long existingDrsInterfaceCount = systemRepository.countDrsInterfacesByIdsAndSystemId(
-                    role.getSystemId(),
+            long existingDrsInterfaceCount = systemRepository.countDrsInterfacesByIdsAndEstabId(
+                    role.getEstabId(),
                     drsInterfaceIds
             );
             if (existingDrsInterfaceCount != drsInterfaceIds.size()) {
@@ -319,9 +298,6 @@ public class SystemApplicationService {
 
     /**
      * 查询菜单详情
-     *
-     * @param menuId 菜单ID
-     * @return 菜单详情
      */
     public MenuDTO getMenu(Long menuId) {
         MenuEntity menu = requireMenu(menuId);
@@ -330,9 +306,6 @@ public class SystemApplicationService {
 
     /**
      * 创建菜单
-     *
-     * @param command 创建命令
-     * @return 菜单详情
      */
     @Transactional(rollbackFor = Exception.class)
     public MenuDTO createMenu(CreateMenuCommand command) {
@@ -343,29 +316,30 @@ public class SystemApplicationService {
         }
         requireSystem(command.getSystemId());
 
+        Long estabId = defaultIfNull(command.getEstabId(), 0L);
         Long parentId = defaultIfNull(command.getParentId(), 0L);
         if (parentId > 0) {
             MenuEntity parent = requireMenu(parentId);
-            if (!Objects.equals(parent.getSystemId(), command.getSystemId())) {
+            if (!Objects.equals(parent.getSystemId(), command.getSystemId())
+                    || !Objects.equals(parent.getEstabId(), estabId)) {
                 throw new BizException(SystemErrorCode.INVALID_PARAM);
             }
         }
 
-        String menuCode = generateMenuCode(command.getSystemId(), command.getMenuCode());
+        String menuCode = generateMenuCode(estabId, command.getSystemId(), command.getMenuCode());
 
         MenuEntity entity = new MenuEntity();
+        entity.setEstabId(estabId);
         entity.setSystemId(command.getSystemId());
         entity.setParentId(parentId);
         entity.setMenuCode(menuCode);
         entity.setMenuName(command.getMenuName().trim());
         entity.setMenuType(defaultIfNull(command.getMenuType(), 1));
         entity.setPath(trimToNull(command.getPath()));
-        entity.setComponent(trimToNull(command.getComponent()));
-        entity.setPermissionKey(trimToNull(command.getPermissionKey()));
         entity.setIcon(trimToNull(command.getIcon()));
+        entity.setIsBuiltin(defaultIfNull(command.getIsBuiltin(), 0));
         entity.setVisible(defaultIfNull(command.getVisible(), 1));
         entity.setIsFrame(defaultIfNull(command.getIsFrame(), 0));
-        entity.setIsCache(defaultIfNull(command.getIsCache(), 0));
         entity.setStatus(defaultIfNull(command.getStatus(), 1));
         entity.setSort(defaultIfNull(command.getSort(), 0));
 
@@ -375,9 +349,6 @@ public class SystemApplicationService {
 
     /**
      * 更新菜单
-     *
-     * @param command 更新命令
-     * @return 菜单详情
      */
     @Transactional(rollbackFor = Exception.class)
     public MenuDTO updateMenu(UpdateMenuCommand command) {
@@ -390,21 +361,19 @@ public class SystemApplicationService {
 
         MenuEntity existing = requireMenu(command.getMenuId());
         Long parentId = defaultIfNull(command.getParentId(), existing.getParentId());
-        if (parentId == null) {
-            parentId = 0L;
-        }
         if (Objects.equals(parentId, existing.getId())) {
             throw new BizException(SystemErrorCode.INVALID_PARAM);
         }
         if (parentId > 0) {
             MenuEntity parent = requireMenu(parentId);
-            if (!Objects.equals(parent.getSystemId(), existing.getSystemId())) {
+            if (!Objects.equals(parent.getSystemId(), existing.getSystemId())
+                    || !Objects.equals(parent.getEstabId(), existing.getEstabId())) {
                 throw new BizException(SystemErrorCode.INVALID_PARAM);
             }
         }
 
         String menuCode = command.getMenuCode().trim();
-        if (systemRepository.countMenuCode(existing.getSystemId(), menuCode, existing.getId()) > 0) {
+        if (systemRepository.countMenuCode(existing.getEstabId(), existing.getSystemId(), menuCode, existing.getId()) > 0) {
             throw new BizException(SystemErrorCode.MENU_CODE_DUPLICATED);
         }
 
@@ -413,12 +382,10 @@ public class SystemApplicationService {
         existing.setMenuName(command.getMenuName().trim());
         existing.setMenuType(defaultIfNull(command.getMenuType(), existing.getMenuType()));
         existing.setPath(trimToNull(command.getPath()));
-        existing.setComponent(trimToNull(command.getComponent()));
-        existing.setPermissionKey(trimToNull(command.getPermissionKey()));
         existing.setIcon(trimToNull(command.getIcon()));
+        existing.setIsBuiltin(defaultIfNull(command.getIsBuiltin(), existing.getIsBuiltin()));
         existing.setVisible(defaultIfNull(command.getVisible(), existing.getVisible()));
         existing.setIsFrame(defaultIfNull(command.getIsFrame(), existing.getIsFrame()));
-        existing.setIsCache(defaultIfNull(command.getIsCache(), existing.getIsCache()));
         existing.setStatus(defaultIfNull(command.getStatus(), existing.getStatus()));
         existing.setSort(defaultIfNull(command.getSort(), existing.getSort()));
 
@@ -428,12 +395,13 @@ public class SystemApplicationService {
 
     /**
      * 删除菜单
-     *
-     * @param menuId 菜单ID
      */
     @Transactional(rollbackFor = Exception.class)
     public void deleteMenu(Long menuId) {
         MenuEntity menu = requireMenu(menuId);
+        if (menu.getIsBuiltin() != null && menu.getIsBuiltin() == 1) {
+            throw new BizException(SystemErrorCode.MENU_BUILTIN_FORBIDDEN);
+        }
         if (systemRepository.countChildMenus(menu.getId()) > 0) {
             throw new BizException(SystemErrorCode.MENU_HAS_CHILDREN);
         }
@@ -446,9 +414,6 @@ public class SystemApplicationService {
 
     /**
      * 查询菜单操作列表
-     *
-     * @param menuId 菜单ID
-     * @return 菜单操作列表
      */
     public PageResponse<MenuOpManageDTO> listMenuOps(Long menuId, int currentPage, int pageSize) {
         requireMenu(menuId);
@@ -466,9 +431,6 @@ public class SystemApplicationService {
 
     /**
      * 查询菜单操作详情
-     *
-     * @param menuOpId 菜单操作ID
-     * @return 菜单操作详情
      */
     public MenuOpManageDTO getMenuOp(Long menuOpId) {
         MenuOpEntity menuOp = requireMenuOp(menuOpId);
@@ -477,15 +439,10 @@ public class SystemApplicationService {
 
     /**
      * 创建菜单操作
-     *
-     * @param command 创建命令
-     * @return 菜单操作详情
      */
     @Transactional(rollbackFor = Exception.class)
     public MenuOpManageDTO createMenuOp(CreateMenuOpCommand command) {
-        if (command == null
-                || command.getMenuId() == null
-                || isBlank(command.getOpName())) {
+        if (command == null || command.getMenuId() == null || isBlank(command.getOpName())) {
             throw new BizException(SystemErrorCode.INVALID_PARAM);
         }
 
@@ -496,9 +453,6 @@ public class SystemApplicationService {
         entity.setMenuId(menu.getId());
         entity.setOpCode(opCode);
         entity.setOpName(command.getOpName().trim());
-        entity.setHttpMethod(trimToNull(command.getHttpMethod()));
-        entity.setPathPattern(trimToNull(command.getPathPattern()));
-        entity.setPermissionKey(trimToNull(command.getPermissionKey()));
         entity.setStatus(defaultIfNull(command.getStatus(), 1));
         entity.setSort(defaultIfNull(command.getSort(), 0));
 
@@ -508,9 +462,6 @@ public class SystemApplicationService {
 
     /**
      * 更新菜单操作
-     *
-     * @param command 更新命令
-     * @return 菜单操作详情
      */
     @Transactional(rollbackFor = Exception.class)
     public MenuOpManageDTO updateMenuOp(UpdateMenuOpCommand command) {
@@ -529,9 +480,6 @@ public class SystemApplicationService {
 
         existing.setOpCode(opCode);
         existing.setOpName(command.getOpName().trim());
-        existing.setHttpMethod(trimToNull(command.getHttpMethod()));
-        existing.setPathPattern(trimToNull(command.getPathPattern()));
-        existing.setPermissionKey(trimToNull(command.getPermissionKey()));
         existing.setStatus(defaultIfNull(command.getStatus(), existing.getStatus()));
         existing.setSort(defaultIfNull(command.getSort(), existing.getSort()));
 
@@ -541,8 +489,6 @@ public class SystemApplicationService {
 
     /**
      * 删除菜单操作
-     *
-     * @param menuOpId 菜单操作ID
      */
     @Transactional(rollbackFor = Exception.class)
     public void deleteMenuOp(Long menuOpId) {
@@ -553,9 +499,6 @@ public class SystemApplicationService {
 
     /**
      * 按系统查询菜单树
-     *
-     * @param command 查询命令
-     * @return 菜单树
      */
     public List<MenuTreeNodeDTO> getMenuTree(QueryMenuTreeCommand command) {
         if (command == null || command.getSystemId() == null) {
@@ -563,19 +506,20 @@ public class SystemApplicationService {
         }
         requireSystem(command.getSystemId());
 
+        Long estabId = defaultIfNull(command.getEstabId(), 0L);
         Set<Long> assignedMenuIds = new LinkedHashSet<>();
         Set<Long> assignedMenuOpIds = new LinkedHashSet<>();
         if (command.getRoleId() != null) {
             RoleEntity role = requireRole(command.getRoleId());
-            if (!Objects.equals(role.getSystemId(), command.getSystemId())) {
+            if (!Objects.equals(role.getEstabId(), estabId)) {
                 throw new BizException(SystemErrorCode.INVALID_PARAM);
             }
             assignedMenuIds.addAll(systemRepository.listRoleMenuIds(role.getId()));
             assignedMenuOpIds.addAll(systemRepository.listRoleMenuOpIds(role.getId()));
         }
 
-        List<MenuEntity> menuEntities = systemRepository.listMenusBySystemId(command.getSystemId());
-        List<MenuOpEntity> menuOpEntities = systemRepository.listMenuOpsBySystemId(command.getSystemId());
+        List<MenuEntity> menuEntities = systemRepository.listMenus(estabId, command.getSystemId());
+        List<MenuOpEntity> menuOpEntities = systemRepository.listMenuOps(estabId, command.getSystemId());
 
         Map<Long, List<MenuOpDTO>> menuOpMap = new LinkedHashMap<>();
         for (MenuOpEntity menuOpEntity : menuOpEntities) {
@@ -611,12 +555,6 @@ public class SystemApplicationService {
         return roots;
     }
 
-    /**
-     * 查询角色绑定用户简要信息
-     *
-     * @param userIds 用户ID列表
-     * @return 用户简要信息列表
-     */
     private List<RoleBindingUserDTO> listRoleBindingUsers(List<Long> userIds) {
         if (userIds == null || userIds.isEmpty()) {
             return new ArrayList<>();
@@ -651,62 +589,40 @@ public class SystemApplicationService {
         return result;
     }
 
-    /**
-     * 生成角色编码
-     *
-     * @param systemId 系统ID
-     * @param estabId  企业ID
-     * @param code     指定编码
-     * @return 可用编码
-     */
-    private String generateRoleCode(Long systemId, Long estabId, String code) {
+    private String generateRoleCode(Long estabId, String code) {
         if (!isBlank(code)) {
             String normalized = code.trim();
-            if (systemRepository.countRoleCode(systemId, estabId, normalized, null) > 0) {
+            if (systemRepository.countRoleCode(estabId, normalized, null) > 0) {
                 throw new BizException(SystemErrorCode.ROLE_CODE_DUPLICATED);
             }
             return normalized;
         }
         for (int i = 0; i < MAX_CODE_GENERATE_ATTEMPTS; i++) {
             String candidate = UniqueCodeUtils.randomUpperCode("ROLE_", 8);
-            if (systemRepository.countRoleCode(systemId, estabId, candidate, null) == 0) {
+            if (systemRepository.countRoleCode(estabId, candidate, null) == 0) {
                 return candidate;
             }
         }
         throw new BizException("自动生成角色编码失败，请稍后重试", SystemErrorCode.ROLE_CODE_DUPLICATED);
     }
 
-    /**
-     * 生成菜单编码
-     *
-     * @param systemId 系统ID
-     * @param code     指定编码
-     * @return 可用编码
-     */
-    private String generateMenuCode(Long systemId, String code) {
+    private String generateMenuCode(Long estabId, Long systemId, String code) {
         if (!isBlank(code)) {
             String normalized = code.trim();
-            if (systemRepository.countMenuCode(systemId, normalized, null) > 0) {
+            if (systemRepository.countMenuCode(estabId, systemId, normalized, null) > 0) {
                 throw new BizException(SystemErrorCode.MENU_CODE_DUPLICATED);
             }
             return normalized;
         }
         for (int i = 0; i < MAX_CODE_GENERATE_ATTEMPTS; i++) {
             String candidate = UniqueCodeUtils.randomUpperCode("MENU_", 8);
-            if (systemRepository.countMenuCode(systemId, candidate, null) == 0) {
+            if (systemRepository.countMenuCode(estabId, systemId, candidate, null) == 0) {
                 return candidate;
             }
         }
         throw new BizException("自动生成菜单编码失败，请稍后重试", SystemErrorCode.MENU_CODE_DUPLICATED);
     }
 
-    /**
-     * 生成菜单操作编码
-     *
-     * @param menuId 菜单ID
-     * @param code   指定编码
-     * @return 可用编码
-     */
     private String generateMenuOpCode(Long menuId, String code) {
         if (!isBlank(code)) {
             String normalized = code.trim();
@@ -724,12 +640,6 @@ public class SystemApplicationService {
         throw new BizException("自动生成菜单操作编码失败，请稍后重试", SystemErrorCode.MENU_OP_CODE_DUPLICATED);
     }
 
-    /**
-     * 获取系统
-     *
-     * @param systemId 系统ID
-     * @return 系统
-     */
     private SystemEntity requireSystem(Long systemId) {
         if (systemId == null) {
             throw new BizException(SystemErrorCode.INVALID_PARAM);
@@ -742,12 +652,6 @@ public class SystemApplicationService {
         return system;
     }
 
-    /**
-     * 获取角色
-     *
-     * @param roleId 角色ID
-     * @return 角色
-     */
     private RoleEntity requireRole(Long roleId) {
         if (roleId == null) {
             throw new BizException(SystemErrorCode.INVALID_PARAM);
@@ -760,12 +664,6 @@ public class SystemApplicationService {
         return role;
     }
 
-    /**
-     * 获取菜单
-     *
-     * @param menuId 菜单ID
-     * @return 菜单
-     */
     private MenuEntity requireMenu(Long menuId) {
         if (menuId == null) {
             throw new BizException(SystemErrorCode.INVALID_PARAM);
@@ -777,12 +675,6 @@ public class SystemApplicationService {
         return menu;
     }
 
-    /**
-     * 获取菜单操作
-     *
-     * @param menuOpId 菜单操作ID
-     * @return 菜单操作
-     */
     private MenuOpEntity requireMenuOp(Long menuOpId) {
         if (menuOpId == null) {
             throw new BizException(SystemErrorCode.INVALID_PARAM);
@@ -794,12 +686,6 @@ public class SystemApplicationService {
         return menuOp;
     }
 
-    /**
-     * 规范化ID列表
-     *
-     * @param ids ID列表
-     * @return 规范化后的ID列表
-     */
     private List<Long> normalizeIdList(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return new ArrayList<>();

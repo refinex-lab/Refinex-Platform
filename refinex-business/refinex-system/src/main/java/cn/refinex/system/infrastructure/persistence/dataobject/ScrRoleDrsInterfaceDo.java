@@ -6,13 +6,13 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * 角色数据资源接口授权 DO
+ * 角色数据资源授权 DO
  *
  * @author refinex
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-@TableName("scr_role_drs_interface")
+@TableName("scr_role_drs")
 public class ScrRoleDrsInterfaceDo extends BaseEntity {
 
     /**

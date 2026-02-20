@@ -4,16 +4,12 @@ import cn.dev33.satoken.stp.StpUtil;
 import cn.refinex.api.user.model.context.LoginUser;
 import cn.refinex.api.user.model.vo.UserInfo;
 import cn.refinex.auth.api.dto.SwitchEstabRequest;
-import cn.refinex.auth.config.AuthProperties;
 import cn.refinex.auth.api.vo.TokenInfo;
-import cn.refinex.auth.domain.entity.ScrSystem;
 import cn.refinex.auth.domain.error.AuthErrorCode;
 import cn.refinex.auth.infrastructure.client.user.UserRemoteGateway;
 import cn.refinex.auth.infrastructure.mapper.AuthRbacMapper;
-import cn.refinex.auth.infrastructure.mapper.ScrSystemMapper;
 import cn.refinex.base.exception.BizException;
 import cn.refinex.web.vo.Result;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import jakarta.validation.Valid;
 import cn.refinex.satoken.helper.LoginUserHelper;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -38,8 +34,6 @@ public class TokenController {
 
     private final UserRemoteGateway userRemoteGateway;
     private final AuthRbacMapper authRbacMapper;
-    private final ScrSystemMapper scrSystemMapper;
-    private final AuthProperties authProperties;
 
     /**
      * 获取当前登录的token信息
@@ -94,9 +88,8 @@ public class TokenController {
 
         UserInfo userInfo = userRemoteGateway.queryUserInfo(loginUser.getUserId(), request.getEstabId());
 
-        Long systemId = resolveSystemId(authProperties.getDefaultSystemCode());
-        List<String> roleCodes = authRbacMapper.findRoleCodes(loginUser.getUserId(), request.getEstabId(), systemId);
-        List<String> permissionCodes = authRbacMapper.findPermissionKeys(loginUser.getUserId(), request.getEstabId(), systemId);
+        List<String> roleCodes = authRbacMapper.findRoleCodes(loginUser.getUserId(), request.getEstabId());
+        List<String> permissionCodes = authRbacMapper.findPermissionKeys(loginUser.getUserId(), request.getEstabId());
 
         loginUser.setUserCode(userInfo.getUserCode());
         loginUser.setUsername(userInfo.getUsername());
@@ -118,19 +111,5 @@ public class TokenController {
 
         LoginUserHelper.setLoginUser(loginUser);
         return Result.success(loginUser);
-    }
-
-    private Long resolveSystemId(String systemCode) {
-        if (systemCode == null || systemCode.isBlank()) {
-            return null;
-        }
-
-        ScrSystem system = scrSystemMapper.selectOne(
-                Wrappers.lambdaQuery(ScrSystem.class)
-                        .eq(ScrSystem::getSystemCode, systemCode)
-                        .eq(ScrSystem::getDeleted, 0)
-                        .last("LIMIT 1")
-        );
-        return system == null ? null : system.getId();
     }
 }

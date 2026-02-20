@@ -3,8 +3,6 @@ package cn.refinex.system.interfaces.dto;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -16,13 +14,6 @@ import lombok.Data;
  */
 @Data
 public class RoleCreateRequest {
-
-    /**
-     * 系统ID
-     */
-    @NotNull(message = "系统ID不能为空")
-    @Positive(message = "系统ID必须大于0")
-    private Long systemId;
 
     /**
      * 企业ID（0表示平台级角色）
@@ -49,19 +40,6 @@ public class RoleCreateRequest {
     @Min(value = 0, message = "角色类型取值非法")
     @Max(value = 2, message = "角色类型取值非法")
     private Integer roleType;
-
-    /**
-     * 数据范围 0全部 1本人 2团队/部门 3自定义
-     */
-    @Min(value = 0, message = "数据范围取值非法")
-    @Max(value = 3, message = "数据范围取值非法")
-    private Integer dataScopeType;
-
-    /**
-     * 父角色ID
-     */
-    @PositiveOrZero(message = "父角色ID不能小于0")
-    private Long parentRoleId;
 
     /**
      * 是否内置 1是 0否

@@ -12,6 +12,7 @@ import cn.refinex.system.application.dto.*;
 import cn.refinex.system.domain.error.SystemErrorCode;
 import cn.refinex.system.domain.model.entity.*;
 import cn.refinex.system.domain.repository.OrganizationRepository;
+import cn.refinex.system.domain.repository.SystemRepository;
 import cn.refinex.system.infrastructure.client.user.UserManageRemoteGateway;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.collections4.CollectionUtils;
@@ -37,6 +38,7 @@ public class OrganizationApplicationService {
     private static final int TEAM_CODE_GENERATE_MAX_RETRY = 20;
 
     private final OrganizationRepository organizationRepository;
+    private final SystemRepository systemRepository;
     private final SystemDomainAssembler systemDomainAssembler;
     private final UserManageRemoteGateway userManageRemoteGateway;
 
@@ -150,6 +152,7 @@ public class OrganizationApplicationService {
         estab.setRemark(trimToNull(command.getRemark()));
 
         EstabEntity created = organizationRepository.insertEstab(estab);
+        initTenantBuiltinRoles(created.getId());
         return systemDomainAssembler.toEstabDto(created);
     }
 
@@ -593,6 +596,43 @@ public class OrganizationApplicationService {
             }
         }
         throw new BizException(SystemErrorCode.TEAM_CODE_DUPLICATED);
+    }
+
+    /**
+     * 初始化企业内置角色。
+     *
+     * @param estabId 企业ID
+     */
+    private void initTenantBuiltinRoles(Long estabId) {
+        if (estabId == null || estabId <= 0) {
+            return;
+        }
+
+        if (systemRepository.countRoleCode(estabId, "TENANT_ADMIN", null) == 0) {
+            RoleEntity tenantAdmin = new RoleEntity();
+            tenantAdmin.setEstabId(estabId);
+            tenantAdmin.setRoleCode("TENANT_ADMIN");
+            tenantAdmin.setRoleName("企业超级管理员");
+            tenantAdmin.setRoleType(1);
+            tenantAdmin.setIsBuiltin(1);
+            tenantAdmin.setStatus(1);
+            tenantAdmin.setSort(10);
+            tenantAdmin.setRemark("企业初始化内置角色");
+            systemRepository.insertRole(tenantAdmin);
+        }
+
+        if (systemRepository.countRoleCode(estabId, "TENANT_USER", null) == 0) {
+            RoleEntity tenantUser = new RoleEntity();
+            tenantUser.setEstabId(estabId);
+            tenantUser.setRoleCode("TENANT_USER");
+            tenantUser.setRoleName("所有人员");
+            tenantUser.setRoleType(1);
+            tenantUser.setIsBuiltin(1);
+            tenantUser.setStatus(1);
+            tenantUser.setSort(20);
+            tenantUser.setRemark("企业初始化内置角色");
+            systemRepository.insertRole(tenantUser);
+        }
     }
 
     /**

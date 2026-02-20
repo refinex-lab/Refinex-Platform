@@ -19,7 +19,6 @@ import cn.refinex.auth.config.AuthProperties;
 import cn.refinex.auth.domain.entity.DefEstabAuthPolicy;
 import cn.refinex.auth.domain.entity.ScrRole;
 import cn.refinex.auth.domain.entity.ScrRoleUser;
-import cn.refinex.auth.domain.entity.ScrSystem;
 import cn.refinex.auth.domain.enums.LoginType;
 import cn.refinex.auth.domain.enums.RegisterType;
 import cn.refinex.auth.domain.error.AuthErrorCode;
@@ -31,7 +30,6 @@ import cn.refinex.auth.infrastructure.mapper.AuthRbacMapper;
 import cn.refinex.auth.infrastructure.mapper.DefEstabAuthPolicyMapper;
 import cn.refinex.auth.infrastructure.mapper.ScrRoleMapper;
 import cn.refinex.auth.infrastructure.mapper.ScrRoleUserMapper;
-import cn.refinex.auth.infrastructure.mapper.ScrSystemMapper;
 import cn.refinex.auth.infrastructure.security.AuthSecurityService;
 import cn.refinex.auth.application.service.AuthService;
 import cn.refinex.auth.infrastructure.persistence.service.LoginLogService;
@@ -71,7 +69,6 @@ public class AuthServiceImpl implements AuthService {
     private final DefEstabAuthPolicyMapper defEstabAuthPolicyMapper;
     private final ScrRoleMapper scrRoleMapper;
     private final ScrRoleUserMapper scrRoleUserMapper;
-    private final ScrSystemMapper scrSystemMapper;
     private final AuthRbacMapper authRbacMapper;
 
     /**
@@ -468,16 +465,15 @@ public class AuthServiceImpl implements AuthService {
      */
     private LoginUser buildLoginUser(UserAuthSubjectDTO subject, Long estabId) {
         Long resolvedEstabId = estabId != null ? estabId : subject.getPrimaryEstabId();
-        Long systemId = resolveSystemId(authProperties.getDefaultSystemCode());
         List<String> roleCodes = resolvedEstabId == null
                 ? Collections.emptyList()
-                : authRbacMapper.findRoleCodes(subject.getUserId(), resolvedEstabId, systemId);
+                : authRbacMapper.findRoleCodes(subject.getUserId(), resolvedEstabId);
         if (roleCodes == null) {
             roleCodes = Collections.emptyList();
         }
         List<String> permissionCodes = resolvedEstabId == null
                 ? Collections.emptyList()
-                : authRbacMapper.findPermissionKeys(subject.getUserId(), resolvedEstabId, systemId);
+                : authRbacMapper.findPermissionKeys(subject.getUserId(), resolvedEstabId);
         if (permissionCodes == null) {
             permissionCodes = Collections.emptyList();
         }
@@ -531,27 +527,6 @@ public class AuthServiceImpl implements AuthService {
         roleUser.setStatus(1);
         roleUser.setGrantedTime(LocalDateTime.now());
         scrRoleUserMapper.insert(roleUser);
-    }
-
-    /**
-     * 解析系统ID
-     *
-     * @param systemCode 系统代码
-     * @return           系统ID
-     */
-    private Long resolveSystemId(String systemCode) {
-        if (systemCode == null || systemCode.isBlank()) {
-            return null;
-        }
-
-        ScrSystem system = scrSystemMapper.selectOne(
-                Wrappers.lambdaQuery(ScrSystem.class)
-                        .eq(ScrSystem::getSystemCode, systemCode)
-                        .eq(ScrSystem::getDeleted, 0)
-                        .last(LIMIT_ONE)
-        );
-
-        return system == null ? null : system.getId();
     }
 
     /**

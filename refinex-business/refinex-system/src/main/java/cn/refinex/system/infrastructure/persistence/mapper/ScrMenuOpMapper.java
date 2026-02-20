@@ -17,35 +17,30 @@ import java.util.List;
 public interface ScrMenuOpMapper extends BaseMapper<ScrMenuOpDo> {
 
     /**
-     * 按系统查询菜单操作
-     *
-     * @param systemId 系统ID
-     * @return 菜单操作列表
+     * 按企业+系统查询菜单操作
      */
     @Select("""
             SELECT mo.*
             FROM scr_menu_op mo
             JOIN scr_menu m ON m.id = mo.menu_id
-            WHERE m.system_id = #{systemId}
+            WHERE m.estab_id = #{estabId}
+              AND m.system_id = #{systemId}
               AND m.deleted = 0
               AND mo.deleted = 0
             ORDER BY m.sort ASC, m.id ASC, mo.sort ASC, mo.id ASC
             """)
-    List<ScrMenuOpDo> selectBySystemId(@Param("systemId") Long systemId);
+    List<ScrMenuOpDo> selectByEstabAndSystemId(@Param("estabId") Long estabId,
+                                               @Param("systemId") Long systemId);
 
     /**
-     * 按系统统计菜单操作数量
-     *
-     * @param systemId 系统ID
-     * @param menuOpIds 菜单操作ID列表
-     * @return 数量
+     * 按企业统计菜单操作数量
      */
     @Select({
             "<script>",
             "SELECT COUNT(1)",
             "FROM scr_menu_op mo",
             "JOIN scr_menu m ON m.id = mo.menu_id",
-            "WHERE m.system_id = #{systemId}",
+            "WHERE m.estab_id = #{estabId}",
             "  AND m.deleted = 0",
             "  AND mo.deleted = 0",
             "  AND mo.id IN",
@@ -54,5 +49,5 @@ public interface ScrMenuOpMapper extends BaseMapper<ScrMenuOpDo> {
             "  </foreach>",
             "</script>"
     })
-    long countByIdsAndSystemId(@Param("systemId") Long systemId, @Param("menuOpIds") List<Long> menuOpIds);
+    long countByIdsAndEstabId(@Param("estabId") Long estabId, @Param("menuOpIds") List<Long> menuOpIds);
 }

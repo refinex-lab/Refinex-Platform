@@ -26,19 +26,9 @@ public class CreateDrsInterfaceCommand {
     private String interfaceName;
 
     /**
-     * HTTP方法
+     * 数据资源SQL
      */
-    private String httpMethod;
-
-    /**
-     * 接口路径模式
-     */
-    private String pathPattern;
-
-    /**
-     * 权限标识
-     */
-    private String permissionKey;
+    private String interfaceSql;
 
     /**
      * 状态 1启用 2停用

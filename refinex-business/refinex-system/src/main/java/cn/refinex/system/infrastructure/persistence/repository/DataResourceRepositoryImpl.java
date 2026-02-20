@@ -33,33 +33,20 @@ public class DataResourceRepositoryImpl implements DataResourceRepository {
     private final DrsDoConverter drsDoConverter;
     private final DrsInterfaceDoConverter drsInterfaceDoConverter;
 
-    /**
-     * 查询数据资源列表
-     *
-     * @param systemId     系统ID
-     * @param status       状态
-     * @param drsType      资源类型
-     * @param ownerEstabId 所属组织ID
-     * @param keyword      关键字
-     * @return 数据资源列表
-     */
     @Override
-    public PageResponse<DrsEntity> listDrs(Long systemId, Integer status, Integer drsType, Long ownerEstabId,
-                                           String keyword, int currentPage, int pageSize) {
+    public PageResponse<DrsEntity> listDrs(Integer status, Long ownerEstabId, Integer dataOwnerType, String keyword,
+                                           int currentPage, int pageSize) {
         LambdaQueryWrapper<ScrDrsDo> query = Wrappers.lambdaQuery(ScrDrsDo.class)
                 .eq(ScrDrsDo::getDeleted, 0)
                 .orderByAsc(ScrDrsDo::getId);
-        if (systemId != null) {
-            query.eq(ScrDrsDo::getSystemId, systemId);
-        }
         if (status != null) {
             query.eq(ScrDrsDo::getStatus, status);
         }
-        if (drsType != null) {
-            query.eq(ScrDrsDo::getDrsType, drsType);
-        }
         if (ownerEstabId != null) {
             query.eq(ScrDrsDo::getOwnerEstabId, ownerEstabId);
+        }
+        if (dataOwnerType != null) {
+            query.eq(ScrDrsDo::getDataOwnerType, dataOwnerType);
         }
         if (keyword != null && !keyword.isBlank()) {
             String trimmed = keyword.trim();
@@ -67,38 +54,23 @@ public class DataResourceRepositoryImpl implements DataResourceRepository {
         }
         Page<ScrDrsDo> page = new Page<>(currentPage, pageSize);
         Page<ScrDrsDo> rowsPage = scrDrsMapper.selectPage(page, query);
-        List<ScrDrsDo> rows = rowsPage.getRecords();
         List<DrsEntity> result = new ArrayList<>();
-        for (ScrDrsDo row : rows) {
+        for (ScrDrsDo row : rowsPage.getRecords()) {
             result.add(drsDoConverter.toEntity(row));
         }
         return PageResponse.of(result, rowsPage.getTotal(), (int) rowsPage.getSize(), (int) rowsPage.getCurrent());
     }
 
-    /**
-     * 根据数据资源ID查询数据资源
-     *
-     * @param drsId 数据资源ID
-     * @return 数据资源
-     */
     @Override
     public DrsEntity findDrsById(Long drsId) {
         ScrDrsDo row = scrDrsMapper.selectById(drsId);
         return row == null ? null : drsDoConverter.toEntity(row);
     }
 
-    /**
-     * 根据系统ID和数据资源编码统计数据资源数量
-     *
-     * @param systemId     系统ID
-     * @param drsCode      数据资源编码
-     * @param excludeDrsId 排除的数据资源ID
-     * @return 数据资源数量
-     */
     @Override
-    public long countDrsCode(Long systemId, String drsCode, Long excludeDrsId) {
+    public long countDrsCode(Long ownerEstabId, String drsCode, Long excludeDrsId) {
         LambdaQueryWrapper<ScrDrsDo> query = Wrappers.lambdaQuery(ScrDrsDo.class)
-                .eq(ScrDrsDo::getSystemId, systemId)
+                .eq(ScrDrsDo::getOwnerEstabId, ownerEstabId)
                 .eq(ScrDrsDo::getDrsCode, drsCode)
                 .eq(ScrDrsDo::getDeleted, 0);
         if (excludeDrsId != null) {
@@ -108,12 +80,6 @@ public class DataResourceRepositoryImpl implements DataResourceRepository {
         return count == null ? 0L : count;
     }
 
-    /**
-     * 插入数据资源
-     *
-     * @param drs 数据资源
-     * @return 数据资源
-     */
     @Override
     public DrsEntity insertDrs(DrsEntity drs) {
         ScrDrsDo row = drsDoConverter.toDo(drs);
@@ -121,33 +87,17 @@ public class DataResourceRepositoryImpl implements DataResourceRepository {
         return drsDoConverter.toEntity(row);
     }
 
-    /**
-     * 更新数据资源
-     *
-     * @param drs 数据资源
-     */
     @Override
     public void updateDrs(DrsEntity drs) {
         ScrDrsDo row = drsDoConverter.toDo(drs);
         scrDrsMapper.updateById(row);
     }
 
-    /**
-     * 删除数据资源（逻辑删除）
-     *
-     * @param drsId 数据资源ID
-     */
     @Override
     public void deleteDrsById(Long drsId) {
         scrDrsMapper.deleteById(drsId);
     }
 
-    /**
-     * 根据数据资源ID统计接口数量
-     *
-     * @param drsId 数据资源ID
-     * @return 接口数量
-     */
     @Override
     public long countDrsInterfaces(Long drsId) {
         Long count = scrDrsInterfaceMapper.selectCount(
@@ -158,14 +108,6 @@ public class DataResourceRepositoryImpl implements DataResourceRepository {
         return count == null ? 0L : count;
     }
 
-    /**
-     * 查询数据资源接口列表
-     *
-     * @param drsId   数据资源ID
-     * @param status  状态
-     * @param keyword 关键字
-     * @return 数据资源接口列表
-     */
     @Override
     public PageResponse<DrsInterfaceEntity> listDrsInterfaces(Long drsId, Integer status, String keyword,
                                                               int currentPage, int pageSize) {
@@ -183,34 +125,19 @@ public class DataResourceRepositoryImpl implements DataResourceRepository {
         }
         Page<ScrDrsInterfaceDo> page = new Page<>(currentPage, pageSize);
         Page<ScrDrsInterfaceDo> rowsPage = scrDrsInterfaceMapper.selectPage(page, query);
-        List<ScrDrsInterfaceDo> rows = rowsPage.getRecords();
         List<DrsInterfaceEntity> result = new ArrayList<>();
-        for (ScrDrsInterfaceDo row : rows) {
+        for (ScrDrsInterfaceDo row : rowsPage.getRecords()) {
             result.add(drsInterfaceDoConverter.toEntity(row));
         }
         return PageResponse.of(result, rowsPage.getTotal(), (int) rowsPage.getSize(), (int) rowsPage.getCurrent());
     }
 
-    /**
-     * 根据接口ID查询数据资源接口
-     *
-     * @param interfaceId 接口ID
-     * @return 数据资源接口
-     */
     @Override
     public DrsInterfaceEntity findDrsInterfaceById(Long interfaceId) {
         ScrDrsInterfaceDo row = scrDrsInterfaceMapper.selectById(interfaceId);
         return row == null ? null : drsInterfaceDoConverter.toEntity(row);
     }
 
-    /**
-     * 根据数据资源ID和接口编码统计数据资源接口数量
-     *
-     * @param drsId              数据资源ID
-     * @param interfaceCode      接口编码
-     * @param excludeInterfaceId 排除的接口ID
-     * @return 数据资源接口数量
-     */
     @Override
     public long countDrsInterfaceCode(Long drsId, String interfaceCode, Long excludeInterfaceId) {
         LambdaQueryWrapper<ScrDrsInterfaceDo> query = Wrappers.lambdaQuery(ScrDrsInterfaceDo.class)
@@ -224,12 +151,6 @@ public class DataResourceRepositoryImpl implements DataResourceRepository {
         return count == null ? 0L : count;
     }
 
-    /**
-     * 插入数据资源接口
-     *
-     * @param drsInterface 数据资源接口
-     * @return 数据资源接口
-     */
     @Override
     public DrsInterfaceEntity insertDrsInterface(DrsInterfaceEntity drsInterface) {
         ScrDrsInterfaceDo row = drsInterfaceDoConverter.toDo(drsInterface);
@@ -237,22 +158,12 @@ public class DataResourceRepositoryImpl implements DataResourceRepository {
         return drsInterfaceDoConverter.toEntity(row);
     }
 
-    /**
-     * 更新数据资源接口
-     *
-     * @param drsInterface 数据资源接口
-     */
     @Override
     public void updateDrsInterface(DrsInterfaceEntity drsInterface) {
         ScrDrsInterfaceDo row = drsInterfaceDoConverter.toDo(drsInterface);
         scrDrsInterfaceMapper.updateById(row);
     }
 
-    /**
-     * 删除数据资源接口（逻辑删除）
-     *
-     * @param interfaceId 接口ID
-     */
     @Override
     public void deleteDrsInterfaceById(Long interfaceId) {
         scrDrsInterfaceMapper.deleteById(interfaceId);

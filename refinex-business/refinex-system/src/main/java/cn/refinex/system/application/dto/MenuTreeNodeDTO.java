@@ -34,7 +34,7 @@ public class MenuTreeNodeDTO {
     private String menuName;
 
     /**
-     * 菜单类型 0目录 1菜单 2按钮
+     * 菜单类型 0目录 1菜单
      */
     private Integer menuType;
 
@@ -44,19 +44,14 @@ public class MenuTreeNodeDTO {
     private String path;
 
     /**
-     * 组件路径
-     */
-    private String component;
-
-    /**
-     * 权限标识
-     */
-    private String permissionKey;
-
-    /**
      * 图标
      */
     private String icon;
+
+    /**
+     * 是否内建菜单 1是 0否
+     */
+    private Integer isBuiltin;
 
     /**
      * 是否可见 1可见 0隐藏
@@ -67,11 +62,6 @@ public class MenuTreeNodeDTO {
      * 是否外链 1是 0否
      */
     private Integer isFrame;
-
-    /**
-     * 是否缓存 1是 0否
-     */
-    private Integer isCache;
 
     /**
      * 状态 1启用 2停用

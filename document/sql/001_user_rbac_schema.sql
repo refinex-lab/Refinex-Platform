@@ -327,13 +327,10 @@ CREATE TABLE scr_system (
 DROP TABLE IF EXISTS scr_role;
 CREATE TABLE scr_role (
   id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
-  system_id BIGINT NOT NULL COMMENT '系统ID',
   estab_id BIGINT NOT NULL DEFAULT 0 COMMENT '组织ID(平台级为0)',
   role_code VARCHAR(64) NOT NULL COMMENT '角色编码',
   role_name VARCHAR(128) NOT NULL COMMENT '角色名称',
   role_type TINYINT NOT NULL DEFAULT 0 COMMENT '角色类型 0系统内置 1租户内置 2自定义',
-  data_scope_type TINYINT NOT NULL DEFAULT 0 COMMENT '数据范围 0全部 1本人 2团队/部门 3自定义',
-  parent_role_id BIGINT NOT NULL DEFAULT 0 COMMENT '父角色ID(用于层级角色)',
   is_builtin TINYINT NOT NULL DEFAULT 0 COMMENT '是否内置 1是 0否',
   status TINYINT NOT NULL DEFAULT 1 COMMENT '状态 1启用 2停用',
   sort INT NOT NULL DEFAULT 0 COMMENT '排序(升序)',
@@ -346,8 +343,7 @@ CREATE TABLE scr_role (
   lock_version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   gmt_create DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
   gmt_modified DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '修改时间',
-  UNIQUE KEY uk_role_code (system_id, estab_id, role_code),
-  KEY idx_role_parent (system_id, parent_role_id)
+  UNIQUE KEY uk_role_code (estab_id, role_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='角色';
 
 DROP TABLE IF EXISTS scr_role_user;
@@ -373,21 +369,19 @@ CREATE TABLE scr_role_user (
 DROP TABLE IF EXISTS scr_menu;
 CREATE TABLE scr_menu (
   id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+  estab_id BIGINT NOT NULL DEFAULT 0 COMMENT '组织ID(平台级为0)',
   system_id BIGINT NOT NULL COMMENT '系统ID',
   parent_id BIGINT NOT NULL DEFAULT 0 COMMENT '父级菜单ID',
   menu_code VARCHAR(64) NOT NULL COMMENT '菜单编码',
   menu_name VARCHAR(128) NOT NULL COMMENT '菜单名称',
-  menu_type TINYINT NOT NULL DEFAULT 1 COMMENT '菜单类型 0目录 1菜单 2按钮',
+  menu_type TINYINT NOT NULL DEFAULT 1 COMMENT '菜单类型 0目录 1菜单',
   path VARCHAR(255) DEFAULT NULL COMMENT '路由路径',
-  component VARCHAR(255) DEFAULT NULL COMMENT '前端组件',
-  permission_key VARCHAR(128) DEFAULT NULL COMMENT '权限标识(菜单级)',
   icon VARCHAR(64) DEFAULT NULL COMMENT '图标',
+  is_builtin TINYINT NOT NULL DEFAULT 0 COMMENT '是否内建菜单 1是 0否',
   visible TINYINT NOT NULL DEFAULT 1 COMMENT '是否可见 1可见 0隐藏',
   is_frame TINYINT NOT NULL DEFAULT 0 COMMENT '是否外链 1是 0否',
-  is_cache TINYINT NOT NULL DEFAULT 0 COMMENT '是否缓存 1是 0否',
   status TINYINT NOT NULL DEFAULT 1 COMMENT '状态 1启用 2停用',
   sort INT NOT NULL DEFAULT 0 COMMENT '排序(升序)',
-  ext_json JSON DEFAULT NULL COMMENT '扩展信息',
   create_by BIGINT DEFAULT NULL COMMENT '创建人用户ID',
   update_by BIGINT DEFAULT NULL COMMENT '更新人用户ID',
   delete_by BIGINT DEFAULT NULL COMMENT '删除人用户ID',
@@ -395,8 +389,8 @@ CREATE TABLE scr_menu (
   lock_version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   gmt_create DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
   gmt_modified DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '修改时间',
-  UNIQUE KEY uk_menu_code (system_id, menu_code),
-  KEY idx_menu_parent (system_id, parent_id)
+  UNIQUE KEY uk_menu_code (estab_id, system_id, menu_code),
+  KEY idx_menu_parent (estab_id, system_id, parent_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='菜单';
 
 DROP TABLE IF EXISTS scr_menu_op;
@@ -405,9 +399,6 @@ CREATE TABLE scr_menu_op (
   menu_id BIGINT NOT NULL COMMENT '菜单ID',
   op_code VARCHAR(64) NOT NULL COMMENT '操作编码',
   op_name VARCHAR(64) NOT NULL COMMENT '操作名称',
-  http_method VARCHAR(16) DEFAULT NULL COMMENT 'HTTP方法',
-  path_pattern VARCHAR(255) DEFAULT NULL COMMENT '接口路径(支持通配)',
-  permission_key VARCHAR(128) DEFAULT NULL COMMENT '权限标识(操作级)',
   status TINYINT NOT NULL DEFAULT 1 COMMENT '状态 1启用 2停用',
   sort INT NOT NULL DEFAULT 0 COMMENT '排序(升序)',
   ext_json JSON DEFAULT NULL COMMENT '扩展信息',
@@ -418,8 +409,7 @@ CREATE TABLE scr_menu_op (
   lock_version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   gmt_create DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
   gmt_modified DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '修改时间',
-  UNIQUE KEY uk_menu_op (menu_id, op_code),
-  KEY idx_menu_op_perm (permission_key)
+  UNIQUE KEY uk_menu_op (menu_id, op_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='菜单操作定义';
 
 DROP TABLE IF EXISTS scr_role_menu;
@@ -459,16 +449,12 @@ CREATE TABLE scr_role_menu_op (
 DROP TABLE IF EXISTS scr_drs;
 CREATE TABLE scr_drs (
   id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
-  system_id BIGINT NOT NULL COMMENT '系统ID',
   drs_code VARCHAR(64) NOT NULL COMMENT '数据资源编码',
   drs_name VARCHAR(128) NOT NULL COMMENT '数据资源名称',
-  drs_type TINYINT NOT NULL DEFAULT 0 COMMENT '资源类型 0数据库表 1接口资源 2文件 3其他',
-  resource_uri VARCHAR(255) DEFAULT NULL COMMENT '资源标识(表名/路径/URI)',
   owner_estab_id BIGINT NOT NULL DEFAULT 0 COMMENT '所属组织ID(平台级为0)',
-  data_owner_type TINYINT NOT NULL DEFAULT 0 COMMENT '数据归属 0平台 1租户 2用户',
+  data_owner_type TINYINT NOT NULL DEFAULT 0 COMMENT '数据归属 0平台 1租户',
   status TINYINT NOT NULL DEFAULT 1 COMMENT '状态 1启用 2停用',
   remark VARCHAR(255) DEFAULT NULL COMMENT '备注',
-  ext_json JSON DEFAULT NULL COMMENT '扩展信息',
   create_by BIGINT DEFAULT NULL COMMENT '创建人用户ID',
   update_by BIGINT DEFAULT NULL COMMENT '更新人用户ID',
   delete_by BIGINT DEFAULT NULL COMMENT '删除人用户ID',
@@ -476,7 +462,7 @@ CREATE TABLE scr_drs (
   lock_version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   gmt_create DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
   gmt_modified DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '修改时间',
-  UNIQUE KEY uk_drs_code (system_id, drs_code)
+  UNIQUE KEY uk_drs_code (owner_estab_id, drs_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='数据资源定义';
 
 DROP TABLE IF EXISTS scr_drs_interface;
@@ -485,9 +471,7 @@ CREATE TABLE scr_drs_interface (
   drs_id BIGINT NOT NULL COMMENT '数据资源ID',
   interface_code VARCHAR(64) NOT NULL COMMENT '接口编码',
   interface_name VARCHAR(128) NOT NULL COMMENT '接口名称',
-  http_method VARCHAR(16) DEFAULT NULL COMMENT 'HTTP方法',
-  path_pattern VARCHAR(255) DEFAULT NULL COMMENT '接口路径(支持通配)',
-  permission_key VARCHAR(128) DEFAULT NULL COMMENT '权限标识(数据接口级)',
+  interface_sql VARCHAR(5000) DEFAULT NULL COMMENT '数据资源SQL(查询主业务表的id集合参与 SQL WHERE id IN(interface_sql) 过滤)',
   status TINYINT NOT NULL DEFAULT 1 COMMENT '状态 1启用 2停用',
   sort INT NOT NULL DEFAULT 0 COMMENT '排序(升序)',
   ext_json JSON DEFAULT NULL COMMENT '扩展信息',
@@ -498,29 +482,11 @@ CREATE TABLE scr_drs_interface (
   lock_version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   gmt_create DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
   gmt_modified DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '修改时间',
-  UNIQUE KEY uk_drs_interface (drs_id, interface_code),
-  KEY idx_drs_interface_perm (permission_key)
+  UNIQUE KEY uk_drs_interface (drs_id, interface_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='数据资源接口';
 
 DROP TABLE IF EXISTS scr_role_drs;
 CREATE TABLE scr_role_drs (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
-  role_id BIGINT NOT NULL COMMENT '角色ID',
-  drs_id BIGINT NOT NULL COMMENT '数据资源ID',
-  scope_type TINYINT NOT NULL DEFAULT 0 COMMENT '数据范围 0全部 1本人 2团队/部门 3自定义',
-  scope_rule JSON DEFAULT NULL COMMENT '自定义规则(JSON表达式)',
-  create_by BIGINT DEFAULT NULL COMMENT '创建人用户ID',
-  update_by BIGINT DEFAULT NULL COMMENT '更新人用户ID',
-  delete_by BIGINT DEFAULT NULL COMMENT '删除人用户ID',
-  deleted TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除 0未删 1已删',
-  lock_version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
-  gmt_create DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
-  gmt_modified DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '修改时间',
-  UNIQUE KEY uk_role_drs (role_id, drs_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='角色-数据资源授权';
-
-DROP TABLE IF EXISTS scr_role_drs_interface;
-CREATE TABLE scr_role_drs_interface (
   id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
   role_id BIGINT NOT NULL COMMENT '角色ID',
   drs_interface_id BIGINT NOT NULL COMMENT '数据资源接口ID',
@@ -531,8 +497,8 @@ CREATE TABLE scr_role_drs_interface (
   lock_version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
   gmt_create DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
   gmt_modified DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '修改时间',
-  UNIQUE KEY uk_role_drs_interface (role_id, drs_interface_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='角色-数据资源接口授权';
+  UNIQUE KEY uk_role_drs (role_id, drs_interface_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='角色-数据资源授权';
 
 -- ============================
 -- 通知与验证码

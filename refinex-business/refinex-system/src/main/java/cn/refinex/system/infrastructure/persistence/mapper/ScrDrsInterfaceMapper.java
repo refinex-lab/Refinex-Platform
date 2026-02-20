@@ -17,18 +17,14 @@ import java.util.List;
 public interface ScrDrsInterfaceMapper extends BaseMapper<ScrDrsInterfaceDo> {
 
     /**
-     * 按系统统计数据资源接口数量
-     *
-     * @param systemId        系统ID
-     * @param interfaceIds    数据资源接口ID列表
-     * @return 数量
+     * 按企业统计数据资源接口数量
      */
     @Select({
             "<script>",
             "SELECT COUNT(1)",
             "FROM scr_drs_interface di",
             "JOIN scr_drs d ON d.id = di.drs_id",
-            "WHERE d.system_id = #{systemId}",
+            "WHERE d.owner_estab_id = #{estabId}",
             "  AND d.deleted = 0",
             "  AND di.deleted = 0",
             "  AND di.id IN",
@@ -37,6 +33,6 @@ public interface ScrDrsInterfaceMapper extends BaseMapper<ScrDrsInterfaceDo> {
             "  </foreach>",
             "</script>"
     })
-    long countByIdsAndSystemId(@Param("systemId") Long systemId,
-                               @Param("interfaceIds") List<Long> interfaceIds);
+    long countByIdsAndEstabId(@Param("estabId") Long estabId,
+                              @Param("interfaceIds") List<Long> interfaceIds);
 }

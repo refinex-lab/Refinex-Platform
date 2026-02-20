@@ -12,7 +12,7 @@ import lombok.EqualsAndHashCode;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-@TableName("scr_role_drs_interface")
+@TableName("scr_role_drs")
 public class ScrRoleDrsInterface extends BaseEntity {
 
     private Long roleId;
