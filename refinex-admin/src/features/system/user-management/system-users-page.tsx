@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
+import { ArrowDownIcon, ArrowUpIcon, CaretSortIcon } from '@radix-ui/react-icons'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
-  ArrowUpDown,
   Eye,
   EyeOff,
   Fingerprint,
@@ -682,16 +682,21 @@ export function SystemUsersPage() {
 
   function renderSortLabel(label: string, field: string) {
     const direction = query.sortBy === field ? query.sortDirection : undefined
-    const suffix = direction === 'asc' ? '↑' : direction === 'desc' ? '↓' : ''
+    const SortIcon =
+      direction === 'asc' ? ArrowUpIcon : direction === 'desc' ? ArrowDownIcon : CaretSortIcon
+    const iconClassName =
+      direction == null
+        ? 'h-3.5 w-3.5 text-muted-foreground/40 transition-colors group-hover:text-muted-foreground/70'
+        : 'h-3.5 w-3.5 text-foreground/80'
     return (
       <Button
         type='button'
         variant='ghost'
-        className='h-8 px-1 font-semibold'
+        className='group h-8 px-1.5 font-medium text-foreground/90 hover:text-foreground'
         onClick={() => toggleSort(field)}
       >
-        <span>{label}{suffix ? ` ${suffix}` : ''}</span>
-        <ArrowUpDown className='ml-1 h-3.5 w-3.5 text-muted-foreground' />
+        <span className='text-[13px]'>{label}</span>
+        <SortIcon className={`ml-1 ${iconClassName}`} />
       </Button>
     )
   }
@@ -750,7 +755,7 @@ export function SystemUsersPage() {
           </Button>
           <Button
             type='button'
-            variant='outline'
+            variant={selectedUserIds.size > 0 ? 'destructive' : 'outline'}
             className='gap-2'
             disabled={selectedUserIds.size === 0}
             onClick={() => confirmDeleteUsers(Array.from(selectedUserIds))}
@@ -765,11 +770,12 @@ export function SystemUsersPage() {
           ) : null}
         </div>
 
-        <Card className='overflow-hidden py-3 gap-3'>
+        <Card className='py-3 gap-3'>
           <CardContent className='pt-0'>
-            <Table>
-              <TableHeader>
-                <TableRow>
+            <div className='overflow-hidden rounded-md border border-border/90'>
+              <Table className='[&_td]:border-r [&_td]:border-border/70 [&_td:last-child]:border-r-0 [&_th]:border-r [&_th]:border-border/70 [&_th:last-child]:border-r-0'>
+                <TableHeader>
+                  <TableRow className='bg-muted/30 hover:bg-muted/30'>
                   <TableHead className='w-[48px]'>
                     <Checkbox
                       checked={users.length > 0 && selectedUserIds.size === users.filter((u) => u.userId != null).length}
@@ -787,140 +793,141 @@ export function SystemUsersPage() {
                   <TableHead>{renderSortLabel('主手机号', 'primaryPhone')}</TableHead>
                   <TableHead>{renderSortLabel('主邮箱', 'primaryEmail')}</TableHead>
                   <TableHead className='w-[132px] text-center'>操作</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={11}>
-                      <div className='flex items-center justify-center gap-2 py-8 text-muted-foreground'>
-                        <Loader2 className='h-4 w-4 animate-spin' />
-                        正在加载用户...
-                      </div>
-                    </TableCell>
                   </TableRow>
-                ) : users.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={11} className='py-8 text-center text-muted-foreground'>
-                      暂无用户数据
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  users.map((item) => (
-                    <TableRow
-                      key={item.userId}
-                      data-state={selectedUserId === item.userId ? 'selected' : undefined}
-                      className='cursor-pointer'
-                      onClick={() => setSelectedUser(item)}
-                    >
-                      <TableCell
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        <Checkbox
-                          checked={item.userId != null && selectedUserIds.has(item.userId)}
-                          onCheckedChange={(checked) => toggleRowSelect(item.userId, Boolean(checked))}
-                          aria-label='选择用户'
-                        />
-                      </TableCell>
-                      <TableCell>{item.userCode || '-'}</TableCell>
-                      <TableCell>{item.username || '-'}</TableCell>
-                      <TableCell>{item.displayName || '-'}</TableCell>
-                      <TableCell>{item.nickname || '-'}</TableCell>
-                      <TableCell>{item.primaryEstabName || '-'}</TableCell>
-                      <TableCell>{toUserTypeLabel(item.userType)}</TableCell>
-                      <TableCell className='text-center'>
-                        <Badge variant={item.status === 1 ? 'default' : 'secondary'}>
-                          {toStatusLabel(item.status)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className='flex items-center gap-2'>
-                          <span>{visiblePhoneUserIds.has(item.userId ?? -1) ? (item.primaryPhone || '-') : maskPhone(item.primaryPhone)}</span>
-                          <Button
-                            type='button'
-                            variant='ghost'
-                            size='icon'
-                            className='h-7 w-7'
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              togglePhoneVisible(item.userId)
-                            }}
-                          >
-                            {visiblePhoneUserIds.has(item.userId ?? -1) ? (
-                              <EyeOff className='h-4 w-4' />
-                            ) : (
-                              <Eye className='h-4 w-4' />
-                            )}
-                          </Button>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className='flex items-center gap-2'>
-                          <span>{visibleEmailUserIds.has(item.userId ?? -1) ? (item.primaryEmail || '-') : maskEmail(item.primaryEmail)}</span>
-                          <Button
-                            type='button'
-                            variant='ghost'
-                            size='icon'
-                            className='h-7 w-7'
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              toggleEmailVisible(item.userId)
-                            }}
-                          >
-                            {visibleEmailUserIds.has(item.userId ?? -1) ? (
-                              <EyeOff className='h-4 w-4' />
-                            ) : (
-                              <Eye className='h-4 w-4' />
-                            )}
-                          </Button>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className='flex items-center justify-center gap-1'>
-                          <Button
-                            type='button'
-                            variant='ghost'
-                            size='icon'
-                            className='h-8 w-8'
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              openViewUserDialog(item)
-                            }}
-                          >
-                            <Eye className='h-4 w-4' />
-                          </Button>
-                          <Button
-                            type='button'
-                            variant='ghost'
-                            size='icon'
-                            className='h-8 w-8'
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              openEditUserDialog(item)
-                            }}
-                          >
-                            <Pencil className='h-4 w-4' />
-                          </Button>
-                          <Button
-                            type='button'
-                            variant='ghost'
-                            size='icon'
-                            className='h-8 w-8 text-destructive'
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              if (!item.userId) return
-                              confirmDeleteUsers([item.userId])
-                            }}
-                          >
-                            <Trash2 className='h-4 w-4' />
-                          </Button>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={11}>
+                        <div className='flex items-center justify-center gap-2 py-8 text-muted-foreground'>
+                          <Loader2 className='h-4 w-4 animate-spin' />
+                          正在加载用户...
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : users.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={11} className='py-8 text-center text-muted-foreground'>
+                        暂无用户数据
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    users.map((item) => (
+                      <TableRow
+                        key={item.userId}
+                        data-state={selectedUserId === item.userId ? 'selected' : undefined}
+                        className='group/row cursor-pointer hover:bg-muted/45'
+                        onClick={() => setSelectedUser(item)}
+                      >
+                        <TableCell
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <Checkbox
+                            checked={item.userId != null && selectedUserIds.has(item.userId)}
+                            onCheckedChange={(checked) => toggleRowSelect(item.userId, Boolean(checked))}
+                            aria-label='选择用户'
+                          />
+                        </TableCell>
+                        <TableCell>{item.userCode || '-'}</TableCell>
+                        <TableCell>{item.username || '-'}</TableCell>
+                        <TableCell>{item.displayName || '-'}</TableCell>
+                        <TableCell>{item.nickname || '-'}</TableCell>
+                        <TableCell>{item.primaryEstabName || '-'}</TableCell>
+                        <TableCell>{toUserTypeLabel(item.userType)}</TableCell>
+                        <TableCell className='text-center'>
+                          <Badge variant={item.status === 1 ? 'default' : 'secondary'}>
+                            {toStatusLabel(item.status)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className='flex items-center gap-2'>
+                            <span>{visiblePhoneUserIds.has(item.userId ?? -1) ? (item.primaryPhone || '-') : maskPhone(item.primaryPhone)}</span>
+                            <Button
+                              type='button'
+                              variant='ghost'
+                              size='icon'
+                              className='h-7 w-7'
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                togglePhoneVisible(item.userId)
+                              }}
+                            >
+                              {visiblePhoneUserIds.has(item.userId ?? -1) ? (
+                                <EyeOff className='h-4 w-4' />
+                              ) : (
+                                <Eye className='h-4 w-4' />
+                              )}
+                            </Button>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className='flex items-center gap-2'>
+                            <span>{visibleEmailUserIds.has(item.userId ?? -1) ? (item.primaryEmail || '-') : maskEmail(item.primaryEmail)}</span>
+                            <Button
+                              type='button'
+                              variant='ghost'
+                              size='icon'
+                              className='h-7 w-7'
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                toggleEmailVisible(item.userId)
+                              }}
+                            >
+                              {visibleEmailUserIds.has(item.userId ?? -1) ? (
+                                <EyeOff className='h-4 w-4' />
+                              ) : (
+                                <Eye className='h-4 w-4' />
+                              )}
+                            </Button>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className='flex items-center justify-center gap-1'>
+                            <Button
+                              type='button'
+                              variant='ghost'
+                              size='icon'
+                              className='h-8 w-8'
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                openViewUserDialog(item)
+                              }}
+                            >
+                              <Eye className='h-4 w-4' />
+                            </Button>
+                            <Button
+                              type='button'
+                              variant='ghost'
+                              size='icon'
+                              className='h-8 w-8'
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                openEditUserDialog(item)
+                              }}
+                            >
+                              <Pencil className='h-4 w-4' />
+                            </Button>
+                            <Button
+                              type='button'
+                              variant='ghost'
+                              size='icon'
+                              className='h-8 w-8 text-destructive'
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                if (!item.userId) return
+                                confirmDeleteUsers([item.userId])
+                              }}
+                            >
+                              <Trash2 className='h-4 w-4' />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
             <PageToolbar
               page={query.currentPage ?? 1}
               size={query.pageSize ?? 10}
