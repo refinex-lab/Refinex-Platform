@@ -62,6 +62,8 @@ public interface UserRepository {
      * @param primaryPhone   主手机号
      * @param primaryEmail   主邮箱
      * @param keyword        关键字（兼容）
+     * @param sortBy         排序字段
+     * @param sortDirection  排序方向
      * @param userIds        用户ID列表
      * @param currentPage    当前页
      * @param pageSize       每页条数
@@ -70,7 +72,7 @@ public interface UserRepository {
     PageResponse<UserEntity> listUsersForManage(Long primaryEstabId, Integer status, Integer userType,
                                                 String userCode, String username, String displayName,
                                                 String nickname, String primaryPhone, String primaryEmail,
-                                                String keyword,
+                                                String keyword, String sortBy, String sortDirection,
                                                 List<Long> userIds,
                                                 int currentPage, int pageSize);
 
@@ -306,6 +308,27 @@ public interface UserRepository {
      * @param userId 用户ID
      */
     void resetLoginFailCount(Long userId);
+
+    /**
+     * 逻辑删除用户
+     *
+     * @param userId 用户ID
+     */
+    void deleteUserById(Long userId);
+
+    /**
+     * 逻辑删除用户身份
+     *
+     * @param userId 用户ID
+     */
+    void deleteIdentityByUserId(Long userId);
+
+    /**
+     * 逻辑删除企业成员关系
+     *
+     * @param userId 用户ID
+     */
+    void deleteEstabUserRelationByUserId(Long userId);
 
     /**
      * 更新身份凭证

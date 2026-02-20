@@ -123,11 +123,11 @@ public class UserRepositoryImpl implements UserRepository {
     public PageResponse<UserEntity> listUsersForManage(Long primaryEstabId, Integer status, Integer userType,
                                                        String userCode, String username, String displayName,
                                                        String nickname, String primaryPhone, String primaryEmail,
-                                                       String keyword, List<Long> userIds, int currentPage,
+                                                       String keyword, String sortBy, String sortDirection,
+                                                       List<Long> userIds, int currentPage,
                                                        int pageSize) {
         var query = Wrappers.lambdaQuery(DefUserDo.class)
-                .eq(DefUserDo::getDeleted, 0)
-                .orderByDesc(DefUserDo::getId);
+                .eq(DefUserDo::getDeleted, 0);
         if (primaryEstabId != null) {
             query.eq(DefUserDo::getPrimaryEstabId, primaryEstabId);
         }
@@ -173,6 +173,7 @@ public class UserRepositoryImpl implements UserRepository {
         if (userIds != null && !userIds.isEmpty()) {
             query.in(DefUserDo::getId, userIds);
         }
+        applySort(query, sortBy, sortDirection);
 
         Page<DefUserDo> page = new Page<>(currentPage, pageSize);
         Page<DefUserDo> rows = defUserMapper.selectPage(page, query);
@@ -680,6 +681,44 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     /**
+     * 逻辑删除用户
+     *
+     * @param userId 用户ID
+     */
+    @Override
+    public void deleteUserById(Long userId) {
+        defUserMapper.deleteById(userId);
+    }
+
+    /**
+     * 逻辑删除用户身份
+     *
+     * @param userId 用户ID
+     */
+    @Override
+    public void deleteIdentityByUserId(Long userId) {
+        defUserIdentityMapper.delete(
+                Wrappers.lambdaQuery(DefUserIdentityDo.class)
+                        .eq(DefUserIdentityDo::getUserId, userId)
+                        .eq(DefUserIdentityDo::getDeleted, 0)
+        );
+    }
+
+    /**
+     * 逻辑删除企业成员关系
+     *
+     * @param userId 用户ID
+     */
+    @Override
+    public void deleteEstabUserRelationByUserId(Long userId) {
+        defEstabUserMapper.delete(
+                Wrappers.lambdaQuery(DefEstabUserDo.class)
+                        .eq(DefEstabUserDo::getUserId, userId)
+                        .eq(DefEstabUserDo::getDeleted, 0)
+        );
+    }
+
+    /**
      * 更新身份凭证
      *
      * @param identityId    身份ID
@@ -709,5 +748,36 @@ public class UserRepositoryImpl implements UserRepository {
         entity.setEstabType(row.getEstabType());
         entity.setIsAdmin(row.getIsAdmin());
         return entity;
+    }
+
+    /**
+     * 应用排序规则
+     *
+     * @param query         查询条件
+     * @param sortBy        排序字段
+     * @param sortDirection 排序方向
+     */
+    private void applySort(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<DefUserDo> query,
+                           String sortBy,
+                           String sortDirection) {
+        boolean asc = "asc".equalsIgnoreCase(sortDirection);
+        String field = sortBy == null ? "" : sortBy.trim();
+        boolean sorted = true;
+        switch (field) {
+            case "userCode" -> query.orderBy(true, asc, DefUserDo::getUserCode);
+            case "username" -> query.orderBy(true, asc, DefUserDo::getUsername);
+            case "displayName" -> query.orderBy(true, asc, DefUserDo::getDisplayName);
+            case "nickname" -> query.orderBy(true, asc, DefUserDo::getNickname);
+            case "primaryEstabId" -> query.orderBy(true, asc, DefUserDo::getPrimaryEstabId);
+            case "userType" -> query.orderBy(true, asc, DefUserDo::getUserType);
+            case "status" -> query.orderBy(true, asc, DefUserDo::getStatus);
+            case "primaryPhone" -> query.orderBy(true, asc, DefUserDo::getPrimaryPhone);
+            case "primaryEmail" -> query.orderBy(true, asc, DefUserDo::getPrimaryEmail);
+            case "lastLoginTime" -> query.orderBy(true, asc, DefUserDo::getLastLoginTime);
+            default -> sorted = false;
+        }
+        if (!sorted || !"id".equals(field)) {
+            query.orderByDesc(DefUserDo::getId);
+        }
     }
 }

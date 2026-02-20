@@ -91,6 +91,31 @@ public class UserManageController {
     }
 
     /**
+     * 删除用户
+     *
+     * @param userId 用户ID
+     * @return 操作结果
+     */
+    @DeleteMapping("/{userId}")
+    public Result<Void> deleteUser(@PathVariable @Positive(message = "用户ID必须大于0") Long userId) {
+        userManageApplicationService.deleteUser(userId);
+        return Result.success();
+    }
+
+    /**
+     * 批量删除用户
+     *
+     * @param request 批量删除请求
+     * @return 操作结果
+     */
+    @PostMapping("/batch-delete")
+    public Result<Void> batchDeleteUsers(@RequestBody SystemUserBatchDeleteRequest request) {
+        UserManageBatchDeleteCommand command = userManageApiAssembler.toUserManageBatchDeleteCommand(request);
+        userManageApplicationService.deleteUsers(command);
+        return Result.success();
+    }
+
+    /**
      * 查询用户身份列表
      *
      * @param userId 用户ID

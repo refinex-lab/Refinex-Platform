@@ -1,8 +1,11 @@
 package cn.refinex.system.application.service;
 
 import cn.refinex.api.user.model.dto.*;
+import cn.refinex.base.exception.BizException;
 import cn.refinex.base.response.PageResponse;
 import cn.refinex.base.utils.PageUtils;
+import cn.refinex.satoken.helper.LoginUserHelper;
+import cn.refinex.system.domain.error.SystemErrorCode;
 import cn.refinex.system.infrastructure.client.user.UserManageRemoteGateway;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,6 +20,8 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class UserManageApplicationService {
+
+    private static final String BUILTIN_SUPER_ADMIN_USER_CODE = "U_REFINEX_SUPER_ADMIN";
 
     private final UserManageRemoteGateway userManageRemoteGateway;
 
@@ -68,6 +73,51 @@ public class UserManageApplicationService {
      */
     public UserManageDTO updateUser(Long userId, UserManageUpdateCommand command) {
         return userManageRemoteGateway.updateUser(userId, command);
+    }
+
+    /**
+     * 删除用户
+     *
+     * @param userId 用户ID
+     */
+    public void deleteUser(Long userId) {
+        validateDeleteTarget(userManageRemoteGateway.getUser(userId));
+        userManageRemoteGateway.deleteUser(userId);
+    }
+
+    /**
+     * 批量删除用户
+     *
+     * @param command 批量删除命令
+     */
+    public void deleteUsers(UserManageBatchDeleteCommand command) {
+        if (command == null || command.getUserIds() == null || command.getUserIds().isEmpty()) {
+            throw new BizException(SystemErrorCode.INVALID_PARAM);
+        }
+        for (Long userId : command.getUserIds()) {
+            validateDeleteTarget(userManageRemoteGateway.getUser(userId));
+        }
+        userManageRemoteGateway.batchDeleteUsers(command);
+    }
+
+    /**
+     * 校验目标用户是否允许删除
+     *
+     * @param user 目标用户
+     */
+    private void validateDeleteTarget(UserManageDTO user) {
+        if (user == null || user.getUserId() == null) {
+            throw new BizException(SystemErrorCode.INVALID_PARAM);
+        }
+
+        if (BUILTIN_SUPER_ADMIN_USER_CODE.equalsIgnoreCase(user.getUserCode())) {
+            throw new BizException("内置超级管理员账号不允许删除", SystemErrorCode.INVALID_PARAM);
+        }
+
+        Long currentUserId = LoginUserHelper.getUserId();
+        if (currentUserId != null && currentUserId.equals(user.getUserId())) {
+            throw new BizException("不允许删除当前登录用户", SystemErrorCode.INVALID_PARAM);
+        }
     }
 
     /**

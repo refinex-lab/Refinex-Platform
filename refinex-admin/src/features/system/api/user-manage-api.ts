@@ -4,6 +4,7 @@ import type {
   PageData,
   SystemUser,
   SystemUserCreateRequest,
+  SystemUserBatchDeleteRequest,
   SystemUserEstab,
   SystemUserIdentity,
   SystemUserIdentityCreateRequest,
@@ -35,6 +36,14 @@ export async function updateSystemUser(
 ): Promise<SystemUser> {
   const response = await http.put<SystemUser>(buildSystemPath(`/system-users/${userId}`), payload)
   return response.data
+}
+
+export async function deleteSystemUser(userId: number): Promise<void> {
+  await http.delete<void>(buildSystemPath(`/system-users/${userId}`))
+}
+
+export async function batchDeleteSystemUsers(payload: SystemUserBatchDeleteRequest): Promise<void> {
+  await http.post<void>(buildSystemPath('/system-users/batch-delete'), payload)
 }
 
 export async function listSystemUserIdentities(

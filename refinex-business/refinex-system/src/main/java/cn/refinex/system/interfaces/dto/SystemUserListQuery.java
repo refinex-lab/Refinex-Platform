@@ -63,4 +63,14 @@ public class SystemUserListQuery extends PageRequest {
      */
     private String keyword;
 
+    /**
+     * 排序字段
+     */
+    private String sortBy;
+
+    /**
+     * 排序方向（asc/desc）
+     */
+    private String sortDirection;
+
 }

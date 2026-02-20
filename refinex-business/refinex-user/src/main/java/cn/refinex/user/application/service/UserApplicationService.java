@@ -6,7 +6,9 @@ import cn.refinex.api.user.model.dto.*;
 import cn.refinex.base.exception.BizException;
 import cn.refinex.base.response.PageResponse;
 import cn.refinex.base.utils.PageUtils;
+import cn.refinex.base.utils.UniqueCodeUtils;
 import cn.refinex.file.api.FileService;
+import cn.refinex.satoken.helper.LoginUserHelper;
 import cn.refinex.user.application.assembler.UserDomainAssembler;
 import cn.refinex.user.application.command.*;
 import cn.refinex.user.application.dto.*;
@@ -42,7 +44,10 @@ import static cn.refinex.base.utils.ValueUtils.isBlank;
 public class UserApplicationService {
 
     private static final String DEFAULT_ESTAB_NAME = "默认组织";
-    private static final String DEFAULT_USER_CODE_PREFIX = "U";
+    private static final String DEFAULT_USER_CODE_PREFIX = "U_";
+    private static final String BUILTIN_SUPER_ADMIN_USER_CODE = "U_REFINEX_SUPER_ADMIN";
+    private static final int USER_CODE_RANDOM_LENGTH = 10;
+    private static final int USER_CODE_GENERATE_MAX_RETRY = 20;
     private static final String DEFAULT_PASSWORD_ENCODER = "bcrypt";
     private static final DateTimeFormatter AVATAR_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMM");
     private static final Set<String> ALLOWED_AVATAR_EXTENSIONS = Set.of("jpg", "jpeg", "png", "webp", "gif");
@@ -349,6 +354,8 @@ public class UserApplicationService {
                 normalizeNullableText(safeQuery.getPrimaryPhone()),
                 normalizeNullableText(safeQuery.getPrimaryEmail()),
                 normalizeNullableText(safeQuery.getKeyword()),
+                normalizeNullableText(safeQuery.getSortBy()),
+                normalizeNullableText(safeQuery.getSortDirection()),
                 safeQuery.getUserIds(),
                 currentPage,
                 pageSize
@@ -386,14 +393,14 @@ public class UserApplicationService {
         if (command == null || isBlank(command.getDisplayName())) {
             throw new BizException(UserErrorCode.INVALID_PARAM);
         }
+        if (isBlank(command.getUsername())
+                && isBlank(command.getPrimaryPhone())
+                && isBlank(command.getPrimaryEmail())) {
+            throw new BizException("至少提供用户名、手机号、邮箱中的一项", UserErrorCode.INVALID_PARAM);
+        }
 
-        String userCode = normalizeNullableText(command.getUserCode());
-        if (isBlank(userCode)) {
-            userCode = generateUserCode();
-        }
-        if (userRepository.countUserCode(userCode, null) > 0) {
-            throw new BizException(UserErrorCode.USER_CODE_DUPLICATED);
-        }
+        // 管理端创建用户时，用户编码由系统统一生成，避免人工干预。
+        String userCode = generateUserCode();
 
         String username = normalizeNullableText(command.getUsername());
         if (!isBlank(username) && userRepository.countUsername(username, null) > 0) {
@@ -401,7 +408,10 @@ public class UserApplicationService {
         }
 
         Long primaryEstabId = command.getPrimaryEstabId();
-        if (primaryEstabId != null && userRepository.findEstabId(primaryEstabId, null) == null) {
+        if (primaryEstabId == null) {
+            throw new BizException("请选择所属企业", UserErrorCode.INVALID_PARAM);
+        }
+        if (userRepository.findEstabId(primaryEstabId, null) == null) {
             throw new BizException(UserErrorCode.ESTAB_NOT_FOUND);
         }
 
@@ -424,6 +434,11 @@ public class UserApplicationService {
         user.setRemark(normalizeNullableText(command.getRemark()));
 
         UserEntity created = userRepository.insertUser(user);
+        if (!userRepository.hasActiveEstabMembership(created.getId(), primaryEstabId)) {
+            userRepository.insertEstabUserRelation(primaryEstabId, created.getId(), 0, LocalDateTime.now());
+        }
+        initManageUserIdentities(created.getId(), command);
+
         UserManageDTO dto = toUserManageDto(requireUserEntity(created.getId()));
         enrichPrimaryEstabName(dto);
         return dto;
@@ -463,9 +478,70 @@ public class UserApplicationService {
         existing.setRemark(normalizeNullableText(command.getRemark()));
 
         userRepository.updateUser(existing);
+        if (primaryEstabId != null && !userRepository.hasActiveEstabMembership(existing.getId(), primaryEstabId)) {
+            userRepository.insertEstabUserRelation(primaryEstabId, existing.getId(), 0, LocalDateTime.now());
+        }
         UserManageDTO dto = toUserManageDto(requireUserEntity(existing.getId()));
         enrichPrimaryEstabName(dto);
         return dto;
+    }
+
+    /**
+     * 删除用户（管理端）
+     *
+     * @param userId 用户ID
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteManageUser(Long userId) {
+        deleteManageUserInternal(userId);
+    }
+
+    /**
+     * 批量删除用户（管理端）
+     *
+     * @param userIds 用户ID列表
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteManageUsers(List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            throw new BizException(UserErrorCode.INVALID_PARAM);
+        }
+        for (Long userId : userIds) {
+            deleteManageUserInternal(userId);
+        }
+    }
+
+    /**
+     * 删除用户（管理端）内部逻辑
+     *
+     * @param userId 用户ID
+     */
+    private void deleteManageUserInternal(Long userId) {
+        UserEntity user = requireUserEntity(userId);
+        validateManageUserDeletable(user);
+        userRepository.deleteIdentityByUserId(userId);
+        userRepository.deleteEstabUserRelationByUserId(userId);
+        userRepository.deleteUserById(userId);
+    }
+
+    /**
+     * 校验管理端用户是否允许删除
+     *
+     * @param user 用户实体
+     */
+    private void validateManageUserDeletable(UserEntity user) {
+        if (user == null || user.getId() == null) {
+            throw new BizException(UserErrorCode.USER_NOT_FOUND);
+        }
+
+        if (BUILTIN_SUPER_ADMIN_USER_CODE.equalsIgnoreCase(user.getUserCode())) {
+            throw new BizException(UserErrorCode.BUILTIN_SUPER_ADMIN_NOT_ALLOW_DELETE);
+        }
+
+        Long currentUserId = LoginUserHelper.getUserId();
+        if (currentUserId != null && currentUserId.equals(user.getId())) {
+            throw new BizException(UserErrorCode.CURRENT_LOGIN_USER_NOT_ALLOW_DELETE);
+        }
     }
 
     /**
@@ -930,6 +1006,88 @@ public class UserApplicationService {
     }
 
     /**
+     * 初始化管理端创建用户时的默认身份
+     *
+     * @param userId  用户ID
+     * @param command 创建命令
+     */
+    private void initManageUserIdentities(Long userId, UserManageCreateCommand command) {
+        List<ManageIdentitySeed> seeds = new ArrayList<>(3);
+        String username = normalizeNullableText(command.getUsername());
+        String phone = normalizeNullableText(command.getPrimaryPhone());
+        String email = normalizeNullableText(command.getPrimaryEmail());
+
+        if (username != null) {
+            seeds.add(new ManageIdentitySeed(
+                    IdentityType.USERNAME_PASSWORD.getCode(),
+                    username,
+                    1
+            ));
+        }
+
+        if (phone != null) {
+            seeds.add(new ManageIdentitySeed(
+                    IdentityType.PHONE_SMS.getCode(),
+                    phone,
+                    defaultIfNull(command.getPhoneVerified(), 0)
+            ));
+        }
+
+        if (email != null) {
+            seeds.add(new ManageIdentitySeed(
+                    IdentityType.EMAIL_CODE.getCode(),
+                    email.toLowerCase(Locale.ROOT),
+                    defaultIfNull(command.getEmailVerified(), 0)
+            ));
+        }
+
+        for (int i = 0; i < seeds.size(); i++) {
+            ManageIdentitySeed seed = seeds.get(i);
+            createManageIdentityInternal(
+                    userId,
+                    seed.identityType(),
+                    seed.identifier(),
+                    seed.verified(),
+                    i == 0 ? 1 : 0
+            );
+        }
+    }
+
+    /**
+     * 创建管理端默认身份
+     *
+     * @param userId       用户ID
+     * @param identityType 身份类型
+     * @param identifier   身份标识
+     * @param verified     是否已验证
+     * @param isPrimary    是否主身份
+     */
+    private void createManageIdentityInternal(Long userId, Integer identityType, String identifier, Integer verified, Integer isPrimary) {
+        String issuer = "";
+        if (userRepository.countIdentityByUnique(identityType, identifier, issuer, null) > 0) {
+            throw new BizException(UserErrorCode.DUPLICATE_IDENTITY);
+        }
+
+        UserIdentityEntity identity = new UserIdentityEntity();
+        identity.setUserId(userId);
+        identity.setIdentityType(identityType);
+        identity.setIdentifier(identifier);
+        identity.setIssuer(issuer);
+        identity.setCredential(null);
+        identity.setCredentialAlg(null);
+        identity.setIsPrimary(isPrimary);
+        identity.setVerified(defaultIfNull(verified, 0));
+        identity.setVerifiedAt(identity.getVerified() == 1 ? LocalDateTime.now() : null);
+        identity.setBindTime(LocalDateTime.now());
+        identity.setStatus(1);
+
+        UserIdentityEntity created = userRepository.insertIdentity(identity);
+        if (created.getIsPrimary() != null && created.getIsPrimary() == 1) {
+            userRepository.clearPrimaryIdentity(userId, created.getId());
+        }
+    }
+
+    /**
      * 批量补充主企业名称
      *
      * @param users 用户列表
@@ -938,6 +1096,7 @@ public class UserApplicationService {
         if (users == null || users.isEmpty()) {
             return;
         }
+
         List<Long> estabIds = users.stream()
                 .map(UserManageDTO::getPrimaryEstabId)
                 .filter(Objects::nonNull)
@@ -1014,7 +1173,13 @@ public class UserApplicationService {
      * @return 用户编号
      */
     private String generateUserCode() {
-        return DEFAULT_USER_CODE_PREFIX + System.currentTimeMillis();
+        for (int i = 0; i < USER_CODE_GENERATE_MAX_RETRY; i++) {
+            String code = UniqueCodeUtils.randomUpperCode(DEFAULT_USER_CODE_PREFIX, USER_CODE_RANDOM_LENGTH);
+            if (userRepository.countUserCode(code, null) == 0) {
+                return code;
+            }
+        }
+        throw new BizException(UserErrorCode.USER_CODE_DUPLICATED);
     }
 
     /**
@@ -1080,6 +1245,16 @@ public class UserApplicationService {
                 && identity.getStatus() == 1
                 && identity.getCredential() != null
                 && !identity.getCredential().isBlank();
+    }
+
+    /**
+     * 管理端初始化身份种子
+     *
+     * @param identityType 身份类型
+     * @param identifier   身份标识
+     * @param verified     是否验证
+     */
+    private record ManageIdentitySeed(Integer identityType, String identifier, Integer verified) {
     }
 
     /**

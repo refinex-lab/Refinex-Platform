@@ -45,6 +45,14 @@ public interface UserManageApiAssembler {
     UserManageUpdateCommand toUserManageUpdateCommand(SystemUserUpdateRequest request);
 
     /**
+     * 系统用户批量删除请求转换
+     *
+     * @param request 批量删除请求
+     * @return 批量删除命令
+     */
+    UserManageBatchDeleteCommand toUserManageBatchDeleteCommand(SystemUserBatchDeleteRequest request);
+
+    /**
      * 系统用户身份创建请求转换
      *
      * @param request 创建请求

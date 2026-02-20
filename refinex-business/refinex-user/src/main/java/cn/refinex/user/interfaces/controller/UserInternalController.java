@@ -10,6 +10,7 @@ import cn.refinex.api.user.model.dto.UserInfoQuery;
 import cn.refinex.api.user.model.dto.UserLoginFailureCommand;
 import cn.refinex.api.user.model.dto.UserLoginSuccessCommand;
 import cn.refinex.api.user.model.dto.UserManageCreateCommand;
+import cn.refinex.api.user.model.dto.UserManageBatchDeleteCommand;
 import cn.refinex.api.user.model.dto.UserManageDTO;
 import cn.refinex.api.user.model.dto.UserManageEstabDTO;
 import cn.refinex.api.user.model.dto.UserManageListQuery;
@@ -177,6 +178,30 @@ public class UserInternalController {
     @PutMapping("/manage/{userId}")
     public SingleResponse<UserManageDTO> updateManageUser(@PathVariable Long userId, @RequestBody UserManageUpdateCommand command) {
         return SingleResponse.of(userApplicationService.updateManageUser(userId, command));
+    }
+
+    /**
+     * 删除用户
+     *
+     * @param userId 用户ID
+     * @return 操作结果
+     */
+    @DeleteMapping("/manage/{userId}")
+    public SingleResponse<Void> deleteManageUser(@PathVariable Long userId) {
+        userApplicationService.deleteManageUser(userId);
+        return SingleResponse.of(null);
+    }
+
+    /**
+     * 批量删除用户
+     *
+     * @param command 批量删除命令
+     * @return 操作结果
+     */
+    @PostMapping("/manage/batch-delete")
+    public SingleResponse<Void> batchDeleteManageUsers(@RequestBody UserManageBatchDeleteCommand command) {
+        userApplicationService.deleteManageUsers(command == null ? null : command.getUserIds());
+        return SingleResponse.of(null);
     }
 
     /**

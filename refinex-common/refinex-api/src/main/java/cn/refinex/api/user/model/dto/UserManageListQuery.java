@@ -66,6 +66,16 @@ public class UserManageListQuery extends PageRequest {
     private String keyword;
 
     /**
+     * 排序字段
+     */
+    private String sortBy;
+
+    /**
+     * 排序方向（asc/desc）
+     */
+    private String sortDirection;
+
+    /**
      * 用户ID列表（可选）
      */
     private List<Long> userIds;

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
+  ArrowUpDown,
   Eye,
   EyeOff,
   Fingerprint,
@@ -23,6 +24,7 @@ import { Search } from '@/components/search'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -59,8 +61,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { ThemeSwitch } from '@/components/theme-switch'
 import {
+  batchDeleteSystemUsers,
   createSystemUser,
   createSystemUserIdentity,
+  deleteSystemUser,
   deleteSystemUserIdentity,
   listEstabs,
   listSystemUserEstabs,
@@ -95,7 +99,7 @@ const userFormSchema = z.object({
   birthday: z.string().trim().optional(),
   userType: z.enum(['0', '1', '2']),
   status: z.enum(['1', '2', '3']),
-  primaryEstabId: z.string().trim().max(20, '企业标识格式非法').optional(),
+  primaryEstabId: z.string().trim().min(1, '请选择所属企业').max(20, '企业标识格式非法'),
   primaryPhone: z.string().trim().max(32, '手机号最长 32 位').optional(),
   phoneVerified: z.enum(['0', '1']),
   primaryEmail: z.string().trim().max(128, '邮箱最长 128 位').optional(),
@@ -229,6 +233,7 @@ export function SystemUsersPage() {
   const [query, setQuery] = useState<SystemUserListQuery>({ currentPage: 1, pageSize: 10 })
   const [estabOptions, setEstabOptions] = useState<Estab[]>([])
   const [estabLoading, setEstabLoading] = useState(false)
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<number>>(new Set())
   const [visiblePhoneUserIds, setVisiblePhoneUserIds] = useState<Set<number>>(new Set())
   const [visibleEmailUserIds, setVisibleEmailUserIds] = useState<Set<number>>(new Set())
 
@@ -253,6 +258,9 @@ export function SystemUsersPage() {
   const [savingIdentity, setSavingIdentity] = useState(false)
   const [deletingIdentity, setDeletingIdentity] = useState<SystemUserIdentity | null>(null)
   const [deletingIdentityLoading, setDeletingIdentityLoading] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [deletingUsersLoading, setDeletingUsersLoading] = useState(false)
+  const [pendingDeleteUserIds, setPendingDeleteUserIds] = useState<number[]>([])
 
   const userForm = useForm<UserFormValues>({
     resolver: zodResolver(userFormSchema),
@@ -280,6 +288,7 @@ export function SystemUsersPage() {
       const rows = pageData.data ?? []
       setUsers(rows)
       setTotal(pageData.total ?? 0)
+      setSelectedUserIds(new Set())
       setVisiblePhoneUserIds(new Set())
       setVisibleEmailUserIds(new Set())
       setSelectedUser((prev) => {
@@ -496,8 +505,7 @@ export function SystemUsersPage() {
       } else {
         await createSystemUser({
           ...(payload as SystemUserCreateRequest),
-          userCode: values.userCode?.trim() || '',
-          username: values.username?.trim() || '',
+          username: toOptionalString(values.username),
           displayName: values.displayName.trim(),
         })
         toast.success('用户已创建。')
@@ -622,6 +630,103 @@ export function SystemUsersPage() {
     })
   }
 
+  function toggleRowSelect(userId?: number, checked?: boolean) {
+    if (!userId) return
+    setSelectedUserIds((prev) => {
+      const next = new Set(prev)
+      if (checked) {
+        next.add(userId)
+      } else {
+        next.delete(userId)
+      }
+      return next
+    })
+  }
+
+  function toggleSelectAll(checked?: boolean) {
+    if (!checked) {
+      setSelectedUserIds(new Set())
+      return
+    }
+    const ids = users
+      .map((item) => item.userId)
+      .filter((id): id is number => id != null)
+    setSelectedUserIds(new Set(ids))
+  }
+
+  function toggleSort(field: string) {
+    setQuery((prev) => {
+      if (prev.sortBy !== field) {
+        return {
+          ...prev,
+          sortBy: field,
+          sortDirection: 'asc',
+          currentPage: 1,
+        }
+      }
+      if (prev.sortDirection === 'asc') {
+        return {
+          ...prev,
+          sortDirection: 'desc',
+          currentPage: 1,
+        }
+      }
+      return {
+        ...prev,
+        sortBy: undefined,
+        sortDirection: undefined,
+        currentPage: 1,
+      }
+    })
+  }
+
+  function renderSortLabel(label: string, field: string) {
+    const direction = query.sortBy === field ? query.sortDirection : undefined
+    const suffix = direction === 'asc' ? '↑' : direction === 'desc' ? '↓' : ''
+    return (
+      <Button
+        type='button'
+        variant='ghost'
+        className='h-8 px-1 font-semibold'
+        onClick={() => toggleSort(field)}
+      >
+        <span>{label}{suffix ? ` ${suffix}` : ''}</span>
+        <ArrowUpDown className='ml-1 h-3.5 w-3.5 text-muted-foreground' />
+      </Button>
+    )
+  }
+
+  function confirmDeleteUsers(userIds: number[]) {
+    if (userIds.length === 0) {
+      toast.error('请先选择要删除的用户。')
+      return
+    }
+    setPendingDeleteUserIds(userIds)
+    setDeleteConfirmOpen(true)
+  }
+
+  async function deleteUsersConfirmed() {
+    if (pendingDeleteUserIds.length === 0) {
+      return
+    }
+    setDeletingUsersLoading(true)
+    try {
+      if (pendingDeleteUserIds.length === 1) {
+        await deleteSystemUser(pendingDeleteUserIds[0])
+      } else {
+        await batchDeleteSystemUsers({ userIds: pendingDeleteUserIds })
+      }
+      toast.success('用户已删除。')
+      setDeleteConfirmOpen(false)
+      setPendingDeleteUserIds([])
+      await loadUsers(query)
+    } catch (error) {
+      handleServerError(error)
+    } finally {
+      setDeletingUsersLoading(false)
+    }
+  }
+
   return (
     <>
       <Header>
@@ -634,42 +739,60 @@ export function SystemUsersPage() {
       </Header>
 
       <Main fixed fluid>
-        <Card>
-          <CardContent className='flex flex-wrap items-center justify-between gap-2'>
-            <div className='flex items-center gap-2'>
-              <Button type='button' variant='outline' onClick={openFilterDialog} className='gap-2'>
-                <SearchIcon className='h-4 w-4' />
-                查找
-              </Button>
-              <Button type='button' onClick={openCreateUserDialog} className='gap-2'>
-                <Plus className='h-4 w-4' />
-                新建用户
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <div className='mb-2 flex items-center gap-2 px-6'>
+          <Button type='button' variant='outline' onClick={openFilterDialog} className='gap-2'>
+            <SearchIcon className='h-4 w-4' />
+            查找
+          </Button>
+          <Button type='button' onClick={openCreateUserDialog} className='gap-2'>
+            <Plus className='h-4 w-4' />
+            新建用户
+          </Button>
+          <Button
+            type='button'
+            variant='outline'
+            className='gap-2'
+            disabled={selectedUserIds.size === 0}
+            onClick={() => confirmDeleteUsers(Array.from(selectedUserIds))}
+          >
+            <Trash2 className='h-4 w-4' />
+            删除
+          </Button>
+          {selectedUserIds.size > 0 ? (
+            <span className='text-sm text-muted-foreground'>
+              已选择 {selectedUserIds.size} 项
+            </span>
+          ) : null}
+        </div>
 
-        <Card className='mt-4 overflow-hidden'>
-          <CardContent>
+        <Card className='overflow-hidden py-3 gap-3'>
+          <CardContent className='pt-0'>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>用户编码</TableHead>
-                  <TableHead>用户名</TableHead>
-                  <TableHead>显示名</TableHead>
-                  <TableHead>昵称</TableHead>
-                  <TableHead>所属企业</TableHead>
-                  <TableHead>用户类型</TableHead>
-                  <TableHead className='w-[88px] text-center'>状态</TableHead>
-                  <TableHead>主手机号</TableHead>
-                  <TableHead>主邮箱</TableHead>
+                  <TableHead className='w-[48px]'>
+                    <Checkbox
+                      checked={users.length > 0 && selectedUserIds.size === users.filter((u) => u.userId != null).length}
+                      onCheckedChange={(checked) => toggleSelectAll(Boolean(checked))}
+                      aria-label='全选用户'
+                    />
+                  </TableHead>
+                  <TableHead>{renderSortLabel('用户编码', 'userCode')}</TableHead>
+                  <TableHead>{renderSortLabel('用户名', 'username')}</TableHead>
+                  <TableHead>{renderSortLabel('显示名', 'displayName')}</TableHead>
+                  <TableHead>{renderSortLabel('昵称', 'nickname')}</TableHead>
+                  <TableHead>{renderSortLabel('所属企业', 'primaryEstabId')}</TableHead>
+                  <TableHead>{renderSortLabel('用户类型', 'userType')}</TableHead>
+                  <TableHead className='w-[96px] text-center'>{renderSortLabel('状态', 'status')}</TableHead>
+                  <TableHead>{renderSortLabel('主手机号', 'primaryPhone')}</TableHead>
+                  <TableHead>{renderSortLabel('主邮箱', 'primaryEmail')}</TableHead>
                   <TableHead className='w-[132px] text-center'>操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={10}>
+                    <TableCell colSpan={11}>
                       <div className='flex items-center justify-center gap-2 py-8 text-muted-foreground'>
                         <Loader2 className='h-4 w-4 animate-spin' />
                         正在加载用户...
@@ -678,7 +801,7 @@ export function SystemUsersPage() {
                   </TableRow>
                 ) : users.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className='py-8 text-center text-muted-foreground'>
+                    <TableCell colSpan={11} className='py-8 text-center text-muted-foreground'>
                       暂无用户数据
                     </TableCell>
                   </TableRow>
@@ -690,6 +813,15 @@ export function SystemUsersPage() {
                       className='cursor-pointer'
                       onClick={() => setSelectedUser(item)}
                     >
+                      <TableCell
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <Checkbox
+                          checked={item.userId != null && selectedUserIds.has(item.userId)}
+                          onCheckedChange={(checked) => toggleRowSelect(item.userId, Boolean(checked))}
+                          aria-label='选择用户'
+                        />
+                      </TableCell>
                       <TableCell>{item.userCode || '-'}</TableCell>
                       <TableCell>{item.username || '-'}</TableCell>
                       <TableCell>{item.displayName || '-'}</TableCell>
@@ -768,6 +900,19 @@ export function SystemUsersPage() {
                             }}
                           >
                             <Pencil className='h-4 w-4' />
+                          </Button>
+                          <Button
+                            type='button'
+                            variant='ghost'
+                            size='icon'
+                            className='h-8 w-8 text-destructive'
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              if (!item.userId) return
+                              confirmDeleteUsers([item.userId])
+                            }}
+                          >
+                            <Trash2 className='h-4 w-4' />
                           </Button>
                         </div>
                       </TableCell>
@@ -952,19 +1097,14 @@ export function SystemUsersPage() {
           </DialogHeader>
           <Form {...userForm}>
             <form className='grid gap-4 md:grid-cols-2 xl:grid-cols-3' onSubmit={userForm.handleSubmit(submitUser)}>
-              <FormField
-                control={userForm.control}
-                name='userCode'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>用户编码</FormLabel>
-                    <FormControl>
-                      <Input {...field} disabled={Boolean(editingUser) || isUserViewMode} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {!editingUser && !isUserViewMode ? (
+                <FormItem>
+                  <FormLabel>用户编码</FormLabel>
+                  <FormControl>
+                    <Input value='系统自动生成' disabled />
+                  </FormControl>
+                </FormItem>
+              ) : null}
               <FormField
                 control={userForm.control}
                 name='username'
@@ -1190,12 +1330,9 @@ export function SystemUsersPage() {
                 )}
               />
               <DialogFooter className='xl:col-span-3'>
-                {/* 查看状态下不可见关闭按钮 */}
-                {!isUserViewMode ? (
-                  <Button type='button' variant='outline' onClick={closeUserDialog}>
-                    关闭
-                  </Button>
-                ) : null}
+                <Button type='button' variant='outline' onClick={closeUserDialog}>
+                  {isUserViewMode ? '关闭' : '取消'}
+                </Button>
                 {!isUserViewMode ? (
                   <Button type='submit' disabled={savingUser}>
                     {savingUser ? (
@@ -1560,6 +1697,26 @@ export function SystemUsersPage() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={(open) => {
+          setDeleteConfirmOpen(open)
+          if (!open) {
+            setPendingDeleteUserIds([])
+          }
+        }}
+        title='删除用户'
+        desc={
+          pendingDeleteUserIds.length > 1
+            ? `将删除已选择的 ${pendingDeleteUserIds.length} 个用户，同时移除其身份与企业绑定关系。`
+            : '将删除该用户，同时移除其身份与企业绑定关系。'
+        }
+        confirmText={deletingUsersLoading ? '删除中...' : '确认删除'}
+        destructive
+        isLoading={deletingUsersLoading}
+        handleConfirm={() => void deleteUsersConfirmed()}
+      />
 
       <ConfirmDialog
         open={Boolean(deletingIdentity)}

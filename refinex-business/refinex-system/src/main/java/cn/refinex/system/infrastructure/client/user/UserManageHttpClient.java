@@ -54,6 +54,24 @@ public interface UserManageHttpClient {
     SingleResponse<UserManageDTO> updateUser(@PathVariable Long userId, @RequestBody UserManageUpdateCommand command);
 
     /**
+     * 删除用户
+     *
+     * @param userId 用户ID
+     * @return 操作结果
+     */
+    @DeleteExchange("/manage/{userId}")
+    SingleResponse<Void> deleteUser(@PathVariable Long userId);
+
+    /**
+     * 批量删除用户
+     *
+     * @param command 批量删除命令
+     * @return 操作结果
+     */
+    @PostExchange("/manage/batch-delete")
+    SingleResponse<Void> batchDeleteUsers(@RequestBody UserManageBatchDeleteCommand command);
+
+    /**
      * 查询身份列表
      *
      * @param userId 用户ID

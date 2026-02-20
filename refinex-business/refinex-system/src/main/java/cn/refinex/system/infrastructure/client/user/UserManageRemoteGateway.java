@@ -66,6 +66,24 @@ public class UserManageRemoteGateway {
     }
 
     /**
+     * 删除用户
+     *
+     * @param userId 用户ID
+     */
+    public void deleteUser(Long userId) {
+        invokeSingle(() -> userManageHttpClient.deleteUser(userId));
+    }
+
+    /**
+     * 批量删除用户
+     *
+     * @param command 批量删除命令
+     */
+    public void batchDeleteUsers(UserManageBatchDeleteCommand command) {
+        invokeSingle(() -> userManageHttpClient.batchDeleteUsers(command));
+    }
+
+    /**
      * 查询身份列表
      *
      * @param userId 用户ID

@@ -792,11 +792,13 @@ export interface SystemUserListQuery extends PaginationQuery {
   primaryPhone?: string
   primaryEmail?: string
   keyword?: string
+  sortBy?: string
+  sortDirection?: 'asc' | 'desc'
 }
 
 export interface SystemUserCreateRequest {
-  userCode: string
-  username: string
+  userCode?: string
+  username?: string
   displayName: string
   nickname?: string
   avatarUrl?: string
@@ -874,4 +876,8 @@ export interface SystemUserEstab {
   estabType?: number
   admin?: boolean
   current?: boolean
+}
+
+export interface SystemUserBatchDeleteRequest {
+  userIds: number[]
 }
