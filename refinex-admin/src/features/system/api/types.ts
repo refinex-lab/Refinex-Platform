@@ -281,6 +281,7 @@ export interface DataResource {
   drsCode?: string
   drsName?: string
   ownerEstabId?: number
+  ownerEstabName?: string
   dataOwnerType?: number
   status?: number
   remark?: string

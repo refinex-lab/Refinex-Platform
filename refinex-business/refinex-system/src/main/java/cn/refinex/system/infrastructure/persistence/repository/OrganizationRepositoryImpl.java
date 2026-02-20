@@ -78,6 +78,25 @@ public class OrganizationRepositoryImpl implements OrganizationRepository {
     }
 
     /**
+     * 批量查询企业
+     *
+     * @param estabIds 企业ID列表
+     * @return 企业列表
+     */
+    @Override
+    public List<EstabEntity> findEstabsByIds(List<Long> estabIds) {
+        if (estabIds == null || estabIds.isEmpty()) {
+            return List.of();
+        }
+        
+        var query = Wrappers.lambdaQuery(DefEstabDo.class)
+                .in(DefEstabDo::getId, estabIds)
+                .eq(DefEstabDo::getDeleted, 0);
+        List<DefEstabDo> rows = defEstabMapper.selectList(query);
+        return rows.stream().map(this::toEstabEntity).toList();
+    }
+
+    /**
      * 企业编码去重统计
      *
      * @param estabCode      企业编码

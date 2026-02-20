@@ -31,6 +31,14 @@ public interface OrganizationRepository {
     EstabEntity findEstabById(Long estabId);
 
     /**
+     * 批量查询企业
+     *
+     * @param estabIds 企业ID列表
+     * @return 企业列表
+     */
+    List<EstabEntity> findEstabsByIds(List<Long> estabIds);
+
+    /**
      * 企业编码去重统计
      *
      * @param estabCode      企业编码

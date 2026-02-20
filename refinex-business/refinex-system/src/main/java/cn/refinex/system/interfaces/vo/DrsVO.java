@@ -31,6 +31,11 @@ public class DrsVO {
     private Long ownerEstabId;
 
     /**
+     * 所属组织名称
+     */
+    private String ownerEstabName;
+
+    /**
      * 数据归属 0平台 1租户
      */
     private Integer dataOwnerType;

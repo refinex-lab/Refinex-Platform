@@ -5,28 +5,25 @@ import cn.refinex.base.response.PageResponse;
 import cn.refinex.base.utils.PageUtils;
 import cn.refinex.base.utils.UniqueCodeUtils;
 import cn.refinex.system.application.assembler.SystemDomainAssembler;
-import cn.refinex.system.application.command.CreateDrsCommand;
-import cn.refinex.system.application.command.CreateDrsInterfaceCommand;
-import cn.refinex.system.application.command.QueryDrsInterfaceListCommand;
-import cn.refinex.system.application.command.QueryDrsListCommand;
-import cn.refinex.system.application.command.UpdateDrsCommand;
-import cn.refinex.system.application.command.UpdateDrsInterfaceCommand;
+import cn.refinex.system.application.command.*;
 import cn.refinex.system.application.dto.DrsDTO;
 import cn.refinex.system.application.dto.DrsInterfaceDTO;
 import cn.refinex.system.domain.error.SystemErrorCode;
 import cn.refinex.system.domain.model.entity.DrsEntity;
 import cn.refinex.system.domain.model.entity.DrsInterfaceEntity;
+import cn.refinex.system.domain.model.entity.EstabEntity;
 import cn.refinex.system.domain.repository.DataResourceRepository;
+import cn.refinex.system.domain.repository.OrganizationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-import static cn.refinex.base.utils.ValueUtils.defaultIfNull;
-import static cn.refinex.base.utils.ValueUtils.isBlank;
-import static cn.refinex.base.utils.ValueUtils.trimToNull;
+import static cn.refinex.base.utils.ValueUtils.*;
 
 /**
  * 数据资源应用服务
@@ -40,6 +37,7 @@ public class DataResourceApplicationService {
     private static final int MAX_CODE_GENERATE_ATTEMPTS = 10;
 
     private final DataResourceRepository dataResourceRepository;
+    private final OrganizationRepository organizationRepository;
     private final SystemDomainAssembler systemDomainAssembler;
 
     /**
@@ -57,9 +55,33 @@ public class DataResourceApplicationService {
                 currentPage,
                 pageSize
         );
+
+        // 收集所有企业ID
+        List<Long> estabIds = entities.getData().stream()
+                .map(DrsEntity::getOwnerEstabId)
+                .filter(id -> id != null && id > 0)
+                .distinct()
+                .toList();
+
+        // 批量查询企业信息
+        Map<Long, String> estabNameMap = new HashMap<>();
+        if (!estabIds.isEmpty()) {
+            List<EstabEntity> estabs = organizationRepository.findEstabsByIds(estabIds);
+            for (EstabEntity estab : estabs) {
+                estabNameMap.put(estab.getId(), estab.getEstabName());
+            }
+        }
+
+        // 转换并填充企业名称
         List<DrsDTO> result = new ArrayList<>();
         for (DrsEntity entity : entities.getData()) {
-            result.add(systemDomainAssembler.toDrsDto(entity));
+            DrsDTO dto = systemDomainAssembler.toDrsDto(entity);
+            if (entity.getOwnerEstabId() != null && entity.getOwnerEstabId() == 0) {
+                dto.setOwnerEstabName("平台");
+            } else if (entity.getOwnerEstabId() != null) {
+                dto.setOwnerEstabName(estabNameMap.get(entity.getOwnerEstabId()));
+            }
+            result.add(dto);
         }
         return PageResponse.of(result, entities.getTotal(), entities.getPageSize(), entities.getCurrentPage());
     }

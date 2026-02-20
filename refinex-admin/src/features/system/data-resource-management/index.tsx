@@ -19,7 +19,7 @@ import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -149,6 +149,9 @@ export function DataResourceManagementPage() {
   const [deletingResource, setDeletingResource] = useState<DataResource | null>(null)
   const [deletingResourceLoading, setDeletingResourceLoading] = useState(false)
 
+  const [interfaceManageDialogOpen, setInterfaceManageDialogOpen] = useState(false)
+  const [managingResource, setManagingResource] = useState<DataResource | null>(null)
+
   const [interfaces, setInterfaces] = useState<DataResourceInterface[]>([])
   const [interfaceTotal, setInterfaceTotal] = useState(0)
   const [interfaceLoading, setInterfaceLoading] = useState(false)
@@ -176,11 +179,6 @@ export function DataResourceManagementPage() {
     defaultValues: DEFAULT_INTERFACE_FORM,
     mode: 'onChange',
   })
-
-  const selectedResourceName = useMemo(() => {
-    if (!selectedResource) return '-'
-    return `${selectedResource.drsName || '-'}（${selectedResource.drsCode || '-'}）`
-  }, [selectedResource])
 
   async function loadResources(activeQuery: DataResourceListQuery = query) {
     setLoading(true)
@@ -234,14 +232,12 @@ export function DataResourceManagementPage() {
   }, [query])
 
   useEffect(() => {
-    if (!selectedResource?.id) {
-      setInterfaces([])
-      setInterfaceTotal(0)
+    if (!interfaceManageDialogOpen || !managingResource?.id) {
       return
     }
-    void loadInterfaces(selectedResource.id, interfaceQuery)
+    void loadInterfaces(managingResource.id, interfaceQuery)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedResource?.id, interfaceQuery])
+  }, [interfaceManageDialogOpen, managingResource?.id, interfaceQuery])
 
   function applyFilter() {
     setQuery((prev) => ({
@@ -288,6 +284,27 @@ export function DataResourceManagementPage() {
       dataOwnerType: activeEstabId === 0 ? '0' : '1',
     })
     setResourceDialogOpen(true)
+  }
+
+  function openInterfaceManageDialog(resource: DataResource) {
+    setManagingResource(resource)
+    setInterfaceQuery({
+      keyword: '',
+      status: 'all',
+      currentPage: 1,
+      pageSize: DATA_RESOURCE_INTERFACE_PAGE_SIZE,
+    })
+    setInterfaceManageDialogOpen(true)
+    if (resource.id) {
+      void loadInterfaces(resource.id)
+    }
+  }
+
+  function closeInterfaceManageDialog() {
+    setInterfaceManageDialogOpen(false)
+    setManagingResource(null)
+    setInterfaces([])
+    setInterfaceTotal(0)
   }
 
   function openEditResourceDialog(resource: DataResource) {
@@ -380,7 +397,7 @@ export function DataResourceManagementPage() {
   }
 
   async function submitInterface(values: InterfaceFormValues) {
-    if (!selectedResource?.id) {
+    if (!managingResource?.id) {
       toast.error('请先选择数据资源')
       return
     }
@@ -405,12 +422,12 @@ export function DataResourceManagementPage() {
           status: Number(values.status),
           sort: toOptionalNumber(values.sort),
         }
-        await createDataResourceInterface(selectedResource.id, createPayload)
+        await createDataResourceInterface(managingResource.id, createPayload)
         toast.success('数据接口创建成功')
       }
 
       closeInterfaceDialog()
-      await loadInterfaces(selectedResource.id, interfaceQuery)
+      await loadInterfaces(managingResource.id, interfaceQuery)
     } catch (error) {
       handleServerError(error)
     } finally {
@@ -448,7 +465,7 @@ export function DataResourceManagementPage() {
         <Card className='py-3 gap-3'>
           <CardContent className='pt-0 grid gap-3 lg:grid-cols-[180px_180px_1fr_auto]'>
             <Select value={statusInput} onValueChange={(value) => setStatusInput(value as 'all' | '1' | '2')}>
-              <SelectTrigger>
+              <SelectTrigger className='w-full'>
                 <SelectValue placeholder='状态' />
               </SelectTrigger>
               <SelectContent>
@@ -459,7 +476,7 @@ export function DataResourceManagementPage() {
             </Select>
 
             <Select value={ownerTypeInput} onValueChange={(value) => setOwnerTypeInput(value as 'all' | '0' | '1')}>
-              <SelectTrigger>
+              <SelectTrigger className='w-full'>
                 <SelectValue placeholder='归属类型' />
               </SelectTrigger>
               <SelectContent>
@@ -508,7 +525,7 @@ export function DataResourceManagementPage() {
                     <TableHead>资源名称</TableHead>
                     <TableHead>归属类型</TableHead>
                     <TableHead>状态</TableHead>
-                    <TableHead>所属企业ID</TableHead>
+                    <TableHead>所属企业</TableHead>
                     <TableHead className='w-[200px] text-center'>操作</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -542,14 +559,14 @@ export function DataResourceManagementPage() {
                             {toStatusLabel(resource.status)}
                           </Badge>
                         </TableCell>
-                        <TableCell>{resource.ownerEstabId ?? '-'}</TableCell>
+                        <TableCell>{resource.ownerEstabName || '-'}</TableCell>
                         <TableCell className='text-center'>
                           <div className='flex items-center justify-center gap-1'>
                             <Button
                               type='button'
                               variant='ghost'
                               size='sm'
-                              onClick={() => setSelectedResource(resource)}
+                              onClick={() => openInterfaceManageDialog(resource)}
                             >
                               管理接口
                             </Button>
@@ -591,12 +608,206 @@ export function DataResourceManagementPage() {
             />
           </CardContent>
         </Card>
+      </Main>
 
-        <Card className='mt-2 grow overflow-hidden py-3 gap-3'>
-          <CardHeader className='pb-0'>
-            <CardTitle className='text-base'>数据接口定义：{selectedResourceName}</CardTitle>
-          </CardHeader>
-          <CardContent className='pt-0 space-y-3'>
+      <Dialog open={resourceDialogOpen} onOpenChange={(open) => (open ? setResourceDialogOpen(true) : closeResourceDialog())}>
+        <DialogContent className='sm:max-w-3xl'>
+          <DialogHeader>
+            <DialogTitle>{editingResource?.id ? '编辑数据资源' : '新建数据资源'}</DialogTitle>
+            <DialogDescription>请填写数据资源信息</DialogDescription>
+          </DialogHeader>
+          <Form {...resourceForm}>
+            <form onSubmit={resourceForm.handleSubmit(submitResource)} className='grid gap-4'>
+              <div className='grid gap-4 md:grid-cols-1'>
+                <FormField
+                  control={resourceForm.control}
+                  name='drsName'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>资源名称</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder='请输入资源名称' />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className='grid gap-4 md:grid-cols-2'>
+                <FormField
+                  control={resourceForm.control}
+                  name='dataOwnerType'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>归属类型</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger className='w-full'>
+                            <SelectValue placeholder='请选择归属类型' />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value='0'>平台</SelectItem>
+                          <SelectItem value='1'>租户</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={resourceForm.control}
+                  name='status'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>状态</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger className='w-full'>
+                            <SelectValue placeholder='请选择状态' />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value='1'>启用</SelectItem>
+                          <SelectItem value='2'>停用</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={resourceForm.control}
+                name='remark'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>备注</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} rows={2} placeholder='选填' />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter>
+                <Button type='button' variant='outline' onClick={closeResourceDialog}>
+                  取消
+                </Button>
+                <Button type='submit' disabled={savingResource}>
+                  {savingResource ? <Loader2 className='mr-2 h-4 w-4 animate-spin' /> : null}
+                  保存
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={interfaceDialogOpen} onOpenChange={(open) => (open ? setInterfaceDialogOpen(true) : closeInterfaceDialog())}>
+        <DialogContent className='sm:max-w-3xl'>
+          <DialogHeader>
+            <DialogTitle>{editingInterface?.id ? '编辑数据接口' : '新建数据接口'}</DialogTitle>
+            <DialogDescription>请填写数据接口信息</DialogDescription>
+          </DialogHeader>
+          <Form {...interfaceForm}>
+            <form onSubmit={interfaceForm.handleSubmit(submitInterface)} className='grid gap-4'>
+              <div className='grid gap-4 md:grid-cols-1'>
+                <FormField
+                  control={interfaceForm.control}
+                  name='interfaceName'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>接口名称</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder='请输入接口名称' />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className='grid gap-4 md:grid-cols-1'>
+                <FormField
+                  control={interfaceForm.control}
+                  name='interfaceSql'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>SQL 过滤表达式</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} rows={4} placeholder='例如：SELECT id FROM biz_order WHERE owner_id = #{userId}' />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className='grid gap-4 md:grid-cols-2'>
+                <FormField
+                  control={interfaceForm.control}
+                  name='status'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>状态</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger className='w-full'>
+                            <SelectValue placeholder='请选择状态' />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value='1'>启用</SelectItem>
+                          <SelectItem value='2'>停用</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={interfaceForm.control}
+                  name='sort'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>排序</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder='默认 0' />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <DialogFooter>
+                <Button type='button' variant='outline' onClick={closeInterfaceDialog}>
+                  取消
+                </Button>
+                <Button type='submit' disabled={savingInterface}>
+                  {savingInterface ? <Loader2 className='mr-2 h-4 w-4 animate-spin' /> : null}
+                  保存
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={interfaceManageDialogOpen} onOpenChange={(open) => (open ? setInterfaceManageDialogOpen(true) : closeInterfaceManageDialog())}>
+        <DialogContent className='sm:max-w-7xl'>
+          <DialogHeader>
+            <DialogTitle>数据接口管理：{managingResource?.drsName || '-'}</DialogTitle>
+            <DialogDescription>管理数据资源「{managingResource?.drsCode || '-'}」的接口定义</DialogDescription>
+          </DialogHeader>
+
+          <div className='space-y-3'>
             <div className='grid gap-3 lg:grid-cols-[1fr_180px_auto]'>
               <Input
                 value={interfaceQuery.keyword}
@@ -624,7 +835,7 @@ export function DataResourceManagementPage() {
                   <SelectItem value='2'>停用</SelectItem>
                 </SelectContent>
               </Select>
-              <Button type='button' className='gap-2' onClick={openCreateInterfaceDialog} disabled={!selectedResource?.id}>
+              <Button type='button' className='gap-2' onClick={openCreateInterfaceDialog}>
                 <Plus className='h-4 w-4' />
                 新建接口
               </Button>
@@ -643,13 +854,7 @@ export function DataResourceManagementPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {!selectedResource?.id ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className='py-6 text-center text-muted-foreground'>
-                        请先在上方选择一个数据资源
-                      </TableCell>
-                    </TableRow>
-                  ) : interfaceLoading ? (
+                  {interfaceLoading ? (
                     <TableRow>
                       <TableCell colSpan={6}>
                         <div className='flex items-center justify-center gap-2 py-6 text-muted-foreground'>
@@ -698,7 +903,6 @@ export function DataResourceManagementPage() {
                 </TableBody>
               </Table>
             </div>
-
             <PageToolbar
               page={interfaceQuery.currentPage}
               size={interfaceQuery.pageSize}
@@ -707,197 +911,13 @@ export function DataResourceManagementPage() {
               onPageChange={handleInterfacePageChange}
               onPageSizeChange={handleInterfacePageSizeChange}
             />
-          </CardContent>
-        </Card>
-      </Main>
+          </div>
 
-      <Dialog open={resourceDialogOpen} onOpenChange={(open) => (open ? setResourceDialogOpen(true) : closeResourceDialog())}>
-        <DialogContent className='sm:max-w-3xl'>
-          <DialogHeader>
-            <DialogTitle>{editingResource?.id ? '编辑数据资源' : '新建数据资源'}</DialogTitle>
-            <DialogDescription>资源编码由后端自动生成，前端只维护业务属性。</DialogDescription>
-          </DialogHeader>
-          <Form {...resourceForm}>
-            <form onSubmit={resourceForm.handleSubmit(submitResource)} className='grid gap-4'>
-              <div className='grid gap-4 md:grid-cols-1'>
-                <FormField
-                  control={resourceForm.control}
-                  name='drsName'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>资源名称</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder='请输入资源名称' />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className='grid gap-4 md:grid-cols-2'>
-                <FormField
-                  control={resourceForm.control}
-                  name='dataOwnerType'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>归属类型</FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder='请选择归属类型' />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value='0'>平台</SelectItem>
-                          <SelectItem value='1'>租户</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={resourceForm.control}
-                  name='status'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>状态</FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder='请选择状态' />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value='1'>启用</SelectItem>
-                          <SelectItem value='2'>停用</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={resourceForm.control}
-                name='remark'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>备注</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} rows={2} placeholder='选填' />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <DialogFooter>
-                <Button type='button' variant='outline' onClick={closeResourceDialog}>
-                  取消
-                </Button>
-                <Button type='submit' disabled={savingResource}>
-                  {savingResource ? <Loader2 className='mr-2 h-4 w-4 animate-spin' /> : null}
-                  保存
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={interfaceDialogOpen} onOpenChange={(open) => (open ? setInterfaceDialogOpen(true) : closeInterfaceDialog())}>
-        <DialogContent className='sm:max-w-3xl'>
-          <DialogHeader>
-            <DialogTitle>{editingInterface?.id ? '编辑数据接口' : '新建数据接口'}</DialogTitle>
-            <DialogDescription>接口编码由后端自动生成，重点维护 SQL 过滤表达式。</DialogDescription>
-          </DialogHeader>
-          <Form {...interfaceForm}>
-            <form onSubmit={interfaceForm.handleSubmit(submitInterface)} className='grid gap-4'>
-              <div className='grid gap-4 md:grid-cols-1'>
-                <FormField
-                  control={interfaceForm.control}
-                  name='interfaceName'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>接口名称</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder='请输入接口名称' />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className='grid gap-4 md:grid-cols-1'>
-                <FormField
-                  control={interfaceForm.control}
-                  name='interfaceSql'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>SQL 过滤表达式</FormLabel>
-                      <FormControl>
-                        <Textarea {...field} rows={4} placeholder='例如：SELECT id FROM biz_order WHERE owner_id = #{userId}' />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className='grid gap-4 md:grid-cols-2'>
-                <FormField
-                  control={interfaceForm.control}
-                  name='status'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>状态</FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder='请选择状态' />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value='1'>启用</SelectItem>
-                          <SelectItem value='2'>停用</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={interfaceForm.control}
-                  name='sort'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>排序</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder='默认 0' />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <DialogFooter>
-                <Button type='button' variant='outline' onClick={closeInterfaceDialog}>
-                  取消
-                </Button>
-                <Button type='submit' disabled={savingInterface}>
-                  {savingInterface ? <Loader2 className='mr-2 h-4 w-4 animate-spin' /> : null}
-                  保存
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
+          <DialogFooter>
+            <Button type='button' onClick={closeInterfaceManageDialog}>
+              关闭
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
