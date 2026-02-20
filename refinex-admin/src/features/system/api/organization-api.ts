@@ -54,6 +54,20 @@ export async function deleteEstab(estabId: number): Promise<void> {
   await http.delete<void>(buildSystemPath(`/estabs/${estabId}`))
 }
 
+export async function uploadEstabLogo(estabId: number, file: File): Promise<Estab> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const response = await http.post<Estab>(buildSystemPath(`/estabs/${estabId}/logo`), formData)
+  return response.data
+}
+
+export async function uploadEstabLicense(estabId: number, file: File): Promise<Estab> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const response = await http.post<Estab>(buildSystemPath(`/estabs/${estabId}/license`), formData)
+  return response.data
+}
+
 export async function listEstabAddresses(
   estabId: number,
   query?: EstabAddressListQuery

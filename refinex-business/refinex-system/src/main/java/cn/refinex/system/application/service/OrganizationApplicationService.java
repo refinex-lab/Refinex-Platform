@@ -6,6 +6,7 @@ import cn.refinex.base.exception.BizException;
 import cn.refinex.base.response.PageResponse;
 import cn.refinex.base.utils.PageUtils;
 import cn.refinex.base.utils.UniqueCodeUtils;
+import cn.refinex.file.api.FileService;
 import cn.refinex.system.application.assembler.SystemDomainAssembler;
 import cn.refinex.system.application.command.*;
 import cn.refinex.system.application.dto.*;
@@ -19,6 +20,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -36,11 +38,15 @@ public class OrganizationApplicationService {
     private static final String TEAM_CODE_PREFIX = "TEAM_";
     private static final int TEAM_CODE_RANDOM_LENGTH = 10;
     private static final int TEAM_CODE_GENERATE_MAX_RETRY = 20;
+    private static final String ESTAB_CODE_PREFIX = "EST_";
+    private static final int ESTAB_CODE_RANDOM_LENGTH = 8;
+    private static final int ESTAB_CODE_GENERATE_MAX_RETRY = 10;
 
     private final OrganizationRepository organizationRepository;
     private final SystemRepository systemRepository;
     private final SystemDomainAssembler systemDomainAssembler;
     private final UserManageRemoteGateway userManageRemoteGateway;
+    private final FileService fileService;
 
     /**
      * 查询企业列表
@@ -126,14 +132,11 @@ public class OrganizationApplicationService {
      */
     @Transactional(rollbackFor = Exception.class)
     public EstabDTO createEstab(CreateEstabCommand command) {
-        if (command == null || isBlank(command.getEstabCode()) || isBlank(command.getEstabName())) {
+        if (command == null || isBlank(command.getEstabName())) {
             throw new BizException(SystemErrorCode.INVALID_PARAM);
         }
 
-        String estabCode = command.getEstabCode().trim();
-        if (organizationRepository.countEstabCode(estabCode, null) > 0) {
-            throw new BizException(SystemErrorCode.ESTAB_CODE_DUPLICATED);
-        }
+        String estabCode = generateEstabCode(command.getEstabCode());
 
         EstabEntity estab = new EstabEntity();
         estab.setEstabCode(estabCode);
@@ -141,6 +144,7 @@ public class OrganizationApplicationService {
         estab.setEstabShortName(trimToNull(command.getEstabShortName()));
         estab.setEstabType(defaultIfNull(command.getEstabType(), 1));
         estab.setStatus(defaultIfNull(command.getStatus(), 1));
+        estab.setCreditCode(trimToNull(command.getCreditCode()));
         estab.setIndustryCode(trimToNull(command.getIndustryCode()));
         estab.setSizeRange(trimToNull(command.getSizeRange()));
         estab.setOwnerUserId(command.getOwnerUserId());
@@ -149,6 +153,7 @@ public class OrganizationApplicationService {
         estab.setContactEmail(trimToNull(command.getContactEmail()));
         estab.setWebsiteUrl(trimToNull(command.getWebsiteUrl()));
         estab.setLogoUrl(trimToNull(command.getLogoUrl()));
+        estab.setLicenseUrl(trimToNull(command.getLicenseUrl()));
         estab.setRemark(trimToNull(command.getRemark()));
 
         EstabEntity created = organizationRepository.insertEstab(estab);
@@ -173,6 +178,7 @@ public class OrganizationApplicationService {
         existing.setEstabShortName(trimToNull(command.getEstabShortName()));
         existing.setEstabType(defaultIfNull(command.getEstabType(), existing.getEstabType()));
         existing.setStatus(defaultIfNull(command.getStatus(), existing.getStatus()));
+        existing.setCreditCode(trimToNull(command.getCreditCode()));
         existing.setIndustryCode(trimToNull(command.getIndustryCode()));
         existing.setSizeRange(trimToNull(command.getSizeRange()));
         existing.setOwnerUserId(command.getOwnerUserId());
@@ -181,6 +187,7 @@ public class OrganizationApplicationService {
         existing.setContactEmail(trimToNull(command.getContactEmail()));
         existing.setWebsiteUrl(trimToNull(command.getWebsiteUrl()));
         existing.setLogoUrl(trimToNull(command.getLogoUrl()));
+        existing.setLicenseUrl(trimToNull(command.getLicenseUrl()));
         existing.setRemark(trimToNull(command.getRemark()));
 
         organizationRepository.updateEstab(existing);
@@ -202,6 +209,66 @@ public class OrganizationApplicationService {
             throw new BizException(SystemErrorCode.ESTAB_HAS_TEAMS);
         }
         organizationRepository.deleteEstab(estab.getId());
+    }
+
+    /**
+     * 上传企业 Logo
+     *
+     * @param command     上传命令
+     * @param inputStream 文件输入流
+     * @return 企业详情
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public EstabDTO uploadEstabLogo(UploadEstabLogoCommand command, InputStream inputStream) {
+        if (command == null || command.getEstabId() == null || inputStream == null) {
+            throw new BizException(SystemErrorCode.INVALID_PARAM);
+        }
+        if (command.getFileSize() == null || command.getFileSize() <= 0) {
+            throw new BizException("Logo 文件不能为空", SystemErrorCode.INVALID_PARAM);
+        }
+        if (command.getFileSize() > 5L * 1024 * 1024) {
+            throw new BizException("Logo 文件大小不能超过 5MB", SystemErrorCode.INVALID_PARAM);
+        }
+
+        EstabEntity estab = requireEstab(command.getEstabId());
+        String extension = resolveFileExtension(command.getOriginalFilename(), command.getContentType());
+        String path = buildEstabLogoPath(command.getEstabId(), extension);
+        String logoUrl = fileService.upload(path, inputStream);
+
+        estab.setLogoUrl(logoUrl);
+        organizationRepository.updateEstab(estab);
+
+        return systemDomainAssembler.toEstabDto(requireEstab(estab.getId()));
+    }
+
+    /**
+     * 上传企业营业执照
+     *
+     * @param command     上传命令
+     * @param inputStream 文件输入流
+     * @return 企业详情
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public EstabDTO uploadEstabLicense(UploadEstabLicenseCommand command, InputStream inputStream) {
+        if (command == null || command.getEstabId() == null || inputStream == null) {
+            throw new BizException(SystemErrorCode.INVALID_PARAM);
+        }
+        if (command.getFileSize() == null || command.getFileSize() <= 0) {
+            throw new BizException("营业执照文件不能为空", SystemErrorCode.INVALID_PARAM);
+        }
+        if (command.getFileSize() > 10L * 1024 * 1024) {
+            throw new BizException("营业执照文件大小不能超过 10MB", SystemErrorCode.INVALID_PARAM);
+        }
+
+        EstabEntity estab = requireEstab(command.getEstabId());
+        String extension = resolveFileExtension(command.getOriginalFilename(), command.getContentType());
+        String path = buildEstabLicensePath(command.getEstabId(), extension);
+        String licenseUrl = fileService.upload(path, inputStream);
+
+        estab.setLicenseUrl(licenseUrl);
+        organizationRepository.updateEstab(estab);
+
+        return systemDomainAssembler.toEstabDto(requireEstab(estab.getId()));
     }
 
     /**
@@ -990,6 +1057,80 @@ public class OrganizationApplicationService {
         }
 
         return teamUser;
+    }
+
+    /**
+     * 生成企业编码
+     *
+     * @param providedCode 用户提供的编码（可选）
+     * @return 企业编码
+     */
+    private String generateEstabCode(String providedCode) {
+        if (!isBlank(providedCode)) {
+            String normalized = providedCode.trim();
+            if (organizationRepository.countEstabCode(normalized, null) > 0) {
+                throw new BizException(SystemErrorCode.ESTAB_CODE_DUPLICATED);
+            }
+            return normalized;
+        }
+        for (int i = 0; i < ESTAB_CODE_GENERATE_MAX_RETRY; i++) {
+            String candidate = UniqueCodeUtils.randomUpperCode(ESTAB_CODE_PREFIX, ESTAB_CODE_RANDOM_LENGTH);
+            if (organizationRepository.countEstabCode(candidate, null) == 0) {
+                return candidate;
+            }
+        }
+        throw new BizException("自动生成企业编码失败，请稍后重试", SystemErrorCode.ESTAB_CODE_DUPLICATED);
+    }
+
+    /**
+     * 解析文件扩展名
+     *
+     * @param originalFilename 原始文件名
+     * @param contentType      内容类型
+     * @return 扩展名
+     */
+    private String resolveFileExtension(String originalFilename, String contentType) {
+        String extension = org.springframework.util.StringUtils.getFilenameExtension(originalFilename);
+        if (org.springframework.util.StringUtils.hasText(extension)) {
+            String normalized = extension.toLowerCase(java.util.Locale.ROOT);
+            if (Set.of("jpg", "jpeg", "png", "webp", "gif").contains(normalized)) {
+                return normalized;
+            }
+        }
+
+        if (org.springframework.util.StringUtils.hasText(contentType)) {
+            return switch (contentType.toLowerCase(java.util.Locale.ROOT)) {
+                case "image/jpeg", "image/jpg" -> "jpg";
+                case "image/png" -> "png";
+                case "image/webp" -> "webp";
+                case "image/gif" -> "gif";
+                default -> throw new BizException("图片仅支持 JPG/PNG/WEBP/GIF 格式", SystemErrorCode.INVALID_PARAM);
+            };
+        }
+
+        throw new BizException("图片仅支持 JPG/PNG/WEBP/GIF 格式", SystemErrorCode.INVALID_PARAM);
+    }
+
+    /**
+     * 构建企业 Logo 路径
+     *
+     * @param estabId   企业ID
+     * @param extension 扩展名
+     * @return 路径
+     */
+    private String buildEstabLogoPath(Long estabId, String extension) {
+        return String.format("estab/%d/logo.%s", estabId, extension);
+    }
+
+    /**
+     * 构建企业营业执照路径
+     *
+     * @param estabId   企业ID
+     * @param extension 扩展名
+     * @return 路径
+     */
+    private String buildEstabLicensePath(Long estabId, String extension) {
+        return String.format("estab/%d/license.%s", estabId, extension);
     }
 
     /**

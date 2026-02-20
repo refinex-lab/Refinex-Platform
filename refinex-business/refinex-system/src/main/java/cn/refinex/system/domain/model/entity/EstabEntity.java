@@ -41,6 +41,11 @@ public class EstabEntity {
     private Integer status;
 
     /**
+     * 统一社会信用代码
+     */
+    private String creditCode;
+
+    /**
      * 行业编码
      */
     private String industryCode;
@@ -79,6 +84,11 @@ public class EstabEntity {
      * Logo 地址
      */
     private String logoUrl;
+
+    /**
+     * 营业执照图片地址
+     */
+    private String licenseUrl;
 
     /**
      * 备注

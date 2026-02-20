@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Eye,
+  ImageUp,
   Loader2,
   Maximize2,
   MapPin,
@@ -73,6 +74,8 @@ import {
   listEstabAddresses,
   listEstabUsers,
   listEstabs,
+  uploadEstabLogo,
+  uploadEstabLicense,
   type Estab,
   type EstabAddress,
   type EstabAddressCreateRequest,
@@ -104,16 +107,21 @@ import { PageToolbar } from '@/features/system/components/page-toolbar'
 import { handleServerError } from '@/lib/handle-server-error'
 
 const estabFormSchema = z.object({
-  estabCode: z.string().trim().min(1, '企业编码不能为空').max(64, '企业编码最长 64 位'),
+  estabCode: z.string().trim().max(64, '企业编码最长 64 位').optional(),
   estabName: z.string().trim().min(1, '企业名称不能为空').max(128, '企业名称最长 128 位'),
   estabShortName: z.string().trim().max(64, '简称最长 64 位').optional(),
-  estabType: z.enum(['1', '2', '3']),
+  estabType: z.enum(['0', '1', '2']),
   status: z.enum(['1', '2']),
+  creditCode: z.string().trim().max(64, '统一社会信用代码最长 64 位').optional(),
+  industryCode: z.string().trim().max(64, '行业编码最长 64 位').optional(),
+  sizeRange: z.string().trim().max(64, '规模区间最长 64 位').optional(),
   ownerUserId: z.string().trim().max(20, '负责人用户ID格式非法').optional(),
   contactName: z.string().trim().max(64, '联系人最长 64 位').optional(),
   contactPhone: z.string().trim().max(32, '联系电话最长 32 位').optional(),
   contactEmail: z.string().trim().max(128, '联系邮箱最长 128 位').optional(),
   websiteUrl: z.string().trim().max(255, '官网地址最长 255 位').optional(),
+  logoUrl: z.string().trim().max(255, 'Logo地址最长 255 位').optional(),
+  licenseUrl: z.string().trim().max(255, '营业执照地址最长 255 位').optional(),
   remark: z.string().trim().max(255, '备注最长 255 位').optional(),
 })
 
@@ -165,11 +173,16 @@ const DEFAULT_ESTAB_FORM: EstabFormValues = {
   estabShortName: '',
   estabType: '1',
   status: '1',
+  creditCode: '',
+  industryCode: '',
+  sizeRange: '',
   ownerUserId: '',
   contactName: '',
   contactPhone: '',
   contactEmail: '',
   websiteUrl: '',
+  logoUrl: '',
+  licenseUrl: '',
   remark: '',
 }
 
@@ -219,9 +232,9 @@ type EstabOwnerCandidate = {
 }
 
 function toEstabTypeLabel(type?: number): string {
-  if (type === 1) return '租户企业'
-  if (type === 2) return '平台组织'
-  if (type === 3) return '合作伙伴'
+  if (type === 0) return '平台'
+  if (type === 1) return '租户'
+  if (type === 2) return '合作方'
   return '-'
 }
 
@@ -273,7 +286,7 @@ export function EstabsPage() {
 
   const [keywordInput, setKeywordInput] = useState('')
   const [statusInput, setStatusInput] = useState<'all' | '1' | '2'>('all')
-  const [estabTypeInput, setEstabTypeInput] = useState<'all' | '1' | '2' | '3'>('all')
+  const [estabTypeInput, setEstabTypeInput] = useState<'all' | '0' | '1' | '2'>('all')
   const [query, setQuery] = useState<EstabListQuery>({ currentPage: 1, pageSize: 10 })
 
   const [selectedEstab, setSelectedEstab] = useState<Estab | null>(null)
@@ -307,6 +320,10 @@ export function EstabsPage() {
   const [estabDialogExpanded, setEstabDialogExpanded] = useState(false)
   const [deletingEstab, setDeletingEstab] = useState<Estab | null>(null)
   const [deletingEstabLoading, setDeletingEstabLoading] = useState(false)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [uploadingLicense, setUploadingLicense] = useState(false)
+  const logoFileInputRef = useRef<HTMLInputElement | null>(null)
+  const licenseFileInputRef = useRef<HTMLInputElement | null>(null)
 
   const [addressDialogOpen, setAddressDialogOpen] = useState(false)
   const [savingAddress, setSavingAddress] = useState(false)
@@ -548,13 +565,18 @@ export function EstabsPage() {
       estabCode: estab.estabCode ?? '',
       estabName: estab.estabName ?? '',
       estabShortName: estab.estabShortName ?? '',
-      estabType: String(estab.estabType ?? 1) as '1' | '2' | '3',
+      estabType: String(estab.estabType ?? 1) as '0' | '1' | '2',
       status: String(estab.status ?? 1) as '1' | '2',
+      creditCode: estab.creditCode ?? '',
+      industryCode: estab.industryCode ?? '',
+      sizeRange: estab.sizeRange ?? '',
       ownerUserId: estab.ownerUserId == null ? '' : String(estab.ownerUserId),
       contactName: estab.contactName ?? '',
       contactPhone: estab.contactPhone ?? '',
       contactEmail: estab.contactEmail ?? '',
       websiteUrl: estab.websiteUrl ?? '',
+      logoUrl: estab.logoUrl ?? '',
+      licenseUrl: estab.licenseUrl ?? '',
       remark: estab.remark ?? '',
     })
     const ownerCandidate =
@@ -579,13 +601,18 @@ export function EstabsPage() {
       estabCode: estab.estabCode ?? '',
       estabName: estab.estabName ?? '',
       estabShortName: estab.estabShortName ?? '',
-      estabType: String(estab.estabType ?? 1) as '1' | '2' | '3',
+      estabType: String(estab.estabType ?? 1) as '0' | '1' | '2',
       status: String(estab.status ?? 1) as '1' | '2',
+      creditCode: estab.creditCode ?? '',
+      industryCode: estab.industryCode ?? '',
+      sizeRange: estab.sizeRange ?? '',
       ownerUserId: estab.ownerUserId == null ? '' : String(estab.ownerUserId),
       contactName: estab.contactName ?? '',
       contactPhone: estab.contactPhone ?? '',
       contactEmail: estab.contactEmail ?? '',
       websiteUrl: estab.websiteUrl ?? '',
+      logoUrl: estab.logoUrl ?? '',
+      licenseUrl: estab.licenseUrl ?? '',
       remark: estab.remark ?? '',
     })
     const ownerCandidate =
@@ -621,11 +648,16 @@ export function EstabsPage() {
         estabShortName: toOptionalString(values.estabShortName),
         estabType: Number(values.estabType),
         status: Number(values.status),
+        creditCode: toOptionalString(values.creditCode),
+        industryCode: toOptionalString(values.industryCode),
+        sizeRange: toOptionalString(values.sizeRange),
         ownerUserId: parsePositiveInteger(values.ownerUserId),
         contactName: toOptionalString(values.contactName),
         contactPhone: toOptionalString(values.contactPhone),
         contactEmail: toOptionalString(values.contactEmail),
         websiteUrl: toOptionalString(values.websiteUrl),
+        logoUrl: toOptionalString(values.logoUrl),
+        licenseUrl: toOptionalString(values.licenseUrl),
         remark: toOptionalString(values.remark),
       }
 
@@ -635,7 +667,7 @@ export function EstabsPage() {
       } else {
         const payload: EstabCreateRequest = {
           ...basePayload,
-          estabCode: values.estabCode.trim(),
+          estabCode: values.estabCode?.trim(),
           estabName: values.estabName.trim(),
         }
         await createEstab(payload)
@@ -663,6 +695,70 @@ export function EstabsPage() {
       handleServerError(error)
     } finally {
       setDeletingEstabLoading(false)
+    }
+  }
+
+  async function handleLogoFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file || !editingEstab?.id) {
+      return
+    }
+
+    const MAX_SIZE = 5 * 1024 * 1024
+    const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+
+    if (!ACCEPTED_TYPES.includes(file.type)) {
+      toast.error('Logo 仅支持 JPG/PNG/WEBP/GIF 格式')
+      return
+    }
+    if (file.size > MAX_SIZE) {
+      toast.error('Logo 文件大小不能超过 5MB')
+      return
+    }
+
+    setUploadingLogo(true)
+    try {
+      const updated = await uploadEstabLogo(editingEstab.id, file)
+      estabForm.setValue('logoUrl', updated.logoUrl ?? '', { shouldDirty: true })
+      setEditingEstab(updated)
+      toast.success('Logo 上传成功')
+    } catch (error) {
+      handleServerError(error)
+    } finally {
+      setUploadingLogo(false)
+    }
+  }
+
+  async function handleLicenseFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file || !editingEstab?.id) {
+      return
+    }
+
+    const MAX_SIZE = 10 * 1024 * 1024
+    const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
+
+    if (!ACCEPTED_TYPES.includes(file.type)) {
+      toast.error('营业执照仅支持 JPG/PNG/WEBP/PDF 格式')
+      return
+    }
+    if (file.size > MAX_SIZE) {
+      toast.error('营业执照文件大小不能超过 10MB')
+      return
+    }
+
+    setUploadingLicense(true)
+    try {
+      const updated = await uploadEstabLicense(editingEstab.id, file)
+      estabForm.setValue('licenseUrl', updated.licenseUrl ?? '', { shouldDirty: true })
+      setEditingEstab(updated)
+      toast.success('营业执照上传成功')
+    } catch (error) {
+      handleServerError(error)
+    } finally {
+      setUploadingLicense(false)
     }
   }
 
@@ -895,7 +991,7 @@ export function EstabsPage() {
               }}
             />
             <Select value={statusInput} onValueChange={(value) => setStatusInput(value as 'all' | '1' | '2')}>
-              <SelectTrigger>
+              <SelectTrigger className='w-full'>
                 <SelectValue placeholder='状态' />
               </SelectTrigger>
               <SelectContent>
@@ -906,16 +1002,16 @@ export function EstabsPage() {
             </Select>
             <Select
               value={estabTypeInput}
-              onValueChange={(value) => setEstabTypeInput(value as 'all' | '1' | '2' | '3')}
+              onValueChange={(value) => setEstabTypeInput(value as 'all' | '0' | '1' | '2')}
             >
-              <SelectTrigger>
+              <SelectTrigger  className='w-full'>
                 <SelectValue placeholder='企业类型' />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value='all'>全部类型</SelectItem>
-                <SelectItem value='1'>租户企业</SelectItem>
-                <SelectItem value='2'>平台组织</SelectItem>
-                <SelectItem value='3'>合作伙伴</SelectItem>
+                <SelectItem value='0'>平台</SelectItem>
+                <SelectItem value='1'>租户</SelectItem>
+                <SelectItem value='2'>合作方</SelectItem>
               </SelectContent>
             </Select>
             <div className='flex items-center gap-2'>
@@ -1088,7 +1184,11 @@ export function EstabsPage() {
                   <FormItem>
                     <FormLabel>企业编码</FormLabel>
                     <FormControl>
-                      <Input {...field} disabled={Boolean(editingEstab) || isEstabReadOnly} />
+                      <Input
+                        {...field}
+                        disabled={Boolean(editingEstab) || isEstabReadOnly}
+                        placeholder={!editingEstab ? '系统自动生成，格式如 EST_XXXXXXXX' : undefined}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1133,9 +1233,9 @@ export function EstabsPage() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value='1'>租户企业</SelectItem>
-                        <SelectItem value='2'>平台组织</SelectItem>
-                        <SelectItem value='3'>合作伙伴</SelectItem>
+                        <SelectItem value='0'>平台</SelectItem>
+                        <SelectItem value='1'>租户</SelectItem>
+                        <SelectItem value='2'>合作方</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -1233,6 +1333,137 @@ export function EstabsPage() {
                           </div>
                         ) : null}
                       </div>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={estabForm.control}
+                name='creditCode'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>统一社会信用代码</FormLabel>
+                    <FormControl>
+                      <Input {...field} disabled={isEstabReadOnly} placeholder='请输入统一社会信用代码' />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={estabForm.control}
+                name='industryCode'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>行业编码</FormLabel>
+                    <FormControl>
+                      <Input {...field} disabled={isEstabReadOnly} placeholder='请输入行业编码' />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={estabForm.control}
+                name='sizeRange'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>规模区间</FormLabel>
+                    <FormControl>
+                      <Input {...field} disabled={isEstabReadOnly} placeholder='请输入规模区间' />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={estabForm.control}
+                name='logoUrl'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Logo</FormLabel>
+                    {isEstabReadOnly ? (
+                      <FormControl>
+                        <Input {...field} disabled placeholder='Logo 地址' />
+                      </FormControl>
+                    ) : editingEstab?.id ? (
+                      <div className='space-y-2'>
+                        <FormControl>
+                          <Input {...field} placeholder='Logo 地址' />
+                        </FormControl>
+                        <Button
+                          type='button'
+                          variant='outline'
+                          size='sm'
+                          disabled={uploadingLogo}
+                          onClick={() => logoFileInputRef.current?.click()}
+                        >
+                          {uploadingLogo ? (
+                            <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                          ) : (
+                            <ImageUp className='mr-2 h-4 w-4' />
+                          )}
+                          上传 Logo
+                        </Button>
+                        <input
+                          ref={logoFileInputRef}
+                          type='file'
+                          accept='image/jpeg,image/png,image/webp,image/gif'
+                          className='hidden'
+                          onChange={handleLogoFileChange}
+                        />
+                      </div>
+                    ) : (
+                      <FormControl>
+                        <Input {...field} placeholder='保存后可上传 Logo' disabled />
+                      </FormControl>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={estabForm.control}
+                name='licenseUrl'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>营业执照</FormLabel>
+                    {isEstabReadOnly ? (
+                      <FormControl>
+                        <Input {...field} disabled placeholder='营业执照地址' />
+                      </FormControl>
+                    ) : editingEstab?.id ? (
+                      <div className='space-y-2'>
+                        <FormControl>
+                          <Input {...field} placeholder='营业执照地址' />
+                        </FormControl>
+                        <Button
+                          type='button'
+                          variant='outline'
+                          size='sm'
+                          disabled={uploadingLicense}
+                          onClick={() => licenseFileInputRef.current?.click()}
+                        >
+                          {uploadingLicense ? (
+                            <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                          ) : (
+                            <ImageUp className='mr-2 h-4 w-4' />
+                          )}
+                          上传营业执照
+                        </Button>
+                        <input
+                          ref={licenseFileInputRef}
+                          type='file'
+                          accept='image/jpeg,image/png,image/webp,application/pdf'
+                          className='hidden'
+                          onChange={handleLicenseFileChange}
+                        />
+                      </div>
+                    ) : (
+                      <FormControl>
+                        <Input {...field} placeholder='保存后可上传营业执照' disabled />
+                      </FormControl>
                     )}
                     <FormMessage />
                   </FormItem>

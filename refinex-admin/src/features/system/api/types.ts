@@ -466,6 +466,7 @@ export interface Estab {
   estabShortName?: string
   estabType?: number
   status?: number
+  creditCode?: string
   industryCode?: string
   sizeRange?: string
   ownerUserId?: number
@@ -475,6 +476,7 @@ export interface Estab {
   contactEmail?: string
   websiteUrl?: string
   logoUrl?: string
+  licenseUrl?: string
   remark?: string
 }
 
@@ -485,11 +487,12 @@ export interface EstabListQuery extends PaginationQuery {
 }
 
 export interface EstabCreateRequest {
-  estabCode: string
+  estabCode?: string
   estabName: string
   estabShortName?: string
   estabType?: number
   status?: number
+  creditCode?: string
   industryCode?: string
   sizeRange?: string
   ownerUserId?: number
@@ -498,6 +501,7 @@ export interface EstabCreateRequest {
   contactEmail?: string
   websiteUrl?: string
   logoUrl?: string
+  licenseUrl?: string
   remark?: string
 }
 
@@ -506,6 +510,7 @@ export interface EstabUpdateRequest {
   estabShortName?: string
   estabType?: number
   status?: number
+  creditCode?: string
   industryCode?: string
   sizeRange?: string
   ownerUserId?: number
@@ -514,6 +519,7 @@ export interface EstabUpdateRequest {
   contactEmail?: string
   websiteUrl?: string
   logoUrl?: string
+  licenseUrl?: string
   remark?: string
 }
 

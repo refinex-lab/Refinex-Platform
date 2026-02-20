@@ -68,6 +68,7 @@ CREATE TABLE def_estab (
   estab_short_name VARCHAR(64) DEFAULT NULL COMMENT '组织简称',
   estab_type TINYINT NOT NULL DEFAULT 1 COMMENT '组织类型 0平台 1租户 2合作方',
   status TINYINT NOT NULL DEFAULT 1 COMMENT '状态 1启用 2停用 3冻结',
+  credit_code VARCHAR(64) DEFAULT NULL COMMENT '统一社会信用代码',
   industry_code VARCHAR(64) DEFAULT NULL COMMENT '行业编码(值集 industry_type)',
   size_range VARCHAR(64) DEFAULT NULL COMMENT '规模区间(值集 estab_size)',
   owner_user_id BIGINT DEFAULT NULL COMMENT '主负责人用户ID',
@@ -76,6 +77,7 @@ CREATE TABLE def_estab (
   contact_email VARCHAR(128) DEFAULT NULL COMMENT '联系人邮箱',
   website_url VARCHAR(255) DEFAULT NULL COMMENT '官网地址',
   logo_url VARCHAR(255) DEFAULT NULL COMMENT 'Logo地址',
+  license_url VARCHAR(255) DEFAULT NULL COMMENT '营业执照图片地址',
   remark VARCHAR(255) DEFAULT NULL COMMENT '备注',
   ext_json JSON DEFAULT NULL COMMENT '扩展信息',
   create_by BIGINT DEFAULT NULL COMMENT '创建人用户ID',
@@ -86,7 +88,8 @@ CREATE TABLE def_estab (
   gmt_create DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
   gmt_modified DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '修改时间',
   UNIQUE KEY uk_estab_code (estab_code),
-  KEY idx_estab_status (status)
+  KEY idx_estab_status (status),
+  KEY idx_credit_code (credit_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='组织/租户';
 
 DROP TABLE IF EXISTS def_estab_address;

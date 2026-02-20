@@ -2,9 +2,13 @@ package cn.refinex.system.interfaces.controller;
 
 import cn.refinex.base.response.PageResponse;
 import cn.refinex.api.user.context.CurrentUserProvider;
+import cn.refinex.base.exception.BizException;
+import cn.refinex.base.exception.SystemException;
+import cn.refinex.base.exception.code.BizErrorCode;
 import cn.refinex.system.application.command.*;
 import cn.refinex.system.application.dto.*;
 import cn.refinex.system.application.service.OrganizationApplicationService;
+import cn.refinex.system.domain.error.SystemErrorCode;
 import cn.refinex.system.interfaces.assembler.OrganizationApiAssembler;
 import cn.refinex.system.interfaces.dto.*;
 import cn.refinex.system.interfaces.vo.*;
@@ -13,9 +17,13 @@ import cn.refinex.web.vo.Result;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 
 /**
@@ -101,6 +109,68 @@ public class OrganizationController {
     public Result<Void> deleteEstab(@PathVariable @Positive(message = "企业ID必须大于0") Long estabId) {
         organizationApplicationService.deleteEstab(estabId);
         return Result.success();
+    }
+
+    /**
+     * 上传企业 Logo
+     *
+     * @param estabId 企业ID
+     * @param file    Logo 文件
+     * @return 企业详情
+     */
+    @PostMapping(value = "/estabs/{estabId}/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Result<EstabVO> uploadEstabLogo(@PathVariable @Positive(message = "企业ID必须大于0") Long estabId,
+                                           @RequestPart("file") MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BizException("Logo 文件不能为空", SystemErrorCode.INVALID_PARAM);
+        }
+        if (file.getSize() > 5L * 1024 * 1024) {
+            throw new BizException("Logo 文件大小不能超过 5MB", SystemErrorCode.INVALID_PARAM);
+        }
+
+        UploadEstabLogoCommand command = new UploadEstabLogoCommand();
+        command.setEstabId(estabId);
+        command.setOriginalFilename(file.getOriginalFilename());
+        command.setContentType(file.getContentType());
+        command.setFileSize(file.getSize());
+
+        try (InputStream inputStream = file.getInputStream()) {
+            EstabDTO dto = organizationApplicationService.uploadEstabLogo(command, inputStream);
+            return Result.success(organizationApiAssembler.toEstabVo(dto));
+        } catch (IOException e) {
+            throw new SystemException("Logo 文件读取失败", e, BizErrorCode.HTTP_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * 上传企业营业执照
+     *
+     * @param estabId 企业ID
+     * @param file    营业执照文件
+     * @return 企业详情
+     */
+    @PostMapping(value = "/estabs/{estabId}/license", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Result<EstabVO> uploadEstabLicense(@PathVariable @Positive(message = "企业ID必须大于0") Long estabId,
+                                              @RequestPart("file") MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BizException("营业执照文件不能为空", SystemErrorCode.INVALID_PARAM);
+        }
+        if (file.getSize() > 10L * 1024 * 1024) {
+            throw new BizException("营业执照文件大小不能超过 10MB", SystemErrorCode.INVALID_PARAM);
+        }
+
+        UploadEstabLicenseCommand command = new UploadEstabLicenseCommand();
+        command.setEstabId(estabId);
+        command.setOriginalFilename(file.getOriginalFilename());
+        command.setContentType(file.getContentType());
+        command.setFileSize(file.getSize());
+
+        try (InputStream inputStream = file.getInputStream()) {
+            EstabDTO dto = organizationApplicationService.uploadEstabLicense(command, inputStream);
+            return Result.success(organizationApiAssembler.toEstabVo(dto));
+        } catch (IOException e) {
+            throw new SystemException("营业执照文件读取失败", e, BizErrorCode.HTTP_SERVER_ERROR);
+        }
     }
 
     /**
