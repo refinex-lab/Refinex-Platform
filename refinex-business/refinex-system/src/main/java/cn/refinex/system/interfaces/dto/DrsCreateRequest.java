@@ -1,6 +1,12 @@
 package cn.refinex.system.interfaces.dto;
 
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 /**
@@ -19,9 +25,8 @@ public class DrsCreateRequest {
     private Long systemId;
 
     /**
-     * 数据资源编码
+     * 数据资源编码（可选，留空自动生成）
      */
-    @NotBlank(message = "数据资源编码不能为空")
     @Size(max = 64, message = "数据资源编码长度不能超过64个字符")
     private String drsCode;
 

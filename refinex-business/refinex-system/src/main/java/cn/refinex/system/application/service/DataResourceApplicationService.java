@@ -3,6 +3,7 @@ package cn.refinex.system.application.service;
 import cn.refinex.base.exception.BizException;
 import cn.refinex.base.response.PageResponse;
 import cn.refinex.base.utils.PageUtils;
+import cn.refinex.base.utils.UniqueCodeUtils;
 import cn.refinex.system.application.assembler.SystemDomainAssembler;
 import cn.refinex.system.application.command.*;
 import cn.refinex.system.application.dto.DrsDTO;
@@ -30,6 +31,8 @@ import static cn.refinex.base.utils.ValueUtils.*;
 @Service
 @RequiredArgsConstructor
 public class DataResourceApplicationService {
+
+    private static final int MAX_CODE_GENERATE_ATTEMPTS = 10;
 
     private final DataResourceRepository dataResourceRepository;
     private final SystemRepository systemRepository;
@@ -84,15 +87,11 @@ public class DataResourceApplicationService {
     public DrsDTO createDrs(CreateDrsCommand command) {
         if (command == null
                 || command.getSystemId() == null
-                || isBlank(command.getDrsCode())
                 || isBlank(command.getDrsName())) {
             throw new BizException(SystemErrorCode.INVALID_PARAM);
         }
         requireSystem(command.getSystemId());
-        String drsCode = command.getDrsCode().trim();
-        if (dataResourceRepository.countDrsCode(command.getSystemId(), drsCode, null) > 0) {
-            throw new BizException(SystemErrorCode.DRS_CODE_DUPLICATED);
-        }
+        String drsCode = generateDrsCode(command.getSystemId(), command.getDrsCode());
         DrsEntity entity = new DrsEntity();
         entity.setSystemId(command.getSystemId());
         entity.setDrsCode(drsCode);
@@ -192,15 +191,11 @@ public class DataResourceApplicationService {
     public DrsInterfaceDTO createDrsInterface(CreateDrsInterfaceCommand command) {
         if (command == null
                 || command.getDrsId() == null
-                || isBlank(command.getInterfaceCode())
                 || isBlank(command.getInterfaceName())) {
             throw new BizException(SystemErrorCode.INVALID_PARAM);
         }
         DrsEntity drs = requireDrs(command.getDrsId());
-        String interfaceCode = command.getInterfaceCode().trim();
-        if (dataResourceRepository.countDrsInterfaceCode(drs.getId(), interfaceCode, null) > 0) {
-            throw new BizException(SystemErrorCode.DRS_INTERFACE_CODE_DUPLICATED);
-        }
+        String interfaceCode = generateDrsInterfaceCode(drs.getId(), command.getInterfaceCode());
         DrsInterfaceEntity entity = new DrsInterfaceEntity();
         entity.setDrsId(drs.getId());
         entity.setInterfaceCode(interfaceCode);
@@ -253,6 +248,54 @@ public class DataResourceApplicationService {
     public void deleteDrsInterface(Long interfaceId) {
         DrsInterfaceEntity drsInterface = requireDrsInterface(interfaceId);
         dataResourceRepository.deleteDrsInterfaceById(drsInterface.getId());
+    }
+
+    /**
+     * 生成数据资源编码
+     *
+     * @param systemId 系统ID
+     * @param code     指定编码
+     * @return 可用编码
+     */
+    private String generateDrsCode(Long systemId, String code) {
+        if (!isBlank(code)) {
+            String normalized = code.trim();
+            if (dataResourceRepository.countDrsCode(systemId, normalized, null) > 0) {
+                throw new BizException(SystemErrorCode.DRS_CODE_DUPLICATED);
+            }
+            return normalized;
+        }
+        for (int i = 0; i < MAX_CODE_GENERATE_ATTEMPTS; i++) {
+            String candidate = UniqueCodeUtils.randomUpperCode("DRS_", 8);
+            if (dataResourceRepository.countDrsCode(systemId, candidate, null) == 0) {
+                return candidate;
+            }
+        }
+        throw new BizException("自动生成数据资源编码失败，请稍后重试", SystemErrorCode.DRS_CODE_DUPLICATED);
+    }
+
+    /**
+     * 生成数据资源接口编码
+     *
+     * @param drsId 数据资源ID
+     * @param code  指定编码
+     * @return 可用编码
+     */
+    private String generateDrsInterfaceCode(Long drsId, String code) {
+        if (!isBlank(code)) {
+            String normalized = code.trim();
+            if (dataResourceRepository.countDrsInterfaceCode(drsId, normalized, null) > 0) {
+                throw new BizException(SystemErrorCode.DRS_INTERFACE_CODE_DUPLICATED);
+            }
+            return normalized;
+        }
+        for (int i = 0; i < MAX_CODE_GENERATE_ATTEMPTS; i++) {
+            String candidate = UniqueCodeUtils.randomUpperCode("API_", 8);
+            if (dataResourceRepository.countDrsInterfaceCode(drsId, candidate, null) == 0) {
+                return candidate;
+            }
+        }
+        throw new BizException("自动生成数据资源接口编码失败，请稍后重试", SystemErrorCode.DRS_INTERFACE_CODE_DUPLICATED);
     }
 
     /**

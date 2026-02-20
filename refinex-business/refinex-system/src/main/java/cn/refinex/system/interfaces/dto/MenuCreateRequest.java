@@ -31,9 +31,8 @@ public class MenuCreateRequest {
     private Long parentId;
 
     /**
-     * 菜单编码
+     * 菜单编码（可选，留空自动生成）
      */
-    @NotBlank(message = "菜单编码不能为空")
     @Size(max = 64, message = "菜单编码长度不能超过64个字符")
     private String menuCode;
 

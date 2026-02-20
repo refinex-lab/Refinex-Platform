@@ -71,7 +71,7 @@ export interface RoleListQuery extends PaginationQuery {
 export interface RoleCreateRequest {
   systemId?: number
   estabId?: number
-  roleCode: string
+  roleCode?: string
   roleName: string
   roleType?: number
   dataScopeType?: number
@@ -94,9 +94,18 @@ export interface RoleUpdateRequest {
 }
 
 export interface RoleBinding {
+  users?: RoleBindingUser[]
   userIds?: number[]
   menuIds?: number[]
   menuOpIds?: number[]
+  drsInterfaceIds?: number[]
+}
+
+export interface RoleBindingUser {
+  userId?: number
+  userCode?: string
+  username?: string
+  displayName?: string
 }
 
 export interface AssignRoleUsersRequest {
@@ -106,6 +115,7 @@ export interface AssignRoleUsersRequest {
 export interface AssignRolePermissionsRequest {
   menuIds?: number[]
   menuOpIds?: number[]
+  drsInterfaceIds?: number[]
 }
 
 export interface Menu {
@@ -178,7 +188,7 @@ export interface MenuTreeQuery {
 export interface MenuCreateRequest {
   systemId: number
   parentId?: number
-  menuCode: string
+  menuCode?: string
   menuName: string
   menuType?: number
   path?: string
@@ -209,7 +219,7 @@ export interface MenuUpdateRequest {
 }
 
 export interface MenuOpCreateRequest {
-  opCode: string
+  opCode?: string
   opName: string
   httpMethod?: string
   pathPattern?: string
@@ -315,7 +325,7 @@ export interface DataResourceListQuery extends PaginationQuery {
 
 export interface DataResourceCreateRequest {
   systemId: number
-  drsCode: string
+  drsCode?: string
   drsName: string
   drsType?: number
   resourceUri?: string
@@ -354,7 +364,7 @@ export interface DataResourceInterfaceListQuery extends PaginationQuery {
 }
 
 export interface DataResourceInterfaceCreateRequest {
-  interfaceCode: string
+  interfaceCode?: string
   interfaceName: string
   httpMethod?: string
   pathPattern?: string
@@ -782,6 +792,7 @@ export interface SystemUser {
 }
 
 export interface SystemUserListQuery extends PaginationQuery {
+  userIds?: number[]
   primaryEstabId?: number
   status?: number
   userType?: number

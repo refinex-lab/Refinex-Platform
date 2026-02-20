@@ -14,6 +14,11 @@ import java.util.List;
 public class RoleBindingDTO {
 
     /**
+     * 已绑定用户列表
+     */
+    private List<RoleBindingUserDTO> users = new ArrayList<>();
+
+    /**
      * 用户ID列表
      */
     private List<Long> userIds = new ArrayList<>();
@@ -27,4 +32,9 @@ public class RoleBindingDTO {
      * 菜单操作ID列表
      */
     private List<Long> menuOpIds = new ArrayList<>();
+
+    /**
+     * 数据资源接口ID列表
+     */
+    private List<Long> drsInterfaceIds = new ArrayList<>();
 }

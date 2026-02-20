@@ -38,6 +38,8 @@ public class SystemRepositoryImpl implements SystemRepository {
     private final ScrMenuOpMapper scrMenuOpMapper;
     private final ScrRoleMenuMapper scrRoleMenuMapper;
     private final ScrRoleMenuOpMapper scrRoleMenuOpMapper;
+    private final ScrRoleDrsInterfaceMapper scrRoleDrsInterfaceMapper;
+    private final ScrDrsInterfaceMapper scrDrsInterfaceMapper;
     private final SystemDoConverter systemDoConverter;
     private final RoleDoConverter roleDoConverter;
     private final MenuDoConverter menuDoConverter;
@@ -285,6 +287,17 @@ public class SystemRepositoryImpl implements SystemRepository {
     }
 
     /**
+     * 查询角色数据资源接口ID列表
+     *
+     * @param roleId 角色ID
+     * @return 数据资源接口ID列表
+     */
+    @Override
+    public List<Long> listRoleDrsInterfaceIds(Long roleId) {
+        return scrRoleDrsInterfaceMapper.selectDrsInterfaceIdsByRoleId(roleId);
+    }
+
+    /**
      * 替换角色菜单
      *
      * @param roleId         角色ID
@@ -317,6 +330,29 @@ public class SystemRepositoryImpl implements SystemRepository {
                 row.setGrantedTime(now);
                 scrRoleMenuOpMapper.insert(row);
             }
+        }
+    }
+
+    /**
+     * 替换角色数据资源接口授权
+     *
+     * @param roleId           角色ID
+     * @param drsInterfaceIds  数据资源接口ID列表
+     * @param operatorUserId   操作员用户ID
+     */
+    @Override
+    public void replaceRoleDrsInterfaces(Long roleId, List<Long> drsInterfaceIds, Long operatorUserId) {
+        scrRoleDrsInterfaceMapper.deleteByRoleIdHard(roleId);
+        if (drsInterfaceIds == null || drsInterfaceIds.isEmpty()) {
+            return;
+        }
+        for (Long drsInterfaceId : drsInterfaceIds) {
+            ScrRoleDrsInterfaceDo row = new ScrRoleDrsInterfaceDo();
+            row.setRoleId(roleId);
+            row.setDrsInterfaceId(drsInterfaceId);
+            row.setCreateBy(operatorUserId);
+            row.setUpdateBy(operatorUserId);
+            scrRoleDrsInterfaceMapper.insert(row);
         }
     }
 
@@ -643,5 +679,20 @@ public class SystemRepositoryImpl implements SystemRepository {
             return 0;
         }
         return scrMenuOpMapper.countByIdsAndSystemId(systemId, menuOpIds);
+    }
+
+    /**
+     * 根据系统ID和数据资源接口ID列表统计数据资源接口数量
+     *
+     * @param systemId         系统ID
+     * @param drsInterfaceIds  数据资源接口ID列表
+     * @return 数据资源接口数量
+     */
+    @Override
+    public long countDrsInterfacesByIdsAndSystemId(Long systemId, List<Long> drsInterfaceIds) {
+        if (drsInterfaceIds == null || drsInterfaceIds.isEmpty()) {
+            return 0;
+        }
+        return scrDrsInterfaceMapper.countByIdsAndSystemId(systemId, drsInterfaceIds);
     }
 }

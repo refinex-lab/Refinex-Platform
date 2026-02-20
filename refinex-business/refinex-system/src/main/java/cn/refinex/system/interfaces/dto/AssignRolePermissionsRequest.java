@@ -23,4 +23,9 @@ public class AssignRolePermissionsRequest {
      * 菜单操作ID列表
      */
     private List<@Positive(message = "菜单操作ID必须大于0") Long> menuOpIds = new ArrayList<>();
+
+    /**
+     * 数据资源接口ID列表
+     */
+    private List<@Positive(message = "数据资源接口ID必须大于0") Long> drsInterfaceIds = new ArrayList<>();
 }

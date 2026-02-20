@@ -15,9 +15,8 @@ import lombok.Data;
 public class MenuOpCreateRequest {
 
     /**
-     * 操作编码
+     * 操作编码（可选，留空自动生成）
      */
-    @NotBlank(message = "操作编码不能为空")
     @Size(max = 64, message = "操作编码长度不能超过64个字符")
     private String opCode;
 

@@ -28,6 +28,11 @@ public class AssignRolePermissionsCommand {
     private List<Long> menuOpIds;
 
     /**
+     * 数据资源接口ID列表
+     */
+    private List<Long> drsInterfaceIds;
+
+    /**
      * 操作人用户ID
      */
     private Long operatorUserId;

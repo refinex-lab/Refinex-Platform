@@ -136,6 +136,14 @@ public interface SystemRepository {
     List<Long> listRoleMenuOpIds(Long roleId);
 
     /**
+     * 根据角色ID查询角色数据资源接口ID列表
+     *
+     * @param roleId 角色ID
+     * @return 角色数据资源接口ID列表
+     */
+    List<Long> listRoleDrsInterfaceIds(Long roleId);
+
+    /**
      * 替换角色菜单与操作
      *
      * @param roleId         角色ID
@@ -144,6 +152,15 @@ public interface SystemRepository {
      * @param operatorUserId 操作员用户ID
      */
     void replaceRoleMenus(Long roleId, List<Long> menuIds, List<Long> menuOpIds, Long operatorUserId);
+
+    /**
+     * 替换角色数据资源接口授权
+     *
+     * @param roleId           角色ID
+     * @param drsInterfaceIds  数据资源接口ID列表
+     * @param operatorUserId   操作员用户ID
+     */
+    void replaceRoleDrsInterfaces(Long roleId, List<Long> drsInterfaceIds, Long operatorUserId);
 
     /**
      * 根据系统ID查询系统菜单列表
@@ -296,4 +313,13 @@ public interface SystemRepository {
      * @return 菜单操作数量
      */
     long countMenuOpsByIdsAndSystemId(Long systemId, List<Long> menuOpIds);
+
+    /**
+     * 根据系统ID、数据资源接口ID列表统计数据资源接口数量
+     *
+     * @param systemId         系统ID
+     * @param drsInterfaceIds  数据资源接口ID列表
+     * @return 数据资源接口数量
+     */
+    long countDrsInterfacesByIdsAndSystemId(Long systemId, List<Long> drsInterfaceIds);
 }

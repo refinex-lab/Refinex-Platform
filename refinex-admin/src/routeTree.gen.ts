@@ -39,6 +39,9 @@ import { Route as ClerkauthSignInRouteImport } from './routes/clerk/(auth)/sign-
 import { Route as AuthenticatedSystemManagementValueSetsRouteImport } from './routes/_authenticated/system-management/value-sets'
 import { Route as AuthenticatedSystemManagementSystemsRouteImport } from './routes/_authenticated/system-management/systems'
 import { Route as AuthenticatedSystemManagementSystemUsersRouteImport } from './routes/_authenticated/system-management/system-users'
+import { Route as AuthenticatedSystemManagementRolesRouteImport } from './routes/_authenticated/system-management/roles'
+import { Route as AuthenticatedSystemManagementMenusRouteImport } from './routes/_authenticated/system-management/menus'
+import { Route as AuthenticatedSystemManagementDataResourcesRouteImport } from './routes/_authenticated/system-management/data-resources'
 import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes/_authenticated/settings/notifications'
 import { Route as AuthenticatedSettingsDisplayRouteImport } from './routes/_authenticated/settings/display'
 import { Route as AuthenticatedSettingsAppearanceRouteImport } from './routes/_authenticated/settings/appearance'
@@ -206,6 +209,24 @@ const AuthenticatedSystemManagementSystemUsersRoute =
     path: '/system-management/system-users',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedSystemManagementRolesRoute =
+  AuthenticatedSystemManagementRolesRouteImport.update({
+    id: '/system-management/roles',
+    path: '/system-management/roles',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSystemManagementMenusRoute =
+  AuthenticatedSystemManagementMenusRouteImport.update({
+    id: '/system-management/menus',
+    path: '/system-management/menus',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSystemManagementDataResourcesRoute =
+  AuthenticatedSystemManagementDataResourcesRouteImport.update({
+    id: '/system-management/data-resources',
+    path: '/system-management/data-resources',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSettingsNotificationsRoute =
   AuthenticatedSettingsNotificationsRouteImport.update({
     id: '/notifications',
@@ -300,6 +321,9 @@ export interface FileRoutesByFullPath {
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/display': typeof AuthenticatedSettingsDisplayRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
+  '/system-management/data-resources': typeof AuthenticatedSystemManagementDataResourcesRoute
+  '/system-management/menus': typeof AuthenticatedSystemManagementMenusRoute
+  '/system-management/roles': typeof AuthenticatedSystemManagementRolesRoute
   '/system-management/system-users': typeof AuthenticatedSystemManagementSystemUsersRoute
   '/system-management/systems': typeof AuthenticatedSystemManagementSystemsRoute
   '/system-management/value-sets': typeof AuthenticatedSystemManagementValueSetsRouteWithChildren
@@ -340,6 +364,9 @@ export interface FileRoutesByTo {
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/display': typeof AuthenticatedSettingsDisplayRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
+  '/system-management/data-resources': typeof AuthenticatedSystemManagementDataResourcesRoute
+  '/system-management/menus': typeof AuthenticatedSystemManagementMenusRoute
+  '/system-management/roles': typeof AuthenticatedSystemManagementRolesRoute
   '/system-management/system-users': typeof AuthenticatedSystemManagementSystemUsersRoute
   '/system-management/systems': typeof AuthenticatedSystemManagementSystemsRoute
   '/system-management/value-sets': typeof AuthenticatedSystemManagementValueSetsRouteWithChildren
@@ -385,6 +412,9 @@ export interface FileRoutesById {
   '/_authenticated/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/_authenticated/settings/display': typeof AuthenticatedSettingsDisplayRoute
   '/_authenticated/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
+  '/_authenticated/system-management/data-resources': typeof AuthenticatedSystemManagementDataResourcesRoute
+  '/_authenticated/system-management/menus': typeof AuthenticatedSystemManagementMenusRoute
+  '/_authenticated/system-management/roles': typeof AuthenticatedSystemManagementRolesRoute
   '/_authenticated/system-management/system-users': typeof AuthenticatedSystemManagementSystemUsersRoute
   '/_authenticated/system-management/systems': typeof AuthenticatedSystemManagementSystemsRoute
   '/_authenticated/system-management/value-sets': typeof AuthenticatedSystemManagementValueSetsRouteWithChildren
@@ -428,6 +458,9 @@ export interface FileRouteTypes {
     | '/settings/appearance'
     | '/settings/display'
     | '/settings/notifications'
+    | '/system-management/data-resources'
+    | '/system-management/menus'
+    | '/system-management/roles'
     | '/system-management/system-users'
     | '/system-management/systems'
     | '/system-management/value-sets'
@@ -468,6 +501,9 @@ export interface FileRouteTypes {
     | '/settings/appearance'
     | '/settings/display'
     | '/settings/notifications'
+    | '/system-management/data-resources'
+    | '/system-management/menus'
+    | '/system-management/roles'
     | '/system-management/system-users'
     | '/system-management/systems'
     | '/system-management/value-sets'
@@ -512,6 +548,9 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/appearance'
     | '/_authenticated/settings/display'
     | '/_authenticated/settings/notifications'
+    | '/_authenticated/system-management/data-resources'
+    | '/_authenticated/system-management/menus'
+    | '/_authenticated/system-management/roles'
     | '/_authenticated/system-management/system-users'
     | '/_authenticated/system-management/systems'
     | '/_authenticated/system-management/value-sets'
@@ -762,6 +801,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSystemManagementSystemUsersRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/system-management/roles': {
+      id: '/_authenticated/system-management/roles'
+      path: '/system-management/roles'
+      fullPath: '/system-management/roles'
+      preLoaderRoute: typeof AuthenticatedSystemManagementRolesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/system-management/menus': {
+      id: '/_authenticated/system-management/menus'
+      path: '/system-management/menus'
+      fullPath: '/system-management/menus'
+      preLoaderRoute: typeof AuthenticatedSystemManagementMenusRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/system-management/data-resources': {
+      id: '/_authenticated/system-management/data-resources'
+      path: '/system-management/data-resources'
+      fullPath: '/system-management/data-resources'
+      preLoaderRoute: typeof AuthenticatedSystemManagementDataResourcesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/settings/notifications': {
       id: '/_authenticated/settings/notifications'
       path: '/notifications'
@@ -891,6 +951,9 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
+  AuthenticatedSystemManagementDataResourcesRoute: typeof AuthenticatedSystemManagementDataResourcesRoute
+  AuthenticatedSystemManagementMenusRoute: typeof AuthenticatedSystemManagementMenusRoute
+  AuthenticatedSystemManagementRolesRoute: typeof AuthenticatedSystemManagementRolesRoute
   AuthenticatedSystemManagementSystemUsersRoute: typeof AuthenticatedSystemManagementSystemUsersRoute
   AuthenticatedSystemManagementSystemsRoute: typeof AuthenticatedSystemManagementSystemsRoute
   AuthenticatedSystemManagementValueSetsRoute: typeof AuthenticatedSystemManagementValueSetsRouteWithChildren
@@ -911,6 +974,12 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,
+  AuthenticatedSystemManagementDataResourcesRoute:
+    AuthenticatedSystemManagementDataResourcesRoute,
+  AuthenticatedSystemManagementMenusRoute:
+    AuthenticatedSystemManagementMenusRoute,
+  AuthenticatedSystemManagementRolesRoute:
+    AuthenticatedSystemManagementRolesRoute,
   AuthenticatedSystemManagementSystemUsersRoute:
     AuthenticatedSystemManagementSystemUsersRoute,
   AuthenticatedSystemManagementSystemsRoute:

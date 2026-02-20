@@ -1,8 +1,11 @@
 package cn.refinex.system.application.service;
 
+import cn.refinex.api.user.model.dto.UserManageDTO;
+import cn.refinex.api.user.model.dto.UserManageListQuery;
 import cn.refinex.base.exception.BizException;
 import cn.refinex.base.response.PageResponse;
 import cn.refinex.base.utils.PageUtils;
+import cn.refinex.base.utils.UniqueCodeUtils;
 import cn.refinex.system.application.assembler.SystemDomainAssembler;
 import cn.refinex.system.application.command.*;
 import cn.refinex.system.application.dto.*;
@@ -12,6 +15,7 @@ import cn.refinex.system.domain.model.entity.MenuOpEntity;
 import cn.refinex.system.domain.model.entity.RoleEntity;
 import cn.refinex.system.domain.model.entity.SystemEntity;
 import cn.refinex.system.domain.repository.SystemRepository;
+import cn.refinex.system.infrastructure.client.user.UserManageRemoteGateway;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,8 +35,11 @@ import static cn.refinex.base.utils.ValueUtils.trimToNull;
 @RequiredArgsConstructor
 public class SystemApplicationService {
 
+    private static final int MAX_CODE_GENERATE_ATTEMPTS = 10;
+
     private final SystemRepository systemRepository;
     private final SystemDomainAssembler systemDomainAssembler;
+    private final UserManageRemoteGateway userManageRemoteGateway;
 
     /**
      * 查询系统列表
@@ -183,17 +190,13 @@ public class SystemApplicationService {
     public RoleDTO createRole(CreateRoleCommand command) {
         if (command == null
                 || command.getSystemId() == null
-                || isBlank(command.getRoleCode())
                 || isBlank(command.getRoleName())) {
             throw new BizException(SystemErrorCode.INVALID_PARAM);
         }
         requireSystem(command.getSystemId());
 
         Long estabId = defaultIfNull(command.getEstabId(), 0L);
-        String roleCode = command.getRoleCode().trim();
-        if (systemRepository.countRoleCode(command.getSystemId(), estabId, roleCode, null) > 0) {
-            throw new BizException(SystemErrorCode.ROLE_CODE_DUPLICATED);
-        }
+        String roleCode = generateRoleCode(command.getSystemId(), estabId, command.getRoleCode());
 
         RoleEntity entity = new RoleEntity();
         entity.setSystemId(command.getSystemId());
@@ -246,9 +249,12 @@ public class SystemApplicationService {
     public RoleBindingDTO getRoleBindings(Long roleId) {
         requireRole(roleId);
         RoleBindingDTO dto = new RoleBindingDTO();
-        dto.setUserIds(systemRepository.listRoleUserIds(roleId));
+        List<Long> userIds = systemRepository.listRoleUserIds(roleId);
+        dto.setUserIds(userIds);
+        dto.setUsers(listRoleBindingUsers(userIds));
         dto.setMenuIds(systemRepository.listRoleMenuIds(roleId));
         dto.setMenuOpIds(systemRepository.listRoleMenuOpIds(roleId));
+        dto.setDrsInterfaceIds(systemRepository.listRoleDrsInterfaceIds(roleId));
         return dto;
     }
 
@@ -296,7 +302,19 @@ public class SystemApplicationService {
             }
         }
 
+        List<Long> drsInterfaceIds = normalizeIdList(command.getDrsInterfaceIds());
+        if (!drsInterfaceIds.isEmpty()) {
+            long existingDrsInterfaceCount = systemRepository.countDrsInterfacesByIdsAndSystemId(
+                    role.getSystemId(),
+                    drsInterfaceIds
+            );
+            if (existingDrsInterfaceCount != drsInterfaceIds.size()) {
+                throw new BizException(SystemErrorCode.DRS_INTERFACE_NOT_FOUND);
+            }
+        }
+
         systemRepository.replaceRoleMenus(role.getId(), menuIds, menuOpIds, command.getOperatorUserId());
+        systemRepository.replaceRoleDrsInterfaces(role.getId(), drsInterfaceIds, command.getOperatorUserId());
     }
 
     /**
@@ -320,7 +338,6 @@ public class SystemApplicationService {
     public MenuDTO createMenu(CreateMenuCommand command) {
         if (command == null
                 || command.getSystemId() == null
-                || isBlank(command.getMenuCode())
                 || isBlank(command.getMenuName())) {
             throw new BizException(SystemErrorCode.INVALID_PARAM);
         }
@@ -334,10 +351,7 @@ public class SystemApplicationService {
             }
         }
 
-        String menuCode = command.getMenuCode().trim();
-        if (systemRepository.countMenuCode(command.getSystemId(), menuCode, null) > 0) {
-            throw new BizException(SystemErrorCode.MENU_CODE_DUPLICATED);
-        }
+        String menuCode = generateMenuCode(command.getSystemId(), command.getMenuCode());
 
         MenuEntity entity = new MenuEntity();
         entity.setSystemId(command.getSystemId());
@@ -471,16 +485,12 @@ public class SystemApplicationService {
     public MenuOpManageDTO createMenuOp(CreateMenuOpCommand command) {
         if (command == null
                 || command.getMenuId() == null
-                || isBlank(command.getOpCode())
                 || isBlank(command.getOpName())) {
             throw new BizException(SystemErrorCode.INVALID_PARAM);
         }
 
         MenuEntity menu = requireMenu(command.getMenuId());
-        String opCode = command.getOpCode().trim();
-        if (systemRepository.countMenuOpCode(menu.getId(), opCode, null) > 0) {
-            throw new BizException(SystemErrorCode.MENU_OP_CODE_DUPLICATED);
-        }
+        String opCode = generateMenuOpCode(menu.getId(), command.getOpCode());
 
         MenuOpEntity entity = new MenuOpEntity();
         entity.setMenuId(menu.getId());
@@ -599,6 +609,119 @@ public class SystemApplicationService {
             parent.getChildren().add(node);
         }
         return roots;
+    }
+
+    /**
+     * 查询角色绑定用户简要信息
+     *
+     * @param userIds 用户ID列表
+     * @return 用户简要信息列表
+     */
+    private List<RoleBindingUserDTO> listRoleBindingUsers(List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        UserManageListQuery query = new UserManageListQuery();
+        query.setUserIds(userIds);
+        query.setCurrentPage(1);
+        query.setPageSize(Math.max(userIds.size(), 1));
+        PageResponse<UserManageDTO> pageResponse = userManageRemoteGateway.listUsers(query);
+        List<UserManageDTO> users = pageResponse.getData() == null ? new ArrayList<>() : pageResponse.getData();
+        Map<Long, UserManageDTO> userMap = new LinkedHashMap<>();
+        for (UserManageDTO user : users) {
+            if (user != null && user.getUserId() != null) {
+                userMap.put(user.getUserId(), user);
+            }
+        }
+
+        List<RoleBindingUserDTO> result = new ArrayList<>();
+        for (Long userId : userIds) {
+            UserManageDTO user = userMap.get(userId);
+            if (user == null) {
+                continue;
+            }
+            RoleBindingUserDTO dto = new RoleBindingUserDTO();
+            dto.setUserId(user.getUserId());
+            dto.setUserCode(user.getUserCode());
+            dto.setUsername(user.getUsername());
+            dto.setDisplayName(user.getDisplayName());
+            result.add(dto);
+        }
+        return result;
+    }
+
+    /**
+     * 生成角色编码
+     *
+     * @param systemId 系统ID
+     * @param estabId  企业ID
+     * @param code     指定编码
+     * @return 可用编码
+     */
+    private String generateRoleCode(Long systemId, Long estabId, String code) {
+        if (!isBlank(code)) {
+            String normalized = code.trim();
+            if (systemRepository.countRoleCode(systemId, estabId, normalized, null) > 0) {
+                throw new BizException(SystemErrorCode.ROLE_CODE_DUPLICATED);
+            }
+            return normalized;
+        }
+        for (int i = 0; i < MAX_CODE_GENERATE_ATTEMPTS; i++) {
+            String candidate = UniqueCodeUtils.randomUpperCode("ROLE_", 8);
+            if (systemRepository.countRoleCode(systemId, estabId, candidate, null) == 0) {
+                return candidate;
+            }
+        }
+        throw new BizException("自动生成角色编码失败，请稍后重试", SystemErrorCode.ROLE_CODE_DUPLICATED);
+    }
+
+    /**
+     * 生成菜单编码
+     *
+     * @param systemId 系统ID
+     * @param code     指定编码
+     * @return 可用编码
+     */
+    private String generateMenuCode(Long systemId, String code) {
+        if (!isBlank(code)) {
+            String normalized = code.trim();
+            if (systemRepository.countMenuCode(systemId, normalized, null) > 0) {
+                throw new BizException(SystemErrorCode.MENU_CODE_DUPLICATED);
+            }
+            return normalized;
+        }
+        for (int i = 0; i < MAX_CODE_GENERATE_ATTEMPTS; i++) {
+            String candidate = UniqueCodeUtils.randomUpperCode("MENU_", 8);
+            if (systemRepository.countMenuCode(systemId, candidate, null) == 0) {
+                return candidate;
+            }
+        }
+        throw new BizException("自动生成菜单编码失败，请稍后重试", SystemErrorCode.MENU_CODE_DUPLICATED);
+    }
+
+    /**
+     * 生成菜单操作编码
+     *
+     * @param menuId 菜单ID
+     * @param code   指定编码
+     * @return 可用编码
+     */
+    private String generateMenuOpCode(Long menuId, String code) {
+        if (!isBlank(code)) {
+            String normalized = code.trim();
+            if (systemRepository.countMenuOpCode(menuId, normalized, null) > 0) {
+                throw new BizException(SystemErrorCode.MENU_OP_CODE_DUPLICATED);
+            }
+            return normalized;
+        }
+        for (int i = 0; i < MAX_CODE_GENERATE_ATTEMPTS; i++) {
+            String candidate = UniqueCodeUtils.randomUpperCode("OP_", 8);
+            if (systemRepository.countMenuOpCode(menuId, candidate, null) == 0) {
+                return candidate;
+            }
+        }
+        throw new BizException("自动生成菜单操作编码失败，请稍后重试", SystemErrorCode.MENU_OP_CODE_DUPLICATED);
     }
 
     /**

@@ -15,9 +15,8 @@ import lombok.Data;
 public class DrsInterfaceCreateRequest {
 
     /**
-     * 接口编码
+     * 接口编码（可选，留空自动生成）
      */
-    @NotBlank(message = "接口编码不能为空")
     @Size(max = 64, message = "接口编码长度不能超过64个字符")
     private String interfaceCode;
 

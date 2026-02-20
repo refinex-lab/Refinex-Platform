@@ -305,6 +305,22 @@ public interface SystemApiAssembler {
     RoleBindingVO toRoleBindingVo(RoleBindingDTO dto);
 
     /**
+     * 角色绑定用户DTO转换为角色绑定用户VO
+     *
+     * @param dto 角色绑定用户DTO
+     * @return 角色绑定用户VO
+     */
+    RoleBindingUserVO toRoleBindingUserVo(RoleBindingUserDTO dto);
+
+    /**
+     * 角色绑定用户DTO列表转换为角色绑定用户VO列表
+     *
+     * @param dtos 角色绑定用户DTO列表
+     * @return 角色绑定用户VO列表
+     */
+    List<RoleBindingUserVO> toRoleBindingUserVoList(List<RoleBindingUserDTO> dtos);
+
+    /**
      * 菜单DTO转换为菜单VO
      *
      * @param dto 菜单DTO

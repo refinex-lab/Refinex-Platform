@@ -31,9 +31,8 @@ public class RoleCreateRequest {
     private Long estabId;
 
     /**
-     * 角色编码
+     * 角色编码（可选，留空自动生成）
      */
-    @NotBlank(message = "角色编码不能为空")
     @Size(max = 64, message = "角色编码长度不能超过64个字符")
     private String roleCode;
 

@@ -201,6 +201,21 @@ export const sidebarData: SidebarData = {
               icon: Settings,
             },
             {
+              title: '角色管理',
+              url: '/system-management/roles',
+              icon: Users,
+            },
+            {
+              title: '数据资源',
+              url: '/system-management/data-resources',
+              icon: Database,
+            },
+            {
+              title: '菜单管理',
+              url: '/system-management/menus',
+              icon: ListTodo,
+            },
+            {
               title: '组织管理',
               icon: Building2,
               items: [
