@@ -1,0 +1,87 @@
+package cn.refinex.ai.application.dto;
+
+import lombok.Data;
+
+/**
+ * AI工具 DTO
+ *
+ * @author refinex
+ */
+@Data
+public class ToolDTO {
+
+    /**
+     * 主键ID
+     */
+    private Long id;
+
+    /**
+     * 组织ID(平台级为0)
+     */
+    private Long estabId;
+
+    /**
+     * 工具编码(全局唯一标识)
+     */
+    private String toolCode;
+
+    /**
+     * 工具显示名称
+     */
+    private String toolName;
+
+    /**
+     * 工具类型(FUNCTION/MCP/HTTP)
+     */
+    private String toolType;
+
+    /**
+     * 工具描述(供 AI 模型理解用途)
+     */
+    private String description;
+
+    /**
+     * 输入参数 JSON Schema
+     */
+    private String inputSchema;
+
+    /**
+     * 输出结果 JSON Schema
+     */
+    private String outputSchema;
+
+    /**
+     * 处理器引用(FUNCTION:Spring Bean名; MCP:server_id; HTTP:endpoint URL)
+     */
+    private String handlerRef;
+
+    /**
+     * 是否需要用户确认后执行 1是 0否
+     */
+    private Integer requireConfirm;
+
+    /**
+     * 是否内置 1是 0否
+     */
+    private Integer isBuiltin;
+
+    /**
+     * 状态 1启用 0停用
+     */
+    private Integer status;
+
+    /**
+     * 排序(升序)
+     */
+    private Integer sort;
+
+    /**
+     * 备注
+     */
+    private String remark;
+
+    /**
+     * 扩展信息(如超时配置、重试策略)
+     */
+    private String extJson;
+}

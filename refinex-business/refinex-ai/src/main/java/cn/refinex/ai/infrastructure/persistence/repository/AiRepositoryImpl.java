@@ -1,14 +1,10 @@
 package cn.refinex.ai.infrastructure.persistence.repository;
 
-import cn.refinex.ai.domain.model.entity.ModelEntity;
-import cn.refinex.ai.domain.model.entity.ProviderEntity;
+import cn.refinex.ai.domain.model.entity.*;
 import cn.refinex.ai.domain.repository.AiRepository;
-import cn.refinex.ai.infrastructure.converter.ModelDoConverter;
-import cn.refinex.ai.infrastructure.converter.ProviderDoConverter;
-import cn.refinex.ai.infrastructure.persistence.dataobject.AiModelDo;
-import cn.refinex.ai.infrastructure.persistence.dataobject.AiProviderDo;
-import cn.refinex.ai.infrastructure.persistence.mapper.AiModelMapper;
-import cn.refinex.ai.infrastructure.persistence.mapper.AiProviderMapper;
+import cn.refinex.ai.infrastructure.converter.*;
+import cn.refinex.ai.infrastructure.persistence.dataobject.*;
+import cn.refinex.ai.infrastructure.persistence.mapper.*;
 import cn.refinex.base.response.PageResponse;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -30,8 +26,20 @@ public class AiRepositoryImpl implements AiRepository {
 
     private final AiProviderMapper aiProviderMapper;
     private final AiModelMapper aiModelMapper;
+    private final AiPromptTemplateMapper aiPromptTemplateMapper;
+    private final AiModelProvisionMapper aiModelProvisionMapper;
+    private final AiToolMapper aiToolMapper;
+    private final AiMcpServerMapper aiMcpServerMapper;
+    private final AiSkillMapper aiSkillMapper;
+    private final AiSkillToolMapper aiSkillToolMapper;
     private final ProviderDoConverter providerDoConverter;
     private final ModelDoConverter modelDoConverter;
+    private final PromptTemplateDoConverter promptTemplateDoConverter;
+    private final ModelProvisionDoConverter modelProvisionDoConverter;
+    private final ToolDoConverter toolDoConverter;
+    private final McpServerDoConverter mcpServerDoConverter;
+    private final SkillDoConverter skillDoConverter;
+    private final SkillToolDoConverter skillToolDoConverter;
 
     // ── Provider ──
 
@@ -315,5 +323,798 @@ public class AiRepositoryImpl implements AiRepository {
                         .eq(AiModelDo::getDeleted, 0)
         );
         return count == null ? 0L : count;
+    }
+
+    // ── PromptTemplate ──
+
+    /**
+     * 查询Prompt模板分页列表
+     *
+     * @param estabId     组织ID
+     * @param status      状态 1启用 0停用
+     * @param category    分类
+     * @param keyword     搜索关键词
+     * @param currentPage 当前页码
+     * @param pageSize    每页数量
+     * @return Prompt模板分页列表
+     */
+    @Override
+    public PageResponse<PromptTemplateEntity> listPromptTemplates(Long estabId, Integer status, String category, String keyword, int currentPage, int pageSize) {
+        LambdaQueryWrapper<AiPromptTemplateDo> query = Wrappers.lambdaQuery(AiPromptTemplateDo.class)
+                .eq(AiPromptTemplateDo::getDeleted, 0)
+                .orderByAsc(AiPromptTemplateDo::getSort, AiPromptTemplateDo::getId);
+
+        if (estabId != null) {
+            query.and(w -> w.eq(AiPromptTemplateDo::getEstabId, 0).or().eq(AiPromptTemplateDo::getEstabId, estabId));
+        }
+        if (status != null) {
+            query.eq(AiPromptTemplateDo::getStatus, status);
+        }
+        if (category != null && !category.isBlank()) {
+            query.eq(AiPromptTemplateDo::getCategory, category.trim());
+        }
+        if (keyword != null && !keyword.isBlank()) {
+            String trimmed = keyword.trim();
+            query.and(w -> w
+                    .like(AiPromptTemplateDo::getPromptCode, trimmed)
+                    .or().like(AiPromptTemplateDo::getPromptName, trimmed));
+        }
+
+        Page<AiPromptTemplateDo> page = new Page<>(currentPage, pageSize);
+        Page<AiPromptTemplateDo> rowsPage = aiPromptTemplateMapper.selectPage(page, query);
+
+        List<PromptTemplateEntity> result = new ArrayList<>();
+        for (AiPromptTemplateDo row : rowsPage.getRecords()) {
+            result.add(promptTemplateDoConverter.toEntity(row));
+        }
+
+        return PageResponse.of(result, rowsPage.getTotal(), (int) rowsPage.getSize(), (int) rowsPage.getCurrent());
+    }
+
+    /**
+     * 查询全部Prompt模板
+     *
+     * @param estabId  组织ID
+     * @param status   状态 1启用 0停用
+     * @param category 分类
+     * @return Prompt模板列表
+     */
+    @Override
+    public List<PromptTemplateEntity> listAllPromptTemplates(Long estabId, Integer status, String category) {
+        LambdaQueryWrapper<AiPromptTemplateDo> query = Wrappers.lambdaQuery(AiPromptTemplateDo.class)
+                .eq(AiPromptTemplateDo::getDeleted, 0)
+                .orderByAsc(AiPromptTemplateDo::getSort, AiPromptTemplateDo::getId);
+
+        if (estabId != null) {
+            query.and(w -> w.eq(AiPromptTemplateDo::getEstabId, 0).or().eq(AiPromptTemplateDo::getEstabId, estabId));
+        }
+        if (status != null) {
+            query.eq(AiPromptTemplateDo::getStatus, status);
+        }
+        if (category != null && !category.isBlank()) {
+            query.eq(AiPromptTemplateDo::getCategory, category.trim());
+        }
+
+        List<AiPromptTemplateDo> rows = aiPromptTemplateMapper.selectList(query);
+        List<PromptTemplateEntity> result = new ArrayList<>();
+        for (AiPromptTemplateDo row : rows) {
+            result.add(promptTemplateDoConverter.toEntity(row));
+        }
+        return result;
+    }
+
+    /**
+     * 查询Prompt模板
+     *
+     * @param promptTemplateId Prompt模板ID
+     * @return Prompt模板
+     */
+    @Override
+    public PromptTemplateEntity findPromptTemplateById(Long promptTemplateId) {
+        AiPromptTemplateDo row = aiPromptTemplateMapper.selectById(promptTemplateId);
+        return row == null ? null : promptTemplateDoConverter.toEntity(row);
+    }
+
+    /**
+     * 统计Prompt模板编码数量
+     *
+     * @param estabId                 组织ID
+     * @param promptCode              模板编码
+     * @param excludePromptTemplateId 排除的模板ID
+     * @return 模板编码数量
+     */
+    @Override
+    public long countPromptTemplateCode(Long estabId, String promptCode, Long excludePromptTemplateId) {
+        LambdaQueryWrapper<AiPromptTemplateDo> query = Wrappers.lambdaQuery(AiPromptTemplateDo.class)
+                .eq(AiPromptTemplateDo::getEstabId, estabId)
+                .eq(AiPromptTemplateDo::getPromptCode, promptCode)
+                .eq(AiPromptTemplateDo::getDeleted, 0);
+
+        if (excludePromptTemplateId != null) {
+            query.ne(AiPromptTemplateDo::getId, excludePromptTemplateId);
+        }
+
+        Long count = aiPromptTemplateMapper.selectCount(query);
+        return count == null ? 0L : count;
+    }
+
+    /**
+     * 插入Prompt模板
+     *
+     * @param promptTemplate Prompt模板
+     * @return 插入的Prompt模板
+     */
+    @Override
+    public PromptTemplateEntity insertPromptTemplate(PromptTemplateEntity promptTemplate) {
+        AiPromptTemplateDo row = promptTemplateDoConverter.toDo(promptTemplate);
+        aiPromptTemplateMapper.insert(row);
+        return promptTemplateDoConverter.toEntity(row);
+    }
+
+    /**
+     * 更新Prompt模板
+     *
+     * @param promptTemplate Prompt模板
+     */
+    @Override
+    public void updatePromptTemplate(PromptTemplateEntity promptTemplate) {
+        AiPromptTemplateDo row = promptTemplateDoConverter.toDo(promptTemplate);
+        aiPromptTemplateMapper.updateById(row);
+    }
+
+    /**
+     * 删除Prompt模板
+     *
+     * @param promptTemplateId Prompt模板ID
+     */
+    @Override
+    public void deletePromptTemplateById(Long promptTemplateId) {
+        aiPromptTemplateMapper.deleteById(promptTemplateId);
+    }
+
+    /**
+     * 统计引用指定Prompt模板的技能数量
+     *
+     * @param promptTemplateId Prompt模板ID
+     * @return 技能数量
+     */
+    @Override
+    public long countSkillsByPromptTemplateId(Long promptTemplateId) {
+        Long count = aiSkillMapper.selectCount(
+                Wrappers.lambdaQuery(AiSkillDo.class)
+                        .eq(AiSkillDo::getPromptTemplateId, promptTemplateId)
+                        .eq(AiSkillDo::getDeleted, 0)
+        );
+        return count == null ? 0L : count;
+    }
+
+    // ── ModelProvision ──
+
+    /**
+     * 查询租户模型开通分页列表
+     *
+     * @param estabId     组织ID
+     * @param modelId     模型ID
+     * @param status      状态 1启用 0停用
+     * @param currentPage 当前页码
+     * @param pageSize    每页数量
+     * @return 租户模型开通分页列表
+     */
+    @Override
+    public PageResponse<ModelProvisionEntity> listModelProvisions(Long estabId, Long modelId, Integer status, int currentPage, int pageSize) {
+        LambdaQueryWrapper<AiModelProvisionDo> query = Wrappers.lambdaQuery(AiModelProvisionDo.class)
+                .eq(AiModelProvisionDo::getDeleted, 0)
+                .orderByDesc(AiModelProvisionDo::getId);
+
+        if (estabId != null) {
+            query.eq(AiModelProvisionDo::getEstabId, estabId);
+        }
+        if (modelId != null) {
+            query.eq(AiModelProvisionDo::getModelId, modelId);
+        }
+        if (status != null) {
+            query.eq(AiModelProvisionDo::getStatus, status);
+        }
+
+        Page<AiModelProvisionDo> page = new Page<>(currentPage, pageSize);
+        Page<AiModelProvisionDo> rowsPage = aiModelProvisionMapper.selectPage(page, query);
+
+        List<ModelProvisionEntity> result = new ArrayList<>();
+        for (AiModelProvisionDo row : rowsPage.getRecords()) {
+            result.add(modelProvisionDoConverter.toEntity(row));
+        }
+
+        return PageResponse.of(result, rowsPage.getTotal(), (int) rowsPage.getSize(), (int) rowsPage.getCurrent());
+    }
+
+    /**
+     * 查询租户模型开通
+     *
+     * @param provisionId 开通ID
+     * @return 租户模型开通
+     */
+    @Override
+    public ModelProvisionEntity findModelProvisionById(Long provisionId) {
+        AiModelProvisionDo row = aiModelProvisionMapper.selectById(provisionId);
+        return row == null ? null : modelProvisionDoConverter.toEntity(row);
+    }
+
+    /**
+     * 统计租户模型开通数量（唯一性校验）
+     *
+     * @param estabId   组织ID
+     * @param modelId   模型ID
+     * @param excludeId 排除的ID
+     * @return 数量
+     */
+    @Override
+    public long countModelProvision(Long estabId, Long modelId, Long excludeId) {
+        LambdaQueryWrapper<AiModelProvisionDo> query = Wrappers.lambdaQuery(AiModelProvisionDo.class)
+                .eq(AiModelProvisionDo::getEstabId, estabId)
+                .eq(AiModelProvisionDo::getModelId, modelId)
+                .eq(AiModelProvisionDo::getDeleted, 0);
+
+        if (excludeId != null) {
+            query.ne(AiModelProvisionDo::getId, excludeId);
+        }
+
+        Long count = aiModelProvisionMapper.selectCount(query);
+        return count == null ? 0L : count;
+    }
+
+    /**
+     * 插入租户模型开通
+     *
+     * @param provision 租户模型开通
+     * @return 插入的租户模型开通
+     */
+    @Override
+    public ModelProvisionEntity insertModelProvision(ModelProvisionEntity provision) {
+        AiModelProvisionDo row = modelProvisionDoConverter.toDo(provision);
+        aiModelProvisionMapper.insert(row);
+        return modelProvisionDoConverter.toEntity(row);
+    }
+
+    /**
+     * 更新租户模型开通
+     *
+     * @param provision 租户模型开通
+     */
+    @Override
+    public void updateModelProvision(ModelProvisionEntity provision) {
+        AiModelProvisionDo row = modelProvisionDoConverter.toDo(provision);
+        aiModelProvisionMapper.updateById(row);
+    }
+
+    /**
+     * 删除租户模型开通
+     *
+     * @param provisionId 开通ID
+     */
+    @Override
+    public void deleteModelProvisionById(Long provisionId) {
+        aiModelProvisionMapper.deleteById(provisionId);
+    }
+
+    // ── Tool ──
+
+    /**
+     * 查询工具分页列表
+     *
+     * @param estabId     组织ID
+     * @param toolType    工具类型(FUNCTION/MCP/HTTP)
+     * @param status      状态 1启用 0停用
+     * @param keyword     搜索关键词
+     * @param currentPage 当前页码
+     * @param pageSize    每页数量
+     * @return 工具分页列表
+     */
+    @Override
+    public PageResponse<ToolEntity> listTools(Long estabId, String toolType, Integer status, String keyword, int currentPage, int pageSize) {
+        LambdaQueryWrapper<AiToolDo> query = Wrappers.lambdaQuery(AiToolDo.class)
+                .eq(AiToolDo::getDeleted, 0)
+                .orderByAsc(AiToolDo::getSort, AiToolDo::getId);
+
+        if (estabId != null) {
+            query.and(w -> w.eq(AiToolDo::getEstabId, 0).or().eq(AiToolDo::getEstabId, estabId));
+        }
+        if (toolType != null && !toolType.isBlank()) {
+            query.eq(AiToolDo::getToolType, toolType.trim());
+        }
+        if (status != null) {
+            query.eq(AiToolDo::getStatus, status);
+        }
+        if (keyword != null && !keyword.isBlank()) {
+            String trimmed = keyword.trim();
+            query.and(w -> w
+                    .like(AiToolDo::getToolCode, trimmed)
+                    .or().like(AiToolDo::getToolName, trimmed));
+        }
+
+        Page<AiToolDo> page = new Page<>(currentPage, pageSize);
+        Page<AiToolDo> rowsPage = aiToolMapper.selectPage(page, query);
+
+        List<ToolEntity> result = new ArrayList<>();
+        for (AiToolDo row : rowsPage.getRecords()) {
+            result.add(toolDoConverter.toEntity(row));
+        }
+
+        return PageResponse.of(result, rowsPage.getTotal(), (int) rowsPage.getSize(), (int) rowsPage.getCurrent());
+    }
+
+    /**
+     * 查询全部工具
+     *
+     * @param estabId  组织ID
+     * @param toolType 工具类型(FUNCTION/MCP/HTTP)
+     * @param status   状态 1启用 0停用
+     * @return 工具列表
+     */
+    @Override
+    public List<ToolEntity> listAllTools(Long estabId, String toolType, Integer status) {
+        LambdaQueryWrapper<AiToolDo> query = Wrappers.lambdaQuery(AiToolDo.class)
+                .eq(AiToolDo::getDeleted, 0)
+                .orderByAsc(AiToolDo::getSort, AiToolDo::getId);
+
+        if (estabId != null) {
+            query.and(w -> w.eq(AiToolDo::getEstabId, 0).or().eq(AiToolDo::getEstabId, estabId));
+        }
+        if (toolType != null && !toolType.isBlank()) {
+            query.eq(AiToolDo::getToolType, toolType.trim());
+        }
+        if (status != null) {
+            query.eq(AiToolDo::getStatus, status);
+        }
+
+        List<AiToolDo> rows = aiToolMapper.selectList(query);
+        List<ToolEntity> result = new ArrayList<>();
+        for (AiToolDo row : rows) {
+            result.add(toolDoConverter.toEntity(row));
+        }
+        return result;
+    }
+
+    /**
+     * 查询工具
+     *
+     * @param toolId 工具ID
+     * @return 工具
+     */
+    @Override
+    public ToolEntity findToolById(Long toolId) {
+        AiToolDo row = aiToolMapper.selectById(toolId);
+        return row == null ? null : toolDoConverter.toEntity(row);
+    }
+
+    /**
+     * 统计工具编码数量
+     *
+     * @param estabId       组织ID
+     * @param toolCode      工具编码
+     * @param excludeToolId 排除的工具ID
+     * @return 工具编码数量
+     */
+    @Override
+    public long countToolCode(Long estabId, String toolCode, Long excludeToolId) {
+        LambdaQueryWrapper<AiToolDo> query = Wrappers.lambdaQuery(AiToolDo.class)
+                .eq(AiToolDo::getEstabId, estabId)
+                .eq(AiToolDo::getToolCode, toolCode)
+                .eq(AiToolDo::getDeleted, 0);
+
+        if (excludeToolId != null) {
+            query.ne(AiToolDo::getId, excludeToolId);
+        }
+
+        Long count = aiToolMapper.selectCount(query);
+        return count == null ? 0L : count;
+    }
+
+    /**
+     * 插入工具
+     *
+     * @param tool 工具
+     * @return 插入的工具
+     */
+    @Override
+    public ToolEntity insertTool(ToolEntity tool) {
+        AiToolDo row = toolDoConverter.toDo(tool);
+        aiToolMapper.insert(row);
+        return toolDoConverter.toEntity(row);
+    }
+
+    /**
+     * 更新工具
+     *
+     * @param tool 工具
+     */
+    @Override
+    public void updateTool(ToolEntity tool) {
+        AiToolDo row = toolDoConverter.toDo(tool);
+        aiToolMapper.updateById(row);
+    }
+
+    /**
+     * 删除工具
+     *
+     * @param toolId 工具ID
+     */
+    @Override
+    public void deleteToolById(Long toolId) {
+        aiToolMapper.deleteById(toolId);
+    }
+
+    /**
+     * 统计引用指定工具的技能工具关联数量
+     *
+     * @param toolId 工具ID
+     * @return 技能工具关联数量
+     */
+    @Override
+    public long countSkillToolsByToolId(Long toolId) {
+        Long count = aiSkillToolMapper.selectCount(
+                Wrappers.lambdaQuery(AiSkillToolDo.class)
+                        .eq(AiSkillToolDo::getToolId, toolId)
+                        .eq(AiSkillToolDo::getDeleted, 0)
+        );
+        return count == null ? 0L : count;
+    }
+
+    // ── McpServer ──
+
+    /**
+     * 查询MCP服务器分页列表
+     *
+     * @param estabId       组织ID
+     * @param transportType 传输类型(stdio/sse)
+     * @param status        状态 1启用 0停用
+     * @param keyword       搜索关键词
+     * @param currentPage   当前页码
+     * @param pageSize      每页数量
+     * @return MCP服务器分页列表
+     */
+    @Override
+    public PageResponse<McpServerEntity> listMcpServers(Long estabId, String transportType, Integer status, String keyword, int currentPage, int pageSize) {
+        LambdaQueryWrapper<AiMcpServerDo> query = Wrappers.lambdaQuery(AiMcpServerDo.class)
+                .eq(AiMcpServerDo::getDeleted, 0)
+                .orderByAsc(AiMcpServerDo::getSort, AiMcpServerDo::getId);
+
+        if (estabId != null) {
+            query.and(w -> w.eq(AiMcpServerDo::getEstabId, 0).or().eq(AiMcpServerDo::getEstabId, estabId));
+        }
+        if (transportType != null && !transportType.isBlank()) {
+            query.eq(AiMcpServerDo::getTransportType, transportType.trim());
+        }
+        if (status != null) {
+            query.eq(AiMcpServerDo::getStatus, status);
+        }
+        if (keyword != null && !keyword.isBlank()) {
+            String trimmed = keyword.trim();
+            query.and(w -> w
+                    .like(AiMcpServerDo::getServerCode, trimmed)
+                    .or().like(AiMcpServerDo::getServerName, trimmed));
+        }
+
+        Page<AiMcpServerDo> page = new Page<>(currentPage, pageSize);
+        Page<AiMcpServerDo> rowsPage = aiMcpServerMapper.selectPage(page, query);
+
+        List<McpServerEntity> result = new ArrayList<>();
+        for (AiMcpServerDo row : rowsPage.getRecords()) {
+            result.add(mcpServerDoConverter.toEntity(row));
+        }
+
+        return PageResponse.of(result, rowsPage.getTotal(), (int) rowsPage.getSize(), (int) rowsPage.getCurrent());
+    }
+
+    /**
+     * 查询全部MCP服务器
+     *
+     * @param estabId       组织ID
+     * @param transportType 传输类型(stdio/sse)
+     * @param status        状态 1启用 0停用
+     * @return MCP服务器列表
+     */
+    @Override
+    public List<McpServerEntity> listAllMcpServers(Long estabId, String transportType, Integer status) {
+        LambdaQueryWrapper<AiMcpServerDo> query = Wrappers.lambdaQuery(AiMcpServerDo.class)
+                .eq(AiMcpServerDo::getDeleted, 0)
+                .orderByAsc(AiMcpServerDo::getSort, AiMcpServerDo::getId);
+
+        if (estabId != null) {
+            query.and(w -> w.eq(AiMcpServerDo::getEstabId, 0).or().eq(AiMcpServerDo::getEstabId, estabId));
+        }
+        if (transportType != null && !transportType.isBlank()) {
+            query.eq(AiMcpServerDo::getTransportType, transportType.trim());
+        }
+        if (status != null) {
+            query.eq(AiMcpServerDo::getStatus, status);
+        }
+
+        List<AiMcpServerDo> rows = aiMcpServerMapper.selectList(query);
+        List<McpServerEntity> result = new ArrayList<>();
+        for (AiMcpServerDo row : rows) {
+            result.add(mcpServerDoConverter.toEntity(row));
+        }
+        return result;
+    }
+
+    /**
+     * 查询MCP服务器
+     *
+     * @param mcpServerId MCP服务器ID
+     * @return MCP服务器
+     */
+    @Override
+    public McpServerEntity findMcpServerById(Long mcpServerId) {
+        AiMcpServerDo row = aiMcpServerMapper.selectById(mcpServerId);
+        return row == null ? null : mcpServerDoConverter.toEntity(row);
+    }
+
+    /**
+     * 统计MCP服务器编码数量
+     *
+     * @param estabId            组织ID
+     * @param serverCode         服务器编码
+     * @param excludeMcpServerId 排除的MCP服务器ID
+     * @return MCP服务器编码数量
+     */
+    @Override
+    public long countMcpServerCode(Long estabId, String serverCode, Long excludeMcpServerId) {
+        LambdaQueryWrapper<AiMcpServerDo> query = Wrappers.lambdaQuery(AiMcpServerDo.class)
+                .eq(AiMcpServerDo::getEstabId, estabId)
+                .eq(AiMcpServerDo::getServerCode, serverCode)
+                .eq(AiMcpServerDo::getDeleted, 0);
+
+        if (excludeMcpServerId != null) {
+            query.ne(AiMcpServerDo::getId, excludeMcpServerId);
+        }
+
+        Long count = aiMcpServerMapper.selectCount(query);
+        return count == null ? 0L : count;
+    }
+
+    /**
+     * 插入MCP服务器
+     *
+     * @param mcpServer MCP服务器
+     * @return 插入的MCP服务器
+     */
+    @Override
+    public McpServerEntity insertMcpServer(McpServerEntity mcpServer) {
+        AiMcpServerDo row = mcpServerDoConverter.toDo(mcpServer);
+        aiMcpServerMapper.insert(row);
+        return mcpServerDoConverter.toEntity(row);
+    }
+
+    /**
+     * 更新MCP服务器
+     *
+     * @param mcpServer MCP服务器
+     */
+    @Override
+    public void updateMcpServer(McpServerEntity mcpServer) {
+        AiMcpServerDo row = mcpServerDoConverter.toDo(mcpServer);
+        aiMcpServerMapper.updateById(row);
+    }
+
+    /**
+     * 删除MCP服务器
+     *
+     * @param mcpServerId MCP服务器ID
+     */
+    @Override
+    public void deleteMcpServerById(Long mcpServerId) {
+        aiMcpServerMapper.deleteById(mcpServerId);
+    }
+
+    /**
+     * 统计引用指定MCP服务器的工具数量（tool_type=MCP且handler_ref=serverId）
+     *
+     * @param mcpServerId MCP服务器ID
+     * @return 工具数量
+     */
+    @Override
+    public long countToolsByMcpServerId(Long mcpServerId) {
+        Long count = aiToolMapper.selectCount(
+                Wrappers.lambdaQuery(AiToolDo.class)
+                        .eq(AiToolDo::getToolType, "MCP")
+                        .eq(AiToolDo::getHandlerRef, String.valueOf(mcpServerId))
+                        .eq(AiToolDo::getDeleted, 0)
+        );
+        return count == null ? 0L : count;
+    }
+
+    // ── Skill ──
+
+    /**
+     * 查询技能分页列表
+     *
+     * @param estabId     组织ID
+     * @param status      状态 1启用 0停用
+     * @param keyword     搜索关键词
+     * @param currentPage 当前页码
+     * @param pageSize    每页数量
+     * @return 技能分页列表
+     */
+    @Override
+    public PageResponse<SkillEntity> listSkills(Long estabId, Integer status, String keyword, int currentPage, int pageSize) {
+        LambdaQueryWrapper<AiSkillDo> query = Wrappers.lambdaQuery(AiSkillDo.class)
+                .eq(AiSkillDo::getDeleted, 0)
+                .orderByAsc(AiSkillDo::getSort, AiSkillDo::getId);
+
+        if (estabId != null) {
+            query.and(w -> w.eq(AiSkillDo::getEstabId, 0).or().eq(AiSkillDo::getEstabId, estabId));
+        }
+        if (status != null) {
+            query.eq(AiSkillDo::getStatus, status);
+        }
+        if (keyword != null && !keyword.isBlank()) {
+            String trimmed = keyword.trim();
+            query.and(w -> w
+                    .like(AiSkillDo::getSkillCode, trimmed)
+                    .or().like(AiSkillDo::getSkillName, trimmed));
+        }
+
+        Page<AiSkillDo> page = new Page<>(currentPage, pageSize);
+        Page<AiSkillDo> rowsPage = aiSkillMapper.selectPage(page, query);
+
+        List<SkillEntity> result = new ArrayList<>();
+        for (AiSkillDo row : rowsPage.getRecords()) {
+            result.add(skillDoConverter.toEntity(row));
+        }
+
+        return PageResponse.of(result, rowsPage.getTotal(), (int) rowsPage.getSize(), (int) rowsPage.getCurrent());
+    }
+
+    /**
+     * 查询全部技能
+     *
+     * @param estabId 组织ID
+     * @param status  状态 1启用 0停用
+     * @return 技能列表
+     */
+    @Override
+    public List<SkillEntity> listAllSkills(Long estabId, Integer status) {
+        LambdaQueryWrapper<AiSkillDo> query = Wrappers.lambdaQuery(AiSkillDo.class)
+                .eq(AiSkillDo::getDeleted, 0)
+                .orderByAsc(AiSkillDo::getSort, AiSkillDo::getId);
+
+        if (estabId != null) {
+            query.and(w -> w.eq(AiSkillDo::getEstabId, 0).or().eq(AiSkillDo::getEstabId, estabId));
+        }
+        if (status != null) {
+            query.eq(AiSkillDo::getStatus, status);
+        }
+
+        List<AiSkillDo> rows = aiSkillMapper.selectList(query);
+        List<SkillEntity> result = new ArrayList<>();
+        for (AiSkillDo row : rows) {
+            result.add(skillDoConverter.toEntity(row));
+        }
+        return result;
+    }
+
+    /**
+     * 查询技能
+     *
+     * @param skillId 技能ID
+     * @return 技能
+     */
+    @Override
+    public SkillEntity findSkillById(Long skillId) {
+        AiSkillDo row = aiSkillMapper.selectById(skillId);
+        return row == null ? null : skillDoConverter.toEntity(row);
+    }
+
+    /**
+     * 统计技能编码数量
+     *
+     * @param estabId        组织ID
+     * @param skillCode      技能编码
+     * @param excludeSkillId 排除的技能ID
+     * @return 技能编码数量
+     */
+    @Override
+    public long countSkillCode(Long estabId, String skillCode, Long excludeSkillId) {
+        LambdaQueryWrapper<AiSkillDo> query = Wrappers.lambdaQuery(AiSkillDo.class)
+                .eq(AiSkillDo::getEstabId, estabId)
+                .eq(AiSkillDo::getSkillCode, skillCode)
+                .eq(AiSkillDo::getDeleted, 0);
+
+        if (excludeSkillId != null) {
+            query.ne(AiSkillDo::getId, excludeSkillId);
+        }
+
+        Long count = aiSkillMapper.selectCount(query);
+        return count == null ? 0L : count;
+    }
+
+    /**
+     * 插入技能
+     *
+     * @param skill 技能
+     * @return 插入的技能
+     */
+    @Override
+    public SkillEntity insertSkill(SkillEntity skill) {
+        AiSkillDo row = skillDoConverter.toDo(skill);
+        aiSkillMapper.insert(row);
+        return skillDoConverter.toEntity(row);
+    }
+
+    /**
+     * 更新技能
+     *
+     * @param skill 技能
+     */
+    @Override
+    public void updateSkill(SkillEntity skill) {
+        AiSkillDo row = skillDoConverter.toDo(skill);
+        aiSkillMapper.updateById(row);
+    }
+
+    /**
+     * 删除技能
+     *
+     * @param skillId 技能ID
+     */
+    @Override
+    public void deleteSkillById(Long skillId) {
+        aiSkillMapper.deleteById(skillId);
+    }
+
+    // ── SkillTool ──
+
+    /**
+     * 查询技能关联的工具ID列表
+     *
+     * @param skillId 技能ID
+     * @return 技能工具关联列表
+     */
+    @Override
+    public List<SkillToolEntity> listSkillToolsBySkillId(Long skillId) {
+        List<AiSkillToolDo> rows = aiSkillToolMapper.selectList(
+                Wrappers.lambdaQuery(AiSkillToolDo.class)
+                        .eq(AiSkillToolDo::getSkillId, skillId)
+                        .eq(AiSkillToolDo::getDeleted, 0)
+                        .orderByAsc(AiSkillToolDo::getSort, AiSkillToolDo::getId)
+        );
+
+        List<SkillToolEntity> result = new ArrayList<>();
+        for (AiSkillToolDo row : rows) {
+            result.add(skillToolDoConverter.toEntity(row));
+        }
+        return result;
+    }
+
+    /**
+     * 全量替换技能工具关联
+     *
+     * @param skillId    技能ID
+     * @param skillTools 技能工具关联列表
+     */
+    @Override
+    public void replaceSkillTools(Long skillId, List<SkillToolEntity> skillTools) {
+        // 先删除旧关联
+        deleteSkillToolsBySkillId(skillId);
+        // 再批量插入新关联
+        if (skillTools != null && !skillTools.isEmpty()) {
+            for (SkillToolEntity st : skillTools) {
+                AiSkillToolDo row = skillToolDoConverter.toDo(st);
+                aiSkillToolMapper.insert(row);
+            }
+        }
+    }
+
+    /**
+     * 删除技能的所有工具关联
+     *
+     * @param skillId 技能ID
+     */
+    @Override
+    public void deleteSkillToolsBySkillId(Long skillId) {
+        aiSkillToolMapper.delete(
+                Wrappers.lambdaQuery(AiSkillToolDo.class)
+                        .eq(AiSkillToolDo::getSkillId, skillId)
+        );
     }
 }

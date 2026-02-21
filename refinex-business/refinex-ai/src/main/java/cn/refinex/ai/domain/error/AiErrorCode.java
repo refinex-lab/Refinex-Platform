@@ -20,6 +20,21 @@ public enum AiErrorCode implements ErrorCode {
 
     MODEL_NOT_FOUND("AI_404_MODEL", "模型不存在"),
     MODEL_CODE_DUPLICATED("AI_409_MODEL_CODE", "模型编码已存在"),
+
+    PROMPT_TEMPLATE_NOT_FOUND("AI_404_PROMPT_TEMPLATE", "Prompt模板不存在"),
+    PROMPT_TEMPLATE_CODE_DUPLICATED("AI_409_PROMPT_TEMPLATE_CODE", "Prompt模板编码已存在"),
+
+    MODEL_PROVISION_NOT_FOUND("AI_404_MODEL_PROVISION", "租户模型开通配置不存在"),
+    MODEL_PROVISION_DUPLICATED("AI_409_MODEL_PROVISION", "该租户已开通此模型"),
+
+    TOOL_NOT_FOUND("AI_404_TOOL", "工具不存在"),
+    TOOL_CODE_DUPLICATED("AI_409_TOOL_CODE", "工具编码已存在"),
+
+    MCP_SERVER_NOT_FOUND("AI_404_MCP_SERVER", "MCP服务器不存在"),
+    MCP_SERVER_CODE_DUPLICATED("AI_409_MCP_SERVER_CODE", "MCP服务器编码已存在"),
+
+    SKILL_NOT_FOUND("AI_404_SKILL", "技能不存在"),
+    SKILL_CODE_DUPLICATED("AI_409_SKILL_CODE", "技能编码已存在"),
     ;
 
     private final String code;

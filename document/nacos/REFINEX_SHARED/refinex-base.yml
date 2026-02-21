@@ -6,6 +6,10 @@
 # ============================================================
 
 refinex:
+  crypto:
+    # AES 加密密钥（16/24/32字节，敏感）
+    aes-key: ${REFINEX_CRYPTO_AES_KEY:}
+
   nacos:
     # Nacos 地址
     server-addr: ${REFINEX_NACOS_SERVER_ADDR:}
