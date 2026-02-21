@@ -4,9 +4,7 @@ import {
   Eye,
   ImageUp,
   Loader2,
-  Maximize2,
   MapPin,
-  Minimize2,
   Pencil,
   Plus,
   RefreshCw,
@@ -74,6 +72,7 @@ import {
   listEstabAddresses,
   listEstabUsers,
   listEstabs,
+  listValues,
   uploadEstabLogo,
   uploadEstabLicense,
   type Estab,
@@ -91,6 +90,7 @@ import {
   type EstabUserListQuery,
   type EstabUserUpdateRequest,
   type SystemUser,
+  type ValueItem,
   updateEstab,
   updateEstabAddress,
   updateEstabAuthPolicy,
@@ -139,7 +139,7 @@ const addressFormSchema = z.object({
 })
 
 const estabUserFormSchema = z.object({
-  userId: z.string().trim().min(1, '用户ID不能为空').max(20, '用户ID格式非法'),
+  userId: z.string().trim().min(1, '请选择用户').max(20, '用户ID格式非法'),
   memberType: z.enum(['1', '2', '3']),
   isAdmin: z.enum(['0', '1']),
   status: z.enum(['1', '2']),
@@ -313,11 +313,18 @@ export function EstabsPage() {
   const [policyLoading, setPolicyLoading] = useState(false)
   const [policySaving, setPolicySaving] = useState(false)
 
+  // 值集数据
+  const [industryOptions, setIndustryOptions] = useState<ValueItem[]>([])
+  const [sizeRangeOptions, setSizeRangeOptions] = useState<ValueItem[]>([])
+
+  // 图片预览
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
+  const [previewImageOpen, setPreviewImageOpen] = useState(false)
+
   const [estabDialogOpen, setEstabDialogOpen] = useState(false)
   const [savingEstab, setSavingEstab] = useState(false)
   const [editingEstab, setEditingEstab] = useState<Estab | null>(null)
   const [estabDialogMode, setEstabDialogMode] = useState<EstabDialogMode>('create')
-  const [estabDialogExpanded, setEstabDialogExpanded] = useState(false)
   const [deletingEstab, setDeletingEstab] = useState<Estab | null>(null)
   const [deletingEstabLoading, setDeletingEstabLoading] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
@@ -336,6 +343,11 @@ export function EstabsPage() {
   const [editingMember, setEditingMember] = useState<EstabUser | null>(null)
   const [deletingMember, setDeletingMember] = useState<EstabUser | null>(null)
   const [deletingMemberLoading, setDeletingMemberLoading] = useState(false)
+
+  const [memberUserKeyword, setMemberUserKeyword] = useState('')
+  const [memberUserCandidates, setMemberUserCandidates] = useState<EstabOwnerCandidate[]>([])
+  const [memberUserLoading, setMemberUserLoading] = useState(false)
+  const [selectedMemberCandidate, setSelectedMemberCandidate] = useState<EstabOwnerCandidate | null>(null)
 
   const [ownerKeyword, setOwnerKeyword] = useState('')
   const [ownerCandidates, setOwnerCandidates] = useState<EstabOwnerCandidate[]>([])
@@ -445,6 +457,23 @@ export function EstabsPage() {
   }, [query])
 
   useEffect(() => {
+    // 加载值集数据
+    async function loadValueSets() {
+      try {
+        const [industryData, sizeData] = await Promise.all([
+          listValues({ setCode: 'industry_code', pageSize: 100 }),
+          listValues({ setCode: 'size_range', pageSize: 100 }),
+        ])
+        setIndustryOptions(industryData.data ?? [])
+        setSizeRangeOptions(sizeData.data ?? [])
+      } catch (error) {
+        handleServerError(error)
+      }
+    }
+    void loadValueSets()
+  }, [])
+
+  useEffect(() => {
     if (!selectedEstabId) {
       setAddresses([])
       setAddressTotal(0)
@@ -507,10 +536,60 @@ export function EstabsPage() {
     return () => window.clearTimeout(timer)
   }, [estabDialogOpen, isEstabReadOnly, ownerKeyword, selectedOwnerCandidate])
 
+  useEffect(() => {
+    if (!memberDialogOpen || editingMember) {
+      return
+    }
+    if (selectedMemberCandidate?.userId) {
+      return
+    }
+    const keyword = memberUserKeyword.trim()
+    if (!keyword) {
+      setMemberUserCandidates([])
+      return
+    }
+
+    const timer = window.setTimeout(async () => {
+      setMemberUserLoading(true)
+      try {
+        const pageData = await listSystemUsers({
+          status: 1,
+          keyword,
+          currentPage: 1,
+          pageSize: USER_CANDIDATE_LIMIT,
+        })
+        const candidates = (pageData.data ?? [])
+          .filter((item) => item.userId != null)
+          .map(mapSystemUserToOwnerCandidate)
+        setMemberUserCandidates(candidates)
+      } catch (error) {
+        handleServerError(error)
+      } finally {
+        setMemberUserLoading(false)
+      }
+    }, 300)
+
+    return () => window.clearTimeout(timer)
+  }, [memberDialogOpen, editingMember, memberUserKeyword, selectedMemberCandidate])
+
   function resetOwnerCandidateState() {
     setOwnerKeyword('')
     setOwnerCandidates([])
     setSelectedOwnerCandidate(null)
+  }
+
+  function resetMemberCandidateState() {
+    setMemberUserKeyword('')
+    setMemberUserCandidates([])
+    setSelectedMemberCandidate(null)
+  }
+
+  function selectMemberCandidate(candidate: EstabOwnerCandidate, onChange: (value: string) => void) {
+    if (!candidate.userId) return
+    onChange(String(candidate.userId))
+    setSelectedMemberCandidate(candidate)
+    setMemberUserKeyword(candidate.username || candidate.displayName || '')
+    setMemberUserCandidates([])
   }
 
   function selectOwnerCandidate(candidate: EstabOwnerCandidate, onChange: (value: string) => void) {
@@ -548,7 +627,6 @@ export function EstabsPage() {
 
   function openCreateEstabDialog() {
     setEstabDialogMode('create')
-    setEstabDialogExpanded(false)
     setEditingEstab(null)
     setSelectedEstab(null)
     estabForm.reset(DEFAULT_ESTAB_FORM)
@@ -558,7 +636,6 @@ export function EstabsPage() {
 
   function openEditEstabDialog(estab: Estab) {
     setEstabDialogMode('edit')
-    setEstabDialogExpanded(false)
     setSelectedEstab(estab)
     setEditingEstab(estab)
     estabForm.reset({
@@ -585,16 +662,17 @@ export function EstabsPage() {
         : ({
             userId: estab.ownerUserId,
             username: estab.ownerUsername,
+            displayName: estab.ownerUsername,
+            userCode: '',
           } satisfies EstabOwnerCandidate)
     setSelectedOwnerCandidate(ownerCandidate)
-    setOwnerKeyword(estab.ownerUsername ?? '')
+    setOwnerKeyword(buildOwnerCandidateLabel(ownerCandidate))
     setOwnerCandidates([])
     setEstabDialogOpen(true)
   }
 
   function openViewEstabDialog(estab: Estab) {
     setEstabDialogMode('view')
-    setEstabDialogExpanded(false)
     setSelectedEstab(estab)
     setEditingEstab(estab)
     estabForm.reset({
@@ -621,9 +699,11 @@ export function EstabsPage() {
         : ({
             userId: estab.ownerUserId,
             username: estab.ownerUsername,
+            displayName: estab.ownerUsername,
+            userCode: '',
           } satisfies EstabOwnerCandidate)
     setSelectedOwnerCandidate(ownerCandidate)
-    setOwnerKeyword(estab.ownerUsername ?? '')
+    setOwnerKeyword(buildOwnerCandidateLabel(ownerCandidate))
     setOwnerCandidates([])
     setEstabDialogOpen(true)
   }
@@ -631,7 +711,6 @@ export function EstabsPage() {
   function closeEstabDialog() {
     setEstabDialogOpen(false)
     setEstabDialogMode('create')
-    setEstabDialogExpanded(false)
     setEditingEstab(null)
     estabForm.reset(DEFAULT_ESTAB_FORM)
     resetOwnerCandidateState()
@@ -854,6 +933,7 @@ export function EstabsPage() {
     }
     setEditingMember(null)
     memberForm.reset(DEFAULT_ESTAB_USER_FORM)
+    resetMemberCandidateState()
     setMemberDialogOpen(true)
   }
 
@@ -868,6 +948,13 @@ export function EstabsPage() {
       joinTime: toDateTimeLocalValue(member.joinTime),
       leaveTime: toDateTimeLocalValue(member.leaveTime),
     })
+    setSelectedMemberCandidate({
+      userId: member.userId,
+      username: member.username,
+      userCode: member.userCode,
+      displayName: member.displayName,
+    })
+    setMemberUserKeyword(member.username || member.displayName || '')
     setMemberDialogOpen(true)
   }
 
@@ -875,6 +962,7 @@ export function EstabsPage() {
     setMemberDialogOpen(false)
     setEditingMember(null)
     memberForm.reset(DEFAULT_ESTAB_USER_FORM)
+    resetMemberCandidateState()
   }
 
   async function submitMember(values: EstabUserFormValues) {
@@ -884,7 +972,7 @@ export function EstabsPage() {
     }
     const userId = parsePositiveInteger(values.userId)
     if (!userId) {
-      toast.error('请输入有效的用户ID。')
+      toast.error('请选择有效的用户。')
       return
     }
 
@@ -1004,7 +1092,7 @@ export function EstabsPage() {
               value={estabTypeInput}
               onValueChange={(value) => setEstabTypeInput(value as 'all' | '0' | '1' | '2')}
             >
-              <SelectTrigger  className='w-full'>
+              <SelectTrigger className='w-full'>
                 <SelectValue placeholder='企业类型' />
               </SelectTrigger>
               <SelectContent>
@@ -1149,22 +1237,9 @@ export function EstabsPage() {
         }}
       >
         <DialogContent
-          className={`max-h-[92vh] overflow-y-auto ${
-            estabDialogExpanded ? 'sm:max-w-[92vw]' : 'sm:max-w-6xl'
-          }`}
+          className='max-h-[95vh] max-w-[95vw]! w-[95vw] flex flex-col overflow-hidden p-0'
         >
-          {editingEstab ? (
-            <Button
-              type='button'
-              variant='outline'
-              size='icon'
-              className='absolute right-12 top-2 z-10 h-8 w-8 shrink-0'
-              onClick={() => setEstabDialogExpanded((prev) => !prev)}
-            >
-              {estabDialogExpanded ? <Minimize2 className='h-4 w-4' /> : <Maximize2 className='h-4 w-4' />}
-            </Button>
-          ) : null}
-          <DialogHeader>
+          <DialogHeader className='shrink-0 px-6 pt-6 pb-4'>
             <div className='space-y-1'>
               <DialogTitle>
                 {estabDialogMode === 'view' ? '查看企业' : editingEstab ? '编辑企业' : '新建企业'}
@@ -1172,393 +1247,551 @@ export function EstabsPage() {
               <DialogDescription>维护企业主体信息，保存后可继续配置地址、成员与策略。</DialogDescription>
             </div>
           </DialogHeader>
-          <Form {...estabForm}>
-            <form
-              className={`grid gap-4 ${isEstabThreeColumnLayout ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}
-              onSubmit={estabForm.handleSubmit(submitEstab)}
-            >
-              <FormField
-                control={estabForm.control}
-                name='estabCode'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>企业编码</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        disabled={Boolean(editingEstab) || isEstabReadOnly}
-                        placeholder={!editingEstab ? '系统自动生成，格式如 EST_XXXXXXXX' : undefined}
+
+          {/* 统一的滚动内容区域 */}
+          <div className='flex-1 overflow-y-auto'>
+            <Form {...estabForm}>
+              <form onSubmit={estabForm.handleSubmit(submitEstab)} id='estab-form'>
+                <div className='px-6 pb-6'>
+                <div className='space-y-6'>
+                  {/* 基本信息 */}
+                  <div className='rounded-lg border p-4'>
+                    <h3 className='mb-4 text-sm font-semibold text-foreground'>基本信息</h3>
+                    <div className='grid gap-4 md:grid-cols-3'>
+                      <FormField
+                        control={estabForm.control}
+                        name='estabName'
+                        render={({ field }) => (
+                          <FormItem className='space-y-1.5'>
+                            <FormLabel>企业名称</FormLabel>
+                            <FormControl>
+                              <Input {...field} disabled={isEstabReadOnly} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={estabForm.control}
-                name='estabName'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>企业名称</FormLabel>
-                    <FormControl>
-                      <Input {...field} disabled={isEstabReadOnly} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={estabForm.control}
-                name='estabShortName'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>企业简称</FormLabel>
-                    <FormControl>
-                      <Input {...field} disabled={isEstabReadOnly} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={estabForm.control}
-                name='estabType'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>企业类型</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={isEstabReadOnly}>
-                      <FormControl>
-                        <SelectTrigger className='w-full'>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value='0'>平台</SelectItem>
-                        <SelectItem value='1'>租户</SelectItem>
-                        <SelectItem value='2'>合作方</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={estabForm.control}
-                name='status'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>状态</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={isEstabReadOnly}>
-                      <FormControl>
-                        <SelectTrigger className='w-full'>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value='1'>启用</SelectItem>
-                        <SelectItem value='2'>停用</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={estabForm.control}
-                name='ownerUserId'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>负责人用户</FormLabel>
-                    {isEstabReadOnly ? (
-                      <FormControl>
-                        <Input
-                          value={
-                            buildOwnerCandidateLabel(selectedOwnerCandidate) ||
-                            (editingEstab?.ownerUsername || (field.value ? `用户 #${field.value}` : '-'))
-                          }
-                          disabled
-                        />
-                      </FormControl>
-                    ) : (
-                      <div className='space-y-2'>
-                        <FormControl>
-                          <Input
-                            value={
-                              selectedOwnerCandidate
-                                ? buildOwnerCandidateLabel(selectedOwnerCandidate) || ownerKeyword
-                                : ownerKeyword
-                            }
-                            placeholder='输入用户名进行联想，例如：refinex'
-                            onChange={(event) => {
-                              setOwnerKeyword(event.target.value)
-                              setSelectedOwnerCandidate(null)
-                              setOwnerCandidates([])
-                              field.onChange('')
-                            }}
-                          />
-                        </FormControl>
+                      <FormField
+                        control={estabForm.control}
+                        name='estabCode'
+                        render={({ field }) => (
+                          <FormItem className='space-y-1.5'>
+                            <FormLabel>企业编码</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                disabled={Boolean(editingEstab) || isEstabReadOnly}
+                                placeholder={!editingEstab ? '系统自动生成' : undefined}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={estabForm.control}
+                        name='estabShortName'
+                        render={({ field }) => (
+                          <FormItem className='space-y-1.5'>
+                            <FormLabel>企业简称</FormLabel>
+                            <FormControl>
+                              <Input {...field} disabled={isEstabReadOnly} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={estabForm.control}
+                        name='estabType'
+                        render={({ field }) => (
+                          <FormItem className='space-y-1.5'>
+                            <FormLabel>企业类型</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value} disabled={isEstabReadOnly}>
+                              <FormControl>
+                                <SelectTrigger  className='w-full'>
+                                  <SelectValue />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value='0'>平台</SelectItem>
+                                <SelectItem value='1'>租户</SelectItem>
+                                <SelectItem value='2'>合作方</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={estabForm.control}
+                        name='status'
+                        render={({ field }) => (
+                          <FormItem className='space-y-1.5'>
+                            <FormLabel>状态</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value} disabled={isEstabReadOnly}>
+                              <FormControl>
+                                <SelectTrigger className='w-full'>
+                                  <SelectValue />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value='1'>启用</SelectItem>
+                                <SelectItem value='2'>停用</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={estabForm.control}
+                        name='ownerUserId'
+                        render={({ field }) => (
+                          <FormItem className='space-y-1.5'>
+                            <FormLabel>负责人用户</FormLabel>
+                            {isEstabReadOnly ? (
+                              <FormControl>
+                                <Input
+                                  value={
+                                    buildOwnerCandidateLabel(selectedOwnerCandidate) ||
+                                    (editingEstab?.ownerUsername || (field.value ? `用户 #${field.value}` : '-'))
+                                  }
+                                  disabled
+                                />
+                              </FormControl>
+                            ) : (
+                              <div className='space-y-2'>
+                                <FormControl>
+                                  <Input
+                                    value={
+                                      selectedOwnerCandidate
+                                        ? buildOwnerCandidateLabel(selectedOwnerCandidate) || ownerKeyword
+                                        : ownerKeyword
+                                    }
+                                    placeholder='输入用户名搜索'
+                                    onChange={(event) => {
+                                      setOwnerKeyword(event.target.value)
+                                      setSelectedOwnerCandidate(null)
+                                      setOwnerCandidates([])
+                                      field.onChange('')
+                                    }}
+                                  />
+                                </FormControl>
+                                {ownerLoading && (
+                                  <div className='flex items-center gap-2 rounded-md border px-3 py-2 text-sm text-muted-foreground'>
+                                    <Loader2 className='h-3.5 w-3.5 animate-spin' />
+                                    正在检索用户...
+                                  </div>
+                                )}
+                                {!ownerLoading && ownerKeyword.trim().length > 0 && ownerCandidates.length === 0 && !selectedOwnerCandidate && (
+                                  <div className='rounded-md border px-3 py-2 text-sm text-muted-foreground'>
+                                    未找到可选负责人
+                                  </div>
+                                )}
+                                {!ownerLoading && ownerCandidates.length > 0 && (
+                                  <div className='max-h-48 overflow-auto rounded-md border'>
+                                    {ownerCandidates.map((candidate) => (
+                                      <button
+                                        key={candidate.userId}
+                                        type='button'
+                                        className='flex w-full items-center justify-between border-b px-3 py-2 text-left text-sm last:border-b-0 hover:bg-muted/40'
+                                        onClick={() => selectOwnerCandidate(candidate, field.onChange)}
+                                      >
+                                        <span className='truncate'>
+                                          {candidate.username ||
+                                            candidate.displayName ||
+                                            `用户 #${candidate.userId ?? '-'}`}
+                                        </span>
+                                        <span className='ml-2 text-xs text-muted-foreground'>
+                                          {candidate.userCode || '-'}
+                                        </span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
 
-                        {ownerLoading ? (
-                          <div className='flex items-center gap-2 rounded-md border px-3 py-2 text-sm text-muted-foreground'>
-                            <Loader2 className='h-3.5 w-3.5 animate-spin' />
-                            正在检索用户...
-                          </div>
-                        ) : null}
+                  {/* 资质/法律信息 */}
+                  <div className='rounded-lg border p-4'>
+                    <h3 className='mb-4 text-sm font-semibold text-foreground'>资质信息</h3>
+                    <div className='grid gap-4 md:grid-cols-3'>
+                      <FormField
+                        control={estabForm.control}
+                        name='creditCode'
+                        render={({ field }) => (
+                          <FormItem className='space-y-1.5'>
+                            <FormLabel>统一社会信用代码</FormLabel>
+                            <FormControl>
+                              <Input {...field} disabled={isEstabReadOnly} placeholder='请输入统一社会信用代码' />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={estabForm.control}
+                        name='industryCode'
+                        render={({ field }) => (
+                          <FormItem className='space-y-1.5'>
+                            <FormLabel>行业编码</FormLabel>
+                            <Select
+                              disabled={isEstabReadOnly}
+                              value={field.value || ''}
+                              onValueChange={field.onChange}
+                            >
+                              <FormControl>
+                                <SelectTrigger className='w-full'>
+                                  <SelectValue placeholder='请选择行业' />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {industryOptions.map((option) => (
+                                  <SelectItem key={option.valueCode} value={option.valueCode ?? ''}>
+                                    {option.valueName}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={estabForm.control}
+                        name='sizeRange'
+                        render={({ field }) => (
+                          <FormItem className='space-y-1.5'>
+                            <FormLabel>规模区间</FormLabel>
+                            <Select
+                              disabled={isEstabReadOnly}
+                              value={field.value || ''}
+                              onValueChange={field.onChange}
+                            >
+                              <FormControl>
+                                <SelectTrigger className='w-full'>
+                                  <SelectValue placeholder='请选择企业规模' />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {sizeRangeOptions.map((option) => (
+                                  <SelectItem key={option.valueCode} value={option.valueCode ?? ''}>
+                                    {option.valueName}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
 
-                        {!ownerLoading && ownerKeyword.trim().length > 0 && ownerCandidates.length === 0 ? (
-                          <div className='rounded-md border px-3 py-2 text-sm text-muted-foreground'>
-                            未找到可选负责人
-                          </div>
-                        ) : null}
+                  {/* 联系信息 */}
+                  <div className='rounded-lg border p-4'>
+                    <h3 className='mb-4 text-sm font-semibold text-foreground'>联系信息</h3>
+                    <div className='grid gap-4 md:grid-cols-3'>
+                      <FormField
+                        control={estabForm.control}
+                        name='contactName'
+                        render={({ field }) => (
+                          <FormItem className='space-y-1.5'>
+                            <FormLabel>联系人</FormLabel>
+                            <FormControl>
+                              <Input {...field} disabled={isEstabReadOnly} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={estabForm.control}
+                        name='contactPhone'
+                        render={({ field }) => (
+                          <FormItem className='space-y-1.5'>
+                            <FormLabel>联系电话</FormLabel>
+                            <FormControl>
+                              <Input {...field} disabled={isEstabReadOnly} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={estabForm.control}
+                        name='contactEmail'
+                        render={({ field }) => (
+                          <FormItem className='space-y-1.5'>
+                            <FormLabel>联系邮箱</FormLabel>
+                            <FormControl>
+                              <Input {...field} disabled={isEstabReadOnly} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={estabForm.control}
+                        name='websiteUrl'
+                        render={({ field }) => (
+                          <FormItem className='space-y-1.5 md:col-span-2'>
+                            <FormLabel>官网地址</FormLabel>
+                            <FormControl>
+                              <Input {...field} disabled={isEstabReadOnly} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
 
-                        {!ownerLoading && ownerCandidates.length > 0 ? (
-                          <div className='max-h-48 overflow-auto rounded-md border'>
-                            {ownerCandidates.map((candidate) => (
-                              <button
-                                key={candidate.userId}
-                                type='button'
-                                className='flex w-full items-center justify-between border-b px-3 py-2 text-left text-sm last:border-b-0 hover:bg-muted/40'
-                                onClick={() => selectOwnerCandidate(candidate, field.onChange)}
-                              >
-                                <span className='truncate'>
-                                  {candidate.username ||
-                                    candidate.displayName ||
-                                    `用户 #${candidate.userId ?? '-'}`}
-                                </span>
-                                <span className='ml-2 text-xs text-muted-foreground'>
-                                  {candidate.userCode || '-'}
-                                </span>
-                              </button>
-                            ))}
-                          </div>
-                        ) : null}
-                      </div>
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={estabForm.control}
-                name='creditCode'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>统一社会信用代码</FormLabel>
-                    <FormControl>
-                      <Input {...field} disabled={isEstabReadOnly} placeholder='请输入统一社会信用代码' />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={estabForm.control}
-                name='industryCode'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>行业编码</FormLabel>
-                    <FormControl>
-                      <Input {...field} disabled={isEstabReadOnly} placeholder='请输入行业编码' />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={estabForm.control}
-                name='sizeRange'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>规模区间</FormLabel>
-                    <FormControl>
-                      <Input {...field} disabled={isEstabReadOnly} placeholder='请输入规模区间' />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={estabForm.control}
-                name='logoUrl'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Logo</FormLabel>
-                    {isEstabReadOnly ? (
-                      <FormControl>
-                        <Input {...field} disabled placeholder='Logo 地址' />
-                      </FormControl>
-                    ) : editingEstab?.id ? (
-                      <div className='space-y-2'>
-                        <FormControl>
-                          <Input {...field} placeholder='Logo 地址' />
-                        </FormControl>
-                        <Button
-                          type='button'
-                          variant='outline'
-                          size='sm'
-                          disabled={uploadingLogo}
-                          onClick={() => logoFileInputRef.current?.click()}
-                        >
-                          {uploadingLogo ? (
-                            <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                          ) : (
-                            <ImageUp className='mr-2 h-4 w-4' />
+                  {/* 附件信息 */}
+                  {(estabDialogMode === 'edit' || estabDialogMode === 'view') && editingEstab?.id && (
+                    <div className='rounded-lg border p-4'>
+                      <h3 className='mb-4 text-sm font-semibold text-foreground'>附件信息</h3>
+                      <div className='grid gap-4 md:grid-cols-2'>
+                        <FormField
+                          control={estabForm.control}
+                          name='logoUrl'
+                          render={({ field }) => (
+                            <FormItem className='space-y-1.5'>
+                              <FormLabel>企业 Logo</FormLabel>
+                              <div className='space-y-3'>
+                                {field.value ? (
+                                  <div className='flex items-center gap-3'>
+                                    <img
+                                      src={field.value}
+                                      alt='企业 Logo'
+                                      className='h-24 w-24 cursor-pointer rounded-lg border object-contain bg-muted transition-opacity hover:opacity-80'
+                                      onClick={() => {
+                                        setPreviewImageUrl(field.value || null)
+                                        setPreviewImageOpen(true)
+                                      }}
+                                      onError={(e) => {
+                                        e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="96" height="96"%3E%3Crect width="96" height="96" fill="%23f0f0f0"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23999"%3E无图片%3C/text%3E%3C/svg%3E'
+                                      }}
+                                    />
+                                    <div className='flex flex-col gap-2'>
+                                      {!isEstabReadOnly && (
+                                        <>
+                                          <Button
+                                            type='button'
+                                            variant='outline'
+                                            size='sm'
+                                            disabled={uploadingLogo}
+                                            onClick={() => logoFileInputRef.current?.click()}
+                                          >
+                                            {uploadingLogo ? (
+                                              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                                            ) : (
+                                              <ImageUp className='mr-2 h-4 w-4' />
+                                            )}
+                                            重新上传
+                                          </Button>
+                                          <input
+                                            ref={logoFileInputRef}
+                                            type='file'
+                                            accept='image/jpeg,image/png,image/webp,image/gif'
+                                            className='hidden'
+                                            onChange={handleLogoFileChange}
+                                          />
+                                        </>
+                                      )}
+                                      <Button
+                                        type='button'
+                                        variant='outline'
+                                        size='sm'
+                                        onClick={() => {
+                                          setPreviewImageUrl(field.value || null)
+                                          setPreviewImageOpen(true)
+                                        }}
+                                      >
+                                        <Eye className='mr-2 h-4 w-4' />
+                                        查看大图
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className='space-y-2'>
+                                    {!isEstabReadOnly ? (
+                                      <>
+                                        <Button
+                                          type='button'
+                                          variant='outline'
+                                          size='sm'
+                                          disabled={uploadingLogo}
+                                          onClick={() => logoFileInputRef.current?.click()}
+                                        >
+                                          {uploadingLogo ? (
+                                            <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                                          ) : (
+                                            <ImageUp className='mr-2 h-4 w-4' />
+                                          )}
+                                          上传 Logo
+                                        </Button>
+                                        <input
+                                          ref={logoFileInputRef}
+                                          type='file'
+                                          accept='image/jpeg,image/png,image/webp,image/gif'
+                                          className='hidden'
+                                          onChange={handleLogoFileChange}
+                                        />
+                                        <p className='text-xs text-muted-foreground'>
+                                          支持 JPG、PNG、WEBP、GIF 格式，最大 5MB
+                                        </p>
+                                      </>
+                                    ) : (
+                                      <p className='text-sm text-muted-foreground'>暂无 Logo</p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              <FormMessage />
+                            </FormItem>
                           )}
-                          上传 Logo
-                        </Button>
-                        <input
-                          ref={logoFileInputRef}
-                          type='file'
-                          accept='image/jpeg,image/png,image/webp,image/gif'
-                          className='hidden'
-                          onChange={handleLogoFileChange}
                         />
-                      </div>
-                    ) : (
-                      <FormControl>
-                        <Input {...field} placeholder='保存后可上传 Logo' disabled />
-                      </FormControl>
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={estabForm.control}
-                name='licenseUrl'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>营业执照</FormLabel>
-                    {isEstabReadOnly ? (
-                      <FormControl>
-                        <Input {...field} disabled placeholder='营业执照地址' />
-                      </FormControl>
-                    ) : editingEstab?.id ? (
-                      <div className='space-y-2'>
-                        <FormControl>
-                          <Input {...field} placeholder='营业执照地址' />
-                        </FormControl>
-                        <Button
-                          type='button'
-                          variant='outline'
-                          size='sm'
-                          disabled={uploadingLicense}
-                          onClick={() => licenseFileInputRef.current?.click()}
-                        >
-                          {uploadingLicense ? (
-                            <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                          ) : (
-                            <ImageUp className='mr-2 h-4 w-4' />
+                        <FormField
+                          control={estabForm.control}
+                          name='licenseUrl'
+                          render={({ field }) => (
+                            <FormItem className='space-y-1.5'>
+                              <FormLabel>营业执照</FormLabel>
+                              <div className='space-y-3'>
+                                {field.value ? (
+                                  <div className='flex items-center gap-3'>
+                                    <img
+                                      src={field.value}
+                                      alt='营业执照'
+                                      className='h-32 w-32 cursor-pointer rounded-lg border object-contain bg-muted transition-opacity hover:opacity-80'
+                                      onClick={() => {
+                                        setPreviewImageUrl(field.value || null)
+                                        setPreviewImageOpen(true)
+                                      }}
+                                      onError={(e) => {
+                                        e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="128" height="128"%3E%3Crect width="128" height="128" fill="%23f0f0f0"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23999"%3E无图片%3C/text%3E%3C/svg%3E'
+                                      }}
+                                    />
+                                    <div className='flex flex-col gap-2'>
+                                      {!isEstabReadOnly && (
+                                        <>
+                                          <Button
+                                            type='button'
+                                            variant='outline'
+                                            size='sm'
+                                            disabled={uploadingLicense}
+                                            onClick={() => licenseFileInputRef.current?.click()}
+                                          >
+                                            {uploadingLicense ? (
+                                              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                                            ) : (
+                                              <ImageUp className='mr-2 h-4 w-4' />
+                                            )}
+                                            重新上传
+                                          </Button>
+                                          <input
+                                            ref={licenseFileInputRef}
+                                            type='file'
+                                            accept='image/jpeg,image/png,image/webp,application/pdf'
+                                            className='hidden'
+                                            onChange={handleLicenseFileChange}
+                                          />
+                                        </>
+                                      )}
+                                      <Button
+                                        type='button'
+                                        variant='outline'
+                                        size='sm'
+                                        onClick={() => {
+                                          setPreviewImageUrl(field.value || null)
+                                          setPreviewImageOpen(true)
+                                        }}
+                                      >
+                                        <Eye className='mr-2 h-4 w-4' />
+                                        查看大图
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className='space-y-2'>
+                                    {!isEstabReadOnly ? (
+                                      <>
+                                        <Button
+                                          type='button'
+                                          variant='outline'
+                                          size='sm'
+                                          disabled={uploadingLicense}
+                                          onClick={() => licenseFileInputRef.current?.click()}
+                                        >
+                                          {uploadingLicense ? (
+                                            <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                                          ) : (
+                                            <ImageUp className='mr-2 h-4 w-4' />
+                                          )}
+                                          上传营业执照
+                                        </Button>
+                                        <input
+                                          ref={licenseFileInputRef}
+                                          type='file'
+                                          accept='image/jpeg,image/png,image/webp,application/pdf'
+                                          className='hidden'
+                                          onChange={handleLicenseFileChange}
+                                        />
+                                        <p className='text-xs text-muted-foreground'>
+                                          支持 JPG、PNG、WEBP、PDF 格式，最大 10MB
+                                        </p>
+                                      </>
+                                    ) : (
+                                      <p className='text-sm text-muted-foreground'>暂无营业执照</p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              <FormMessage />
+                            </FormItem>
                           )}
-                          上传营业执照
-                        </Button>
-                        <input
-                          ref={licenseFileInputRef}
-                          type='file'
-                          accept='image/jpeg,image/png,image/webp,application/pdf'
-                          className='hidden'
-                          onChange={handleLicenseFileChange}
                         />
                       </div>
-                    ) : (
-                      <FormControl>
-                        <Input {...field} placeholder='保存后可上传营业执照' disabled />
-                      </FormControl>
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={estabForm.control}
-                name='contactName'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>联系人</FormLabel>
-                    <FormControl>
-                      <Input {...field} disabled={isEstabReadOnly} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={estabForm.control}
-                name='contactPhone'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>联系电话</FormLabel>
-                    <FormControl>
-                      <Input {...field} disabled={isEstabReadOnly} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={estabForm.control}
-                name='contactEmail'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>联系邮箱</FormLabel>
-                    <FormControl>
-                      <Input {...field} disabled={isEstabReadOnly} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={estabForm.control}
-                name='websiteUrl'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>官网地址</FormLabel>
-                    <FormControl>
-                      <Input {...field} disabled={isEstabReadOnly} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={estabForm.control}
-                name='remark'
-                render={({ field }) => (
-                  <FormItem className={isEstabThreeColumnLayout ? 'md:col-span-3' : 'md:col-span-2'}>
-                    <FormLabel>备注</FormLabel>
-                    <FormControl>
-                      <Textarea rows={3} {...field} disabled={isEstabReadOnly} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              {!isEstabReadOnly ? (
-                <DialogFooter className={isEstabThreeColumnLayout ? 'md:col-span-3' : 'md:col-span-2'}>
-                  <Button type='button' variant='outline' onClick={closeEstabDialog}>
-                    取消
-                  </Button>
-                  <Button type='submit' disabled={savingEstab}>
-                    {savingEstab ? (
-                      <>
-                        <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                        保存中...
-                      </>
-                    ) : (
-                      '保存企业'
-                    )}
-                  </Button>
-                </DialogFooter>
-              ) : null}
-            </form>
-          </Form>
-          {editingEstab?.id ? (
-            <div className='mt-2 border-t pt-4'>
-              <Tabs
-                value={activeTab}
-                onValueChange={(value) => setActiveTab(value as 'addresses' | 'members' | 'policy')}
-              >
+                    </div>
+                  )}
+
+                  {/* 备注 */}
+                  <div className='rounded-lg border p-4'>
+                    <h3 className='mb-4 text-sm font-semibold text-foreground'>备注</h3>
+                    <FormField
+                      control={estabForm.control}
+                      name='remark'
+                      render={({ field }) => (
+                        <FormItem className='space-y-1.5'>
+                          <FormLabel>营业范围</FormLabel>
+                          <FormControl>
+                            <Textarea rows={3} {...field} disabled={isEstabReadOnly} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+                </div>
+              </form>
+            </Form>
+
+            {/* Tabs 区域 - 与表单内容连贯 */}
+            {editingEstab?.id && (
+              <div className='border-t px-6 py-6'>
+                <Tabs
+                  value={activeTab}
+                  onValueChange={(value) => setActiveTab(value as 'addresses' | 'members' | 'policy')}
+                >
                 <TabsList className='grid h-auto w-full grid-cols-3 gap-1.5 lg:w-[420px]'>
                   <TabsTrigger value='addresses' className='gap-1.5'>
                     <MapPin className='h-3.5 w-3.5' />
@@ -1682,7 +1915,7 @@ export function EstabsPage() {
                     <Table className='[&_td]:border-r [&_td]:border-border/70 [&_td:last-child]:border-r-0 [&_th]:border-r [&_th]:border-border/70 [&_th:last-child]:border-r-0'>
                       <TableHeader>
                         <TableRow className='bg-muted/30 hover:bg-muted/30'>
-                        <TableHead>用户ID</TableHead>
+                        <TableHead>用户</TableHead>
                         <TableHead>成员类型</TableHead>
                         <TableHead className='w-[88px] text-center'>管理员</TableHead>
                         <TableHead className='w-[88px] text-center'>状态</TableHead>
@@ -1710,7 +1943,14 @@ export function EstabsPage() {
                         ) : (
                           members.map((item) => (
                             <TableRow key={item.id}>
-                              <TableCell>{item.userId ?? '-'}</TableCell>
+                              <TableCell>
+                                <div className='flex flex-col'>
+                                  <span className='font-medium'>{item.username || item.displayName || '-'}</span>
+                                  {item.userCode && (
+                                    <span className='text-xs text-muted-foreground'>{item.userCode}</span>
+                                  )}
+                                </div>
+                              </TableCell>
                               <TableCell>{toMemberTypeLabel(item.memberType)}</TableCell>
                               <TableCell className='text-center'>
                                 <Badge variant={item.isAdmin === 1 ? 'default' : 'secondary'}>
@@ -1962,8 +2202,28 @@ export function EstabsPage() {
                 </TabsContent>
               </Tabs>
             </div>
-          ) : (
-            <p className='mt-2 text-sm text-muted-foreground'>先保存企业基础信息后，再维护地址、成员与认证策略。</p>
+            )}
+          </div>
+
+          {/* 固定在右下角的操作按钮 */}
+          {!isEstabReadOnly && (
+            <div className='shrink-0 border-t bg-background px-6 py-4'>
+              <div className='flex justify-end gap-2'>
+                <Button type='button' variant='outline' onClick={closeEstabDialog}>
+                  取消
+                </Button>
+                <Button type='submit' form='estab-form' disabled={savingEstab}>
+                  {savingEstab ? (
+                    <>
+                      <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                      保存中...
+                    </>
+                  ) : (
+                    '保存企业'
+                  )}
+                </Button>
+              </div>
+            </div>
           )}
         </DialogContent>
       </Dialog>
@@ -2146,7 +2406,7 @@ export function EstabsPage() {
         <DialogContent className='max-h-[92vh] overflow-y-auto sm:max-w-2xl'>
           <DialogHeader>
             <DialogTitle>{editingMember ? '编辑成员关系' : '新增成员关系'}</DialogTitle>
-            <DialogDescription>通过用户ID建立成员关系，并维护管理员标记与在岗状态。</DialogDescription>
+            <DialogDescription>通过搜索用户建立成员关系，并维护管理员标记与在岗状态。</DialogDescription>
           </DialogHeader>
           <Form {...memberForm}>
             <form className='grid gap-4 md:grid-cols-2' onSubmit={memberForm.handleSubmit(submitMember)}>
@@ -2155,10 +2415,69 @@ export function EstabsPage() {
                 name='userId'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>用户ID</FormLabel>
-                    <FormControl>
-                      <Input {...field} disabled={Boolean(editingMember)} />
-                    </FormControl>
+                    <FormLabel>用户</FormLabel>
+                    {editingMember ? (
+                      <FormControl>
+                        <Input
+                          value={
+                            buildOwnerCandidateLabel(selectedMemberCandidate) ||
+                            (editingMember.username || editingMember.displayName || (field.value ? `用户 #${field.value}` : '-'))
+                          }
+                          disabled
+                        />
+                      </FormControl>
+                    ) : (
+                      <div className='space-y-2'>
+                        <FormControl>
+                          <Input
+                            value={
+                              selectedMemberCandidate
+                                ? buildOwnerCandidateLabel(selectedMemberCandidate) || memberUserKeyword
+                                : memberUserKeyword
+                            }
+                            placeholder='输入用户名搜索'
+                            onChange={(event) => {
+                              setMemberUserKeyword(event.target.value)
+                              setSelectedMemberCandidate(null)
+                              setMemberUserCandidates([])
+                              field.onChange('')
+                            }}
+                          />
+                        </FormControl>
+                        {memberUserLoading && (
+                          <div className='flex items-center gap-2 rounded-md border px-3 py-2 text-sm text-muted-foreground'>
+                            <Loader2 className='h-3.5 w-3.5 animate-spin' />
+                            正在检索用户...
+                          </div>
+                        )}
+                        {!memberUserLoading && memberUserKeyword.trim().length > 0 && memberUserCandidates.length === 0 && !selectedMemberCandidate && (
+                          <div className='rounded-md border px-3 py-2 text-sm text-muted-foreground'>
+                            未找到可选用户
+                          </div>
+                        )}
+                        {!memberUserLoading && memberUserCandidates.length > 0 && (
+                          <div className='max-h-48 overflow-auto rounded-md border'>
+                            {memberUserCandidates.map((candidate) => (
+                              <button
+                                key={candidate.userId}
+                                type='button'
+                                className='flex w-full items-center justify-between border-b px-3 py-2 text-left text-sm last:border-b-0 hover:bg-muted/40'
+                                onClick={() => selectMemberCandidate(candidate, field.onChange)}
+                              >
+                                <span className='truncate'>
+                                  {candidate.username ||
+                                    candidate.displayName ||
+                                    `用户 #${candidate.userId ?? '-'}`}
+                                </span>
+                                <span className='ml-2 text-xs text-muted-foreground'>
+                                  {candidate.userCode || '-'}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -2318,6 +2637,24 @@ export function EstabsPage() {
         isLoading={deletingMemberLoading}
         handleConfirm={() => void confirmDeleteMember()}
       />
+
+      {/* 图片预览对话框 */}
+      <Dialog open={previewImageOpen} onOpenChange={setPreviewImageOpen}>
+        <DialogContent className='max-h-[95vh] max-w-[95vw] p-0'>
+          <div className='relative flex h-full w-full items-center justify-center p-4'>
+            {previewImageUrl && (
+              <img
+                src={previewImageUrl}
+                alt='预览'
+                className='max-h-[90vh] max-w-full object-contain'
+                onError={(e) => {
+                  e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect width="400" height="300" fill="%23333"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="18" fill="%23999"%3E图片加载失败%3C/text%3E%3C/svg%3E'
+                }}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

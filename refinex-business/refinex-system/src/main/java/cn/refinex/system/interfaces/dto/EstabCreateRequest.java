@@ -39,6 +39,11 @@ public class EstabCreateRequest {
     private Integer status;
 
     /**
+     * 统一社会信用代码
+     */
+    private String creditCode;
+
+    /**
      * 行业编码
      */
     private String industryCode;

@@ -28,6 +28,21 @@ public class EstabUserVO {
     private Long userId;
 
     /**
+     * 用户名
+     */
+    private String username;
+
+    /**
+     * 用户编码
+     */
+    private String userCode;
+
+    /**
+     * 用户显示名称
+     */
+    private String displayName;
+
+    /**
      * 成员类型
      */
     private Integer memberType;

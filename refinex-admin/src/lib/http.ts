@@ -85,6 +85,16 @@ function attachToken(config: InternalAxiosRequestConfig): InternalAxiosRequestCo
 function unwrapResponse(response: AxiosResponse): AxiosResponse {
     const payload = response.data
 
+    // 网关返回 401 但 HTTP 状态码是 200 的情况（Sa-Token 网关过滤器的响应格式）
+    if (isGatewayEnvelope(payload) && payload.code === 401) {
+        handleUnauthorized()
+        throw new ApiBusinessError(payload.msg || '登录已过期，请重新登录', {
+            code: '401',
+            status: 401,
+            raw: payload,
+        })
+    }
+
     if (isResultEnvelope(payload)) {
         if (payload.success) {
             response.data = isPageResultEnvelope(payload) ? payload : payload.data
@@ -123,4 +133,29 @@ export const http = axios.create({
 })
 
 http.interceptors.request.use(attachToken)
-http.interceptors.response.use(unwrapResponse)
+http.interceptors.response.use(unwrapResponse, handleResponseError)
+
+let redirecting = false
+
+function handleUnauthorized() {
+    if (redirecting) return
+    redirecting = true
+    useAuthStore.getState().auth.reset()
+    const currentPath = globalThis.location.pathname + globalThis.location.search
+    const signInUrl = currentPath && currentPath !== '/sign-in'
+        ? `/sign-in?redirect=${encodeURIComponent(currentPath)}`
+        : '/sign-in'
+    globalThis.location.href = signInUrl
+}
+
+function handleResponseError(error: unknown) {
+    if (
+        error &&
+        typeof error === 'object' &&
+        'response' in error &&
+        (error as { response?: { status?: number } }).response?.status === 401
+    ) {
+        handleUnauthorized()
+    }
+    return Promise.reject(error)
+}

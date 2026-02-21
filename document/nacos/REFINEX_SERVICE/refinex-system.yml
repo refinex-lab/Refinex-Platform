@@ -8,6 +8,12 @@ server:
   port: 8083
 
 spring:
+  servlet:
+    multipart:
+      # 单个文件最大大小
+      max-file-size: 10MB
+      # 单次请求最大大小
+      max-request-size: 20MB
   http:
     clients:
       # HTTP Service Client 全局连接超时

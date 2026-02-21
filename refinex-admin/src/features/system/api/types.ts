@@ -621,6 +621,9 @@ export interface EstabUser {
   id?: number
   estabId?: number
   userId?: number
+  username?: string
+  userCode?: string
+  displayName?: string
   memberType?: number
   isAdmin?: number
   status?: number

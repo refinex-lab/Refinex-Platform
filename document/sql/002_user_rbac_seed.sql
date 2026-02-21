@@ -37,7 +37,9 @@ VALUES
   ('login_source', '登录来源', 1, 60, '登录来源枚举', @seed_operator_id, @seed_operator_id, 0, 0),
   ('role_type', '角色类型', 1, 70, '角色类型枚举', @seed_operator_id, @seed_operator_id, 0, 0),
   ('menu_type', '菜单类型', 1, 80, '菜单类型枚举', @seed_operator_id, @seed_operator_id, 0, 0),
-  ('estab_type', '组织类型', 1, 90, '组织类型枚举', @seed_operator_id, @seed_operator_id, 0, 0)
+  ('estab_type', '组织类型', 1, 90, '组织类型枚举', @seed_operator_id, @seed_operator_id, 0, 0),
+  ('industry_code', '行业编码', 1, 100, '企业所属行业分类', @seed_operator_id, @seed_operator_id, 0, 0),
+  ('size_range', '企业规模', 1, 110, '企业人员规模区间', @seed_operator_id, @seed_operator_id, 0, 0)
 ON DUPLICATE KEY UPDATE
   set_name = VALUES(set_name),
   status = VALUES(status),
@@ -97,7 +99,35 @@ VALUES
 
   ('estab_type', '0', '平台', NULL, 1, 0, 10, @seed_operator_id, @seed_operator_id, 0, 0),
   ('estab_type', '1', '租户', NULL, 1, 1, 20, @seed_operator_id, @seed_operator_id, 0, 0),
-  ('estab_type', '2', '合作方', NULL, 1, 0, 30, @seed_operator_id, @seed_operator_id, 0, 0)
+  ('estab_type', '2', '合作方', NULL, 1, 0, 30, @seed_operator_id, @seed_operator_id, 0, 0),
+
+  ('industry_code', 'A', '农、林、牧、渔业', NULL, 1, 0, 10, @seed_operator_id, @seed_operator_id, 0, 0),
+  ('industry_code', 'B', '采矿业', NULL, 1, 0, 20, @seed_operator_id, @seed_operator_id, 0, 0),
+  ('industry_code', 'C', '制造业', NULL, 1, 0, 30, @seed_operator_id, @seed_operator_id, 0, 0),
+  ('industry_code', 'D', '电力、热力、燃气及水生产和供应业', NULL, 1, 0, 40, @seed_operator_id, @seed_operator_id, 0, 0),
+  ('industry_code', 'E', '建筑业', NULL, 1, 0, 50, @seed_operator_id, @seed_operator_id, 0, 0),
+  ('industry_code', 'F', '批发和零售业', NULL, 1, 0, 60, @seed_operator_id, @seed_operator_id, 0, 0),
+  ('industry_code', 'G', '交通运输、仓储和邮政业', NULL, 1, 0, 70, @seed_operator_id, @seed_operator_id, 0, 0),
+  ('industry_code', 'H', '住宿和餐饮业', NULL, 1, 0, 80, @seed_operator_id, @seed_operator_id, 0, 0),
+  ('industry_code', 'I', '信息传输、软件和信息技术服务业', NULL, 1, 1, 90, @seed_operator_id, @seed_operator_id, 0, 0),
+  ('industry_code', 'J', '金融业', NULL, 1, 0, 100, @seed_operator_id, @seed_operator_id, 0, 0),
+  ('industry_code', 'K', '房地产业', NULL, 1, 0, 110, @seed_operator_id, @seed_operator_id, 0, 0),
+  ('industry_code', 'L', '租赁和商务服务业', NULL, 1, 0, 120, @seed_operator_id, @seed_operator_id, 0, 0),
+  ('industry_code', 'M', '科学研究和技术服务业', NULL, 1, 0, 130, @seed_operator_id, @seed_operator_id, 0, 0),
+  ('industry_code', 'N', '水利、环境和公共设施管理业', NULL, 1, 0, 140, @seed_operator_id, @seed_operator_id, 0, 0),
+  ('industry_code', 'O', '居民服务、修理和其他服务业', NULL, 1, 0, 150, @seed_operator_id, @seed_operator_id, 0, 0),
+  ('industry_code', 'P', '教育', NULL, 1, 0, 160, @seed_operator_id, @seed_operator_id, 0, 0),
+  ('industry_code', 'Q', '卫生和社会工作', NULL, 1, 0, 170, @seed_operator_id, @seed_operator_id, 0, 0),
+  ('industry_code', 'R', '文化、体育和娱乐业', NULL, 1, 0, 180, @seed_operator_id, @seed_operator_id, 0, 0),
+  ('industry_code', 'S', '公共管理、社会保障和社会组织', NULL, 1, 0, 190, @seed_operator_id, @seed_operator_id, 0, 0),
+  ('industry_code', 'T', '国际组织', NULL, 1, 0, 200, @seed_operator_id, @seed_operator_id, 0, 0),
+
+  ('size_range', '1-49', '1-49人（微型企业）', NULL, 1, 0, 10, @seed_operator_id, @seed_operator_id, 0, 0),
+  ('size_range', '50-99', '50-99人（小型企业）', NULL, 1, 0, 20, @seed_operator_id, @seed_operator_id, 0, 0),
+  ('size_range', '100-299', '100-299人（中型企业）', NULL, 1, 1, 30, @seed_operator_id, @seed_operator_id, 0, 0),
+  ('size_range', '300-999', '300-999人（中大型企业）', NULL, 1, 0, 40, @seed_operator_id, @seed_operator_id, 0, 0),
+  ('size_range', '1000-4999', '1000-4999人（大型企业）', NULL, 1, 0, 50, @seed_operator_id, @seed_operator_id, 0, 0),
+  ('size_range', '5000+', '5000人以上（超大型企业）', NULL, 1, 0, 60, @seed_operator_id, @seed_operator_id, 0, 0)
 ON DUPLICATE KEY UPDATE
   value_name = VALUES(value_name),
   value_desc = VALUES(value_desc),

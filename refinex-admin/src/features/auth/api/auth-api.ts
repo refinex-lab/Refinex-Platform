@@ -137,3 +137,10 @@ export async function switchEstab(payload: SwitchEstabRequest): Promise<LoginUse
   )
   return response.data
 }
+
+export async function getTokenInfo(): Promise<TokenInfo> {
+  const response = await http.get<TokenInfo>(
+    buildModulePath('token', '/token/info')
+  )
+  return response.data
+}

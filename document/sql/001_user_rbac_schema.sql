@@ -68,7 +68,7 @@ CREATE TABLE def_estab (
   estab_short_name VARCHAR(64) DEFAULT NULL COMMENT '组织简称',
   estab_type TINYINT NOT NULL DEFAULT 1 COMMENT '组织类型 0平台 1租户 2合作方',
   status TINYINT NOT NULL DEFAULT 1 COMMENT '状态 1启用 2停用 3冻结',
-  credit_code VARCHAR(64) DEFAULT NULL COMMENT '统一社会信用代码',
+  credit_code VARCHAR(255) DEFAULT NULL COMMENT '统一社会信用代码',
   industry_code VARCHAR(64) DEFAULT NULL COMMENT '行业编码(值集 industry_type)',
   size_range VARCHAR(64) DEFAULT NULL COMMENT '规模区间(值集 estab_size)',
   owner_user_id BIGINT DEFAULT NULL COMMENT '主负责人用户ID',

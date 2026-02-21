@@ -649,6 +649,7 @@ public class OrganizationRepositoryImpl implements OrganizationRepository {
         entity.setEstabShortName(row.getEstabShortName());
         entity.setEstabType(row.getEstabType());
         entity.setStatus(row.getStatus());
+        entity.setCreditCode(row.getCreditCode());
         entity.setIndustryCode(row.getIndustryCode());
         entity.setSizeRange(row.getSizeRange());
         entity.setOwnerUserId(row.getOwnerUserId());
@@ -657,6 +658,7 @@ public class OrganizationRepositoryImpl implements OrganizationRepository {
         entity.setContactEmail(row.getContactEmail());
         entity.setWebsiteUrl(row.getWebsiteUrl());
         entity.setLogoUrl(row.getLogoUrl());
+        entity.setLicenseUrl(row.getLicenseUrl());
         entity.setRemark(row.getRemark());
         entity.setDeleted(row.getDeleted());
         return entity;
@@ -670,6 +672,7 @@ public class OrganizationRepositoryImpl implements OrganizationRepository {
         row.setEstabShortName(entity.getEstabShortName());
         row.setEstabType(entity.getEstabType());
         row.setStatus(entity.getStatus());
+        row.setCreditCode(entity.getCreditCode());
         row.setIndustryCode(entity.getIndustryCode());
         row.setSizeRange(entity.getSizeRange());
         row.setOwnerUserId(entity.getOwnerUserId());
@@ -678,6 +681,7 @@ public class OrganizationRepositoryImpl implements OrganizationRepository {
         row.setContactEmail(entity.getContactEmail());
         row.setWebsiteUrl(entity.getWebsiteUrl());
         row.setLogoUrl(entity.getLogoUrl());
+        row.setLicenseUrl(entity.getLicenseUrl());
         row.setRemark(entity.getRemark());
         return row;
     }

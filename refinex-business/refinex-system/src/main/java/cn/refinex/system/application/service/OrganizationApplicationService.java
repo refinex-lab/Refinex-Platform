@@ -125,6 +125,44 @@ public class OrganizationApplicationService {
     }
 
     /**
+     * 补充企业成员用户展示信息
+     *
+     * @param estabUserDtos 企业成员列表
+     */
+    private void enrichEstabUsers(List<EstabUserDTO> estabUserDtos) {
+        if (CollectionUtils.isEmpty(estabUserDtos)) {
+            return;
+        }
+
+        List<Long> userIds = estabUserDtos.stream()
+                .map(EstabUserDTO::getUserId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Long, UserManageDTO> userMap = loadUserMapByIds(userIds);
+
+        for (EstabUserDTO estabUserDto : estabUserDtos) {
+            fillEstabUserDisplayFields(estabUserDto, userMap.get(estabUserDto.getUserId()));
+        }
+    }
+
+    /**
+     * 将用户信息写入企业成员DTO
+     *
+     * @param estabUserDto 企业成员DTO
+     * @param user         用户信息
+     */
+    private void fillEstabUserDisplayFields(EstabUserDTO estabUserDto, UserManageDTO user) {
+        if (estabUserDto == null || user == null) {
+            return;
+        }
+
+        estabUserDto.setUsername(user.getUsername());
+        estabUserDto.setUserCode(user.getUserCode());
+        estabUserDto.setDisplayName(user.getDisplayName());
+    }
+
+    /**
      * 创建企业
      *
      * @param command 创建命令
@@ -448,6 +486,7 @@ public class OrganizationApplicationService {
         for (EstabUserEntity entity : entities.getData()) {
             result.add(systemDomainAssembler.toEstabUserDto(entity));
         }
+        enrichEstabUsers(result);
         return PageResponse.of(result, entities.getTotal(), entities.getPageSize(), entities.getCurrentPage());
     }
 
@@ -477,7 +516,9 @@ public class OrganizationApplicationService {
         estabUser.setLeaveTime(command.getLeaveTime());
         estabUser.setPositionTitle(trimToNull(command.getPositionTitle()));
 
-        return systemDomainAssembler.toEstabUserDto(organizationRepository.insertEstabUser(estabUser));
+        EstabUserDTO dto = systemDomainAssembler.toEstabUserDto(organizationRepository.insertEstabUser(estabUser));
+        enrichEstabUsers(List.of(dto));
+        return dto;
     }
 
     /**
@@ -500,7 +541,9 @@ public class OrganizationApplicationService {
         existing.setLeaveTime(command.getLeaveTime());
         existing.setPositionTitle(trimToNull(command.getPositionTitle()));
         organizationRepository.updateEstabUser(existing);
-        return systemDomainAssembler.toEstabUserDto(requireEstabUser(existing.getId()));
+        EstabUserDTO dto = systemDomainAssembler.toEstabUserDto(requireEstabUser(existing.getId()));
+        enrichEstabUsers(List.of(dto));
+        return dto;
     }
 
     /**
