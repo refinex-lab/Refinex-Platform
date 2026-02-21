@@ -240,6 +240,8 @@ Activate via: `mvn spring-boot:run -Dspring-boot.run.profiles=test`
   - Database entities: `*Do` (e.g., `DefUserDo`)
 - **Error handling:** Use `BizException` with error codes from `*ErrorCode` classes
 - **Validation:** Use JSR-303 annotations on DTOs
+- **字段注释规范（强制）：** 所有 Java POJO 类（DO、Entity、DTO、VO、Command、Query、Request）的每个字段注释必须严格对齐 `document/sql/` 下对应数据库表字段的 COMMENT，保持文字完全一致，不得自行改写或省略。数据库 COMMENT 是字段注释的唯一权威来源。
+- **方法注释规范（强制）：** 所有公开方法（public method）必须编写标准 Javadoc 注释，包含方法说明、`@param` 参数描述、`@return` 返回值描述（void 方法除外）。私有辅助方法也应有简要 Javadoc。
 
 ### Frontend
 

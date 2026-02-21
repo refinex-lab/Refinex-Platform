@@ -193,6 +193,36 @@ mvn spring-boot:run
 | Domain 层转换 | `*DomainAssembler` | `AiDomainAssembler` |
 | ErrorCode | `*ErrorCode` | `AiErrorCode` |
 
+## 编码规范（强制）
+
+### 字段注释对齐数据库 COMMENT
+
+所有 Java POJO 类（DO、Entity、DTO、VO、Command、Query、Request）的每个字段注释必须严格对齐 `document/sql/` 下对应数据库表字段的 COMMENT，保持文字完全一致，不得自行改写或省略。
+
+数据库 COMMENT 是字段注释的唯一权威来源。示例：
+
+```sql
+-- 数据库定义
+model_type TINYINT NOT NULL DEFAULT 1 COMMENT '模型类型 1聊天 2嵌入 3图像生成 4语音转文字 5文字转语音 6重排序',
+```
+
+```java
+// Java 字段注释（必须与上方 COMMENT 完全一致）
+/**
+ * 模型类型 1聊天 2嵌入 3图像生成 4语音转文字 5文字转语音 6重排序
+ */
+private Integer modelType;
+```
+
+### 方法注释规范
+
+所有公开方法（public method）必须编写标准 Javadoc 注释，包含：
+- 方法功能说明
+- `@param` 每个参数的描述
+- `@return` 返回值描述（void 方法除外）
+
+私有辅助方法也应有简要 Javadoc（至少包含功能说明和 `@param`、`@return`）。
+
 ## WebFlux 开发注意事项
 
 1. Controller 方法返回 `Mono<Result<T>>` 或 `Flux<T>`（SSE 流式场景）
