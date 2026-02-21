@@ -2,8 +2,8 @@ package cn.refinex.web.handler;
 
 import cn.refinex.base.exception.BizException;
 import cn.refinex.base.exception.SystemException;
-import cn.refinex.base.response.SingleResponse;
 import cn.refinex.base.response.code.ResponseCode;
+import cn.refinex.web.vo.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.BindingResult;
@@ -18,7 +18,7 @@ import java.util.Optional;
 /**
  * 全局异常处理器
  * <p>
- * 统一拦截 Controller 层抛出的异常，并封装为标准 {@link SingleResponse} 格式返回。
+ * 统一拦截 Controller 层抛出的异常，并封装为标准 {@link Result} 格式返回。
  *
  * @author refinex
  */
@@ -36,7 +36,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public SingleResponse<Void> handleValidationException(MethodArgumentNotValidException ex) {
+    public Result<Void> handleValidationException(MethodArgumentNotValidException ex) {
         // 打印 WARN 日志，不需要堆栈，因为这是用户输入错误
         log.warn("Parameter validation failed: {}", ex.getMessage());
 
@@ -51,7 +51,7 @@ public class GlobalExceptionHandler {
                 .orElse("Invalid Parameter");
 
         // 返回统一的 ILLEGAL_ARGUMENT 错误码
-        return SingleResponse.fail(ResponseCode.ILLEGAL_ARGUMENT.name(), errorMessage);
+        return Result.error(ResponseCode.ILLEGAL_ARGUMENT.name(), errorMessage);
     }
 
     /**
@@ -64,12 +64,12 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(BizException.class)
     @ResponseStatus(HttpStatus.OK)
-    public SingleResponse<Void> handleBizException(BizException ex) {
+    public Result<Void> handleBizException(BizException ex) {
         // 业务异常属于预期内错误，使用 WARN 级别，视情况决定是否打印堆栈
         log.warn("Business exception occurred: [{}] {}", ex.getErrorCode().getCode(), ex.getMessage());
 
         // 使用异常中携带的错误码和消息构建响应
-        return SingleResponse.fail(ex.getErrorCode().getCode(), ex.getMessage());
+        return Result.error(ex.getErrorCode().getCode(), ex.getMessage());
     }
 
     /**
@@ -82,11 +82,11 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(SystemException.class)
     @ResponseStatus(HttpStatus.OK) // 保持 200，让前端通过 code 判断，也可以根据规范改为 500
-    public SingleResponse<Void> handleSystemException(SystemException ex) {
+    public Result<Void> handleSystemException(SystemException ex) {
         // 系统异常必须打印 ERROR 和完整堆栈，以便排查
         log.error("System exception occurred!", ex);
 
-        return SingleResponse.fail(ex.getErrorCode().getCode(), ex.getMessage());
+        return Result.error(ex.getErrorCode().getCode(), ex.getMessage());
     }
 
     /**
@@ -99,12 +99,12 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Throwable.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR) // 未知错误建议返回 500
-    public SingleResponse<Void> handleThrowable(Throwable ex) {
+    public Result<Void> handleThrowable(Throwable ex) {
         // 这是一个未被捕获的意外异常，必须打印完整堆栈
         log.error("Unhandled exception occurred!", ex);
 
         // 生产环境不要返回 e.getMessage()，因为它可能包含敏感信息（如 SQL 语句）
         // 统一返回友好的提示语
-        return SingleResponse.fail(ResponseCode.SYSTEM_ERROR.name(), "系统繁忙，请稍后再试");
+        return Result.error(ResponseCode.SYSTEM_ERROR.name(), "系统繁忙，请稍后再试");
     }
 }
