@@ -33,6 +33,25 @@ public interface ScrMenuOpMapper extends BaseMapper<ScrMenuOpDo> {
                                                @Param("systemId") Long systemId);
 
     /**
+     * 按多个企业ID查询菜单操作
+     */
+    @Select({
+            "<script>",
+            "SELECT mo.*",
+            "FROM scr_menu_op mo",
+            "JOIN scr_menu m ON m.id = mo.menu_id",
+            "WHERE m.estab_id IN",
+            "  <foreach collection='estabIds' item='eid' open='(' separator=',' close=')'>",
+            "    #{eid}",
+            "  </foreach>",
+            "  AND m.deleted = 0",
+            "  AND mo.deleted = 0",
+            "ORDER BY m.sort ASC, m.id ASC, mo.sort ASC, mo.id ASC",
+            "</script>"
+    })
+    List<ScrMenuOpDo> selectByEstabIds(@Param("estabIds") List<Long> estabIds);
+
+    /**
      * 按企业统计菜单操作数量
      */
     @Select({

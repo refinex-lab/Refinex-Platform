@@ -164,13 +164,13 @@ export interface MenuTreeNode {
 
 export interface MenuTreeQuery {
   estabId?: number
-  systemId: number
+  systemId?: number
   roleId?: number
 }
 
 export interface MenuCreateRequest {
   estabId?: number
-  systemId: number
+  systemId?: number
   parentId?: number
   menuCode?: string
   menuName: string
@@ -185,6 +185,7 @@ export interface MenuCreateRequest {
 }
 
 export interface MenuUpdateRequest {
+  systemId?: number
   parentId?: number
   menuCode: string
   menuName: string
@@ -208,6 +209,16 @@ export interface MenuOpCreateRequest {
 export interface MenuOpUpdateRequest {
   opCode: string
   opName: string
+  status?: number
+  sort?: number
+}
+
+export interface OpDefinition {
+  id?: number
+  opCode?: string
+  opName?: string
+  opDesc?: string
+  isBuiltin?: number
   status?: number
   sort?: number
 }

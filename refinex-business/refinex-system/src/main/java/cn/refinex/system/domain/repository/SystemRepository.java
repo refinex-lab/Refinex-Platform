@@ -3,6 +3,7 @@ package cn.refinex.system.domain.repository;
 import cn.refinex.base.response.PageResponse;
 import cn.refinex.system.domain.model.entity.MenuEntity;
 import cn.refinex.system.domain.model.entity.MenuOpEntity;
+import cn.refinex.system.domain.model.entity.OpEntity;
 import cn.refinex.system.domain.model.entity.RoleEntity;
 import cn.refinex.system.domain.model.entity.SystemEntity;
 
@@ -106,6 +107,11 @@ public interface SystemRepository {
     List<MenuEntity> listMenus(Long estabId, Long systemId);
 
     /**
+     * 按多个企业ID查询所有菜单（不限系统）
+     */
+    List<MenuEntity> listMenusByEstabIds(List<Long> estabIds);
+
+    /**
      * 查询菜单
      */
     MenuEntity findMenuById(Long menuId);
@@ -156,6 +162,11 @@ public interface SystemRepository {
     List<MenuOpEntity> listMenuOps(Long estabId, Long systemId);
 
     /**
+     * 按多个企业ID查询所有菜单操作（不限系统）
+     */
+    List<MenuOpEntity> listMenuOpsByEstabIds(List<Long> estabIds);
+
+    /**
      * 查询菜单操作
      */
     MenuOpEntity findMenuOpById(Long menuOpId);
@@ -199,4 +210,9 @@ public interface SystemRepository {
      * 按企业统计数据资源接口ID数量
      */
     long countDrsInterfacesByIdsAndEstabId(Long estabId, List<Long> drsInterfaceIds);
+
+    /**
+     * 查询启用的操作定义列表
+     */
+    List<OpEntity> listOps();
 }

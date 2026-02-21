@@ -487,4 +487,20 @@ public interface SystemApiAssembler {
      * @return 菜单树节点VO列表
      */
     List<MenuTreeNodeVO> toMenuTreeNodeVoList(List<MenuTreeNodeDTO> dtos);
+
+    /**
+     * 操作定义DTO转换为操作定义VO
+     *
+     * @param dto 操作定义DTO
+     * @return 操作定义VO
+     */
+    OpVO toOpVo(OpDTO dto);
+
+    /**
+     * 操作定义DTO列表转换为操作定义VO列表
+     *
+     * @param dtos 操作定义DTO列表
+     * @return 操作定义VO列表
+     */
+    List<OpVO> toOpVoList(List<OpDTO> dtos);
 }

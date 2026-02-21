@@ -162,6 +162,14 @@ public interface SystemDomainAssembler {
     EstabUserDTO toEstabUserDto(EstabUserEntity estabUserEntity);
 
     /**
+     * 操作定义实体转换为操作定义DTO
+     *
+     * @param opEntity 操作定义实体
+     * @return 操作定义DTO
+     */
+    OpDTO toOpDto(OpEntity opEntity);
+
+    /**
      * 团队实体转换为团队DTO
      *
      * @param teamEntity 团队实体

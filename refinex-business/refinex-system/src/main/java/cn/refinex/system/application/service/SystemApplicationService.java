@@ -24,6 +24,7 @@ import cn.refinex.system.application.dto.MenuDTO;
 import cn.refinex.system.application.dto.MenuOpDTO;
 import cn.refinex.system.application.dto.MenuOpManageDTO;
 import cn.refinex.system.application.dto.MenuTreeNodeDTO;
+import cn.refinex.system.application.dto.OpDTO;
 import cn.refinex.system.application.dto.RoleBindingDTO;
 import cn.refinex.system.application.dto.RoleBindingUserDTO;
 import cn.refinex.system.application.dto.RoleDTO;
@@ -31,6 +32,7 @@ import cn.refinex.system.application.dto.SystemDTO;
 import cn.refinex.system.domain.error.SystemErrorCode;
 import cn.refinex.system.domain.model.entity.MenuEntity;
 import cn.refinex.system.domain.model.entity.MenuOpEntity;
+import cn.refinex.system.domain.model.entity.OpEntity;
 import cn.refinex.system.domain.model.entity.RoleEntity;
 import cn.refinex.system.domain.model.entity.SystemEntity;
 import cn.refinex.system.domain.repository.SystemRepository;
@@ -309,28 +311,40 @@ public class SystemApplicationService {
      */
     @Transactional(rollbackFor = Exception.class)
     public MenuDTO createMenu(CreateMenuCommand command) {
-        if (command == null
-                || command.getSystemId() == null
-                || isBlank(command.getMenuName())) {
+        if (command == null || isBlank(command.getMenuName())) {
             throw new BizException(SystemErrorCode.INVALID_PARAM);
         }
-        requireSystem(command.getSystemId());
 
-        Long estabId = defaultIfNull(command.getEstabId(), 0L);
         Long parentId = defaultIfNull(command.getParentId(), 0L);
+        Long estabId = command.getEstabId();
+        Long systemId = command.getSystemId();
+
+        // 从父菜单继承 estabId 和 systemId
         if (parentId > 0) {
             MenuEntity parent = requireMenu(parentId);
-            if (!Objects.equals(parent.getSystemId(), command.getSystemId())
+            if (estabId == null) {
+                estabId = parent.getEstabId();
+            }
+            if (systemId == null) {
+                systemId = parent.getSystemId();
+            }
+            if (!Objects.equals(parent.getSystemId(), systemId)
                     || !Objects.equals(parent.getEstabId(), estabId)) {
                 throw new BizException(SystemErrorCode.INVALID_PARAM);
             }
         }
 
-        String menuCode = generateMenuCode(estabId, command.getSystemId(), command.getMenuCode());
+        estabId = defaultIfNull(estabId, 0L);
+        if (systemId == null) {
+            throw new BizException(SystemErrorCode.INVALID_PARAM);
+        }
+        requireSystem(systemId);
+
+        String menuCode = generateMenuCode(estabId, systemId, command.getMenuCode());
 
         MenuEntity entity = new MenuEntity();
         entity.setEstabId(estabId);
-        entity.setSystemId(command.getSystemId());
+        entity.setSystemId(systemId);
         entity.setParentId(parentId);
         entity.setMenuCode(menuCode);
         entity.setMenuName(command.getMenuName().trim());
@@ -378,6 +392,7 @@ public class SystemApplicationService {
         }
 
         existing.setParentId(parentId);
+        existing.setSystemId(defaultIfNull(command.getSystemId(), existing.getSystemId()));
         existing.setMenuCode(menuCode);
         existing.setMenuName(command.getMenuName().trim());
         existing.setMenuType(defaultIfNull(command.getMenuType(), existing.getMenuType()));
@@ -498,13 +513,24 @@ public class SystemApplicationService {
     }
 
     /**
-     * 按系统查询菜单树
+     * 查询启用的操作定义列表
+     */
+    public List<OpDTO> listOps() {
+        List<OpEntity> entities = systemRepository.listOps();
+        List<OpDTO> result = new ArrayList<>();
+        for (OpEntity entity : entities) {
+            result.add(systemDomainAssembler.toOpDto(entity));
+        }
+        return result;
+    }
+
+    /**
+     * 按系统查询菜单树（兼容旧调用）
      */
     public List<MenuTreeNodeDTO> getMenuTree(QueryMenuTreeCommand command) {
-        if (command == null || command.getSystemId() == null) {
+        if (command == null) {
             throw new BizException(SystemErrorCode.INVALID_PARAM);
         }
-        requireSystem(command.getSystemId());
 
         Long estabId = defaultIfNull(command.getEstabId(), 0L);
         Set<Long> assignedMenuIds = new LinkedHashSet<>();
@@ -518,8 +544,22 @@ public class SystemApplicationService {
             assignedMenuOpIds.addAll(systemRepository.listRoleMenuOpIds(role.getId()));
         }
 
-        List<MenuEntity> menuEntities = systemRepository.listMenus(estabId, command.getSystemId());
-        List<MenuOpEntity> menuOpEntities = systemRepository.listMenuOps(estabId, command.getSystemId());
+        List<MenuEntity> menuEntities;
+        List<MenuOpEntity> menuOpEntities;
+        if (command.getSystemId() != null) {
+            requireSystem(command.getSystemId());
+            menuEntities = systemRepository.listMenus(estabId, command.getSystemId());
+            menuOpEntities = systemRepository.listMenuOps(estabId, command.getSystemId());
+        } else {
+            // 查询当前企业 + 平台内置菜单
+            List<Long> estabIds = new ArrayList<>();
+            estabIds.add(0L);
+            if (estabId > 0) {
+                estabIds.add(estabId);
+            }
+            menuEntities = systemRepository.listMenusByEstabIds(estabIds);
+            menuOpEntities = systemRepository.listMenuOpsByEstabIds(estabIds);
+        }
 
         Map<Long, List<MenuOpDTO>> menuOpMap = new LinkedHashMap<>();
         for (MenuOpEntity menuOpEntity : menuOpEntities) {

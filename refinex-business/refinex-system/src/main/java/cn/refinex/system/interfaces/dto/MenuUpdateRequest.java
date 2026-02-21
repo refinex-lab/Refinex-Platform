@@ -3,6 +3,7 @@ package cn.refinex.system.interfaces.dto;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -14,6 +15,12 @@ import lombok.Data;
  */
 @Data
 public class MenuUpdateRequest {
+
+    /**
+     * 系统ID
+     */
+    @Positive(message = "系统ID必须大于0")
+    private Long systemId;
 
     /**
      * 父菜单ID（0表示根菜单）

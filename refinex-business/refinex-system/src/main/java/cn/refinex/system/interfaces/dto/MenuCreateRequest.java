@@ -3,7 +3,6 @@ package cn.refinex.system.interfaces.dto;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
@@ -24,9 +23,8 @@ public class MenuCreateRequest {
     private Long estabId;
 
     /**
-     * 系统ID
+     * 系统ID（可选，留空时从父菜单继承）
      */
-    @NotNull(message = "系统ID不能为空")
     @Positive(message = "系统ID必须大于0")
     private Long systemId;
 

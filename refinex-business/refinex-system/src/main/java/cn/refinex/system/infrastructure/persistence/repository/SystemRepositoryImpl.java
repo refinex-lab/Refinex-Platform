@@ -3,30 +3,17 @@ package cn.refinex.system.infrastructure.persistence.repository;
 import cn.refinex.base.response.PageResponse;
 import cn.refinex.system.domain.model.entity.MenuEntity;
 import cn.refinex.system.domain.model.entity.MenuOpEntity;
+import cn.refinex.system.domain.model.entity.OpEntity;
 import cn.refinex.system.domain.model.entity.RoleEntity;
 import cn.refinex.system.domain.model.entity.SystemEntity;
 import cn.refinex.system.domain.repository.SystemRepository;
 import cn.refinex.system.infrastructure.converter.MenuDoConverter;
 import cn.refinex.system.infrastructure.converter.MenuOpDoConverter;
+import cn.refinex.system.infrastructure.converter.OpDoConverter;
 import cn.refinex.system.infrastructure.converter.RoleDoConverter;
 import cn.refinex.system.infrastructure.converter.SystemDoConverter;
-import cn.refinex.system.infrastructure.persistence.dataobject.ScrMenuDo;
-import cn.refinex.system.infrastructure.persistence.dataobject.ScrMenuOpDo;
-import cn.refinex.system.infrastructure.persistence.dataobject.ScrRoleDo;
-import cn.refinex.system.infrastructure.persistence.dataobject.ScrRoleDrsInterfaceDo;
-import cn.refinex.system.infrastructure.persistence.dataobject.ScrRoleMenuDo;
-import cn.refinex.system.infrastructure.persistence.dataobject.ScrRoleMenuOpDo;
-import cn.refinex.system.infrastructure.persistence.dataobject.ScrRoleUserDo;
-import cn.refinex.system.infrastructure.persistence.dataobject.ScrSystemDo;
-import cn.refinex.system.infrastructure.persistence.mapper.ScrDrsInterfaceMapper;
-import cn.refinex.system.infrastructure.persistence.mapper.ScrMenuMapper;
-import cn.refinex.system.infrastructure.persistence.mapper.ScrMenuOpMapper;
-import cn.refinex.system.infrastructure.persistence.mapper.ScrRoleDrsInterfaceMapper;
-import cn.refinex.system.infrastructure.persistence.mapper.ScrRoleMapper;
-import cn.refinex.system.infrastructure.persistence.mapper.ScrRoleMenuMapper;
-import cn.refinex.system.infrastructure.persistence.mapper.ScrRoleMenuOpMapper;
-import cn.refinex.system.infrastructure.persistence.mapper.ScrRoleUserMapper;
-import cn.refinex.system.infrastructure.persistence.mapper.ScrSystemMapper;
+import cn.refinex.system.infrastructure.persistence.dataobject.*;
+import cn.refinex.system.infrastructure.persistence.mapper.*;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -59,7 +46,18 @@ public class SystemRepositoryImpl implements SystemRepository {
     private final RoleDoConverter roleDoConverter;
     private final MenuDoConverter menuDoConverter;
     private final MenuOpDoConverter menuOpDoConverter;
+    private final OpDoConverter opDoConverter;
+    private final DefOpMapper defOpMapper;
 
+    /**
+     * 查询系统列表
+     *
+     * @param status      状态
+     * @param keyword     检索关键词
+     * @param currentPage 当前页码
+     * @param pageSize    每页大小
+     * @return 系统列表
+     */
     @Override
     public PageResponse<SystemEntity> listSystems(Integer status, String keyword, int currentPage, int pageSize) {
         LambdaQueryWrapper<ScrSystemDo> query = Wrappers.lambdaQuery(ScrSystemDo.class)
@@ -81,7 +79,7 @@ public class SystemRepositoryImpl implements SystemRepository {
         }
         return PageResponse.of(result, rowsPage.getTotal(), (int) rowsPage.getSize(), (int) rowsPage.getCurrent());
     }
-
+    
     @Override
     public SystemEntity findSystemById(Long systemId) {
         ScrSystemDo row = scrSystemMapper.selectById(systemId);
@@ -271,6 +269,21 @@ public class SystemRepositoryImpl implements SystemRepository {
     }
 
     @Override
+    public List<MenuEntity> listMenusByEstabIds(List<Long> estabIds) {
+        List<ScrMenuDo> rows = scrMenuMapper.selectList(
+                Wrappers.lambdaQuery(ScrMenuDo.class)
+                        .in(ScrMenuDo::getEstabId, estabIds)
+                        .eq(ScrMenuDo::getDeleted, 0)
+                        .orderByAsc(ScrMenuDo::getSort, ScrMenuDo::getId)
+        );
+        List<MenuEntity> result = new ArrayList<>();
+        for (ScrMenuDo row : rows) {
+            result.add(menuDoConverter.toEntity(row));
+        }
+        return result;
+    }
+
+    @Override
     public MenuEntity findMenuById(Long menuId) {
         ScrMenuDo row = scrMenuMapper.selectById(menuId);
         return row == null ? null : menuDoConverter.toEntity(row);
@@ -314,6 +327,7 @@ public class SystemRepositoryImpl implements SystemRepository {
     public void updateMenu(MenuEntity menu) {
         ScrMenuDo row = new ScrMenuDo();
         row.setId(menu.getId());
+        row.setSystemId(menu.getSystemId());
         row.setParentId(menu.getParentId());
         row.setMenuCode(menu.getMenuCode());
         row.setMenuName(menu.getMenuName());
@@ -376,6 +390,16 @@ public class SystemRepositoryImpl implements SystemRepository {
     @Override
     public List<MenuOpEntity> listMenuOps(Long estabId, Long systemId) {
         List<ScrMenuOpDo> rows = scrMenuOpMapper.selectByEstabAndSystemId(estabId, systemId);
+        List<MenuOpEntity> result = new ArrayList<>();
+        for (ScrMenuOpDo row : rows) {
+            result.add(menuOpDoConverter.toEntity(row));
+        }
+        return result;
+    }
+
+    @Override
+    public List<MenuOpEntity> listMenuOpsByEstabIds(List<Long> estabIds) {
+        List<ScrMenuOpDo> rows = scrMenuOpMapper.selectByEstabIds(estabIds);
         List<MenuOpEntity> result = new ArrayList<>();
         for (ScrMenuOpDo row : rows) {
             result.add(menuOpDoConverter.toEntity(row));
@@ -463,5 +487,20 @@ public class SystemRepositoryImpl implements SystemRepository {
             return 0;
         }
         return scrDrsInterfaceMapper.countByIdsAndEstabId(estabId, drsInterfaceIds);
+    }
+
+    @Override
+    public List<OpEntity> listOps() {
+        List<DefOpDo> rows = defOpMapper.selectList(
+                Wrappers.lambdaQuery(DefOpDo.class)
+                        .eq(DefOpDo::getStatus, 1)
+                        .eq(DefOpDo::getDeleted, 0)
+                        .orderByAsc(DefOpDo::getSort, DefOpDo::getId)
+        );
+        List<OpEntity> result = new ArrayList<>();
+        for (DefOpDo row : rows) {
+            result.add(opDoConverter.toEntity(row));
+        }
+        return result;
     }
 }

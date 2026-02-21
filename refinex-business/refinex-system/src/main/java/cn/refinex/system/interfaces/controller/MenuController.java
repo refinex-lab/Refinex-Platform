@@ -9,6 +9,7 @@ import cn.refinex.system.application.command.UpdateMenuOpCommand;
 import cn.refinex.system.application.dto.MenuDTO;
 import cn.refinex.system.application.dto.MenuOpManageDTO;
 import cn.refinex.system.application.dto.MenuTreeNodeDTO;
+import cn.refinex.system.application.dto.OpDTO;
 import cn.refinex.system.application.service.SystemApplicationService;
 import cn.refinex.system.interfaces.assembler.SystemApiAssembler;
 import cn.refinex.system.interfaces.dto.MenuCreateRequest;
@@ -20,6 +21,7 @@ import cn.refinex.system.interfaces.dto.MenuUpdateRequest;
 import cn.refinex.system.interfaces.vo.MenuOpManageVO;
 import cn.refinex.system.interfaces.vo.MenuVO;
 import cn.refinex.system.interfaces.vo.MenuTreeNodeVO;
+import cn.refinex.system.interfaces.vo.OpVO;
 import cn.refinex.web.vo.PageResult;
 import cn.refinex.web.vo.Result;
 import jakarta.validation.Valid;
@@ -193,5 +195,16 @@ public class MenuController {
     public Result<Void> deleteMenuOp(@PathVariable @Positive(message = "菜单操作ID必须大于0") Long menuOpId) {
         systemApplicationService.deleteMenuOp(menuOpId);
         return Result.success();
+    }
+
+    /**
+     * 查询启用的操作定义列表
+     *
+     * @return 操作定义列表
+     */
+    @GetMapping("/op-definitions")
+    public Result<List<OpVO>> listOpDefinitions() {
+        List<OpDTO> ops = systemApplicationService.listOps();
+        return Result.success(systemApiAssembler.toOpVoList(ops));
     }
 }

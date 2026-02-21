@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useState} from 'react'
 import {zodResolver} from '@hookform/resolvers/zod'
-import {ChevronDown, ChevronRight, Loader2, Pencil, Plus, RefreshCw, Trash2,} from 'lucide-react'
+import {Check, ChevronDown, ChevronRight, Loader2, Pencil, Plus, RefreshCw, Trash2, X,} from 'lucide-react'
 import {useForm} from 'react-hook-form'
 import {toast} from 'sonner'
 import {z} from 'zod'
@@ -36,6 +36,7 @@ import {
     getMenu,
     getMenuTree,
     listMenuOps,
+    listOpDefinitions,
     listSystems,
     type Menu,
     type MenuCreateRequest,
@@ -44,6 +45,7 @@ import {
     type MenuOpUpdateRequest,
     type MenuTreeNode,
     type MenuUpdateRequest,
+    type OpDefinition,
     type SystemDefinition,
     updateMenu,
     updateMenuOp,
@@ -51,11 +53,12 @@ import {
 import {toOptionalNumber, toOptionalString} from '@/features/system/common'
 import {PageToolbar} from '@/features/system/components/page-toolbar'
 import {handleServerError} from '@/lib/handle-server-error'
+import {useAuthStore} from '@/stores/auth-store'
 
-const SYSTEM_OPTION_PAGE_SIZE = 200
 const MENU_OP_PAGE_SIZE = 10
 
 const menuFormSchema = z.object({
+    systemId: z.string().min(1, '请选择所属系统'),
     menuCode: z.string().trim().max(64, '菜单编码最长 64 位').optional(),
     menuName: z.string().trim().min(1, '菜单名称不能为空').max(128, '菜单名称最长 128 位'),
     menuType: z.enum(['0', '1']),
@@ -67,17 +70,19 @@ const menuFormSchema = z.object({
     sort: z.string().trim().max(6, '排序值过大').optional(),
 })
 
-const menuOpFormSchema = z.object({
-    opCode: z.string().trim().max(64, '操作编码最长 64 位').optional(),
-    opName: z.string().trim().min(1, '操作名称不能为空').max(64, '操作名称最长 64 位'),
-    status: z.enum(['1', '2']),
-    sort: z.string().trim().max(6, '排序值过大').optional(),
-})
-
 type MenuFormValues = z.infer<typeof menuFormSchema>
-type MenuOpFormValues = z.infer<typeof menuOpFormSchema>
+
+interface InlineMenuOp {
+    id?: number
+    opCode: string
+    opName: string
+    status: number
+    sort: number
+    isNew?: boolean
+}
 
 const DEFAULT_MENU_FORM: MenuFormValues = {
+    systemId: '',
     menuCode: '',
     menuName: '',
     menuType: '1',
@@ -85,13 +90,6 @@ const DEFAULT_MENU_FORM: MenuFormValues = {
     icon: '',
     visible: '1',
     isFrame: '0',
-    status: '1',
-    sort: '0',
-}
-
-const DEFAULT_MENU_OP_FORM: MenuOpFormValues = {
-    opCode: '',
-    opName: '',
     status: '1',
     sort: '0',
 }
@@ -144,10 +142,6 @@ function filterMenuTree(nodes: MenuTreeNodeUI[], keyword: string): MenuTreeNodeU
 }
 
 export function MenuManagementPage() {
-    const [systems, setSystems] = useState<SystemDefinition[]>([])
-    const [systemLoading, setSystemLoading] = useState(false)
-    const [systemId, setSystemId] = useState<number | undefined>(undefined)
-
     const [menuKeyword, setMenuKeyword] = useState('')
     const [menuTree, setMenuTree] = useState<MenuTreeNodeUI[]>([])
     const [menuTreeLoading, setMenuTreeLoading] = useState(false)
@@ -168,11 +162,14 @@ export function MenuManagementPage() {
     const [menuOpsLoading, setMenuOpsLoading] = useState(false)
     const [menuOpsQuery, setMenuOpsQuery] = useState({currentPage: 1, pageSize: MENU_OP_PAGE_SIZE})
 
-    const [menuOpDialogOpen, setMenuOpDialogOpen] = useState(false)
-    const [editingMenuOp, setEditingMenuOp] = useState<MenuOpManage | null>(null)
+    const [editingRowId, setEditingRowId] = useState<number | 'new' | null>(null)
+    const [editingRow, setEditingRow] = useState<InlineMenuOp | null>(null)
     const [savingMenuOp, setSavingMenuOp] = useState(false)
     const [deletingMenuOp, setDeletingMenuOp] = useState<MenuOpManage | null>(null)
     const [deletingMenuOpLoading, setDeletingMenuOpLoading] = useState(false)
+
+    const [opDefinitions, setOpDefinitions] = useState<OpDefinition[]>([])
+    const [systems, setSystems] = useState<SystemDefinition[]>([])
 
     const menuDetailForm = useForm<MenuFormValues>({
         resolver: zodResolver(menuFormSchema),
@@ -183,12 +180,6 @@ export function MenuManagementPage() {
     const menuCreateForm = useForm<MenuFormValues>({
         resolver: zodResolver(menuFormSchema),
         defaultValues: DEFAULT_MENU_FORM,
-        mode: 'onChange',
-    })
-
-    const menuOpForm = useForm<MenuOpFormValues>({
-        resolver: zodResolver(menuOpFormSchema),
-        defaultValues: DEFAULT_MENU_OP_FORM,
         mode: 'onChange',
     })
 
@@ -209,24 +200,11 @@ export function MenuManagementPage() {
         return '当前菜单'
     }, [menuDialogParentId, menuTree])
 
-    async function loadSystems() {
-        setSystemLoading(true)
-        try {
-            const pageData = await listSystems({currentPage: 1, pageSize: SYSTEM_OPTION_PAGE_SIZE})
-            const rows = pageData.data ?? []
-            setSystems(rows)
-            setSystemId((prev) => prev ?? rows[0]?.id)
-        } catch (error) {
-            handleServerError(error)
-        } finally {
-            setSystemLoading(false)
-        }
-    }
-
-    async function loadMenuTree(system: number) {
+    async function loadMenuTree() {
         setMenuTreeLoading(true)
         try {
-            const tree = await getMenuTree({systemId: system})
+            const estabId = useAuthStore.getState().auth.user?.estabId
+            const tree = await getMenuTree({ estabId })
             const normalized = tree as MenuTreeNodeUI[]
             setMenuTree(normalized)
             const allIds = flattenMenuIds(normalized)
@@ -248,6 +226,7 @@ export function MenuManagementPage() {
             const detail = await getMenu(menuId)
             setSelectedMenu(detail)
             menuDetailForm.reset({
+                systemId: String(detail.systemId ?? ''),
                 menuCode: detail.menuCode ?? '',
                 menuName: detail.menuName ?? '',
                 menuType: String(detail.menuType ?? 1) as '0' | '1',
@@ -278,19 +257,29 @@ export function MenuManagementPage() {
         }
     }
 
-    useEffect(() => {
-        void loadSystems()
-    }, [])
+    async function loadOpDefinitions() {
+        try {
+            const ops = await listOpDefinitions()
+            setOpDefinitions(ops)
+        } catch (error) {
+            handleServerError(error)
+        }
+    }
+
+    async function loadSystems() {
+        try {
+            const pageData = await listSystems({currentPage: 1, pageSize: 999, status: 1})
+            setSystems(pageData.data ?? [])
+        } catch (error) {
+            handleServerError(error)
+        }
+    }
 
     useEffect(() => {
-        if (!systemId) {
-            setMenuTree([])
-            setSelectedMenuId(undefined)
-            return
-        }
-        void loadMenuTree(systemId)
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [systemId])
+        void loadMenuTree()
+        void loadOpDefinitions()
+        void loadSystems()
+    }, [])
 
     useEffect(() => {
         if (!selectedMenuId) {
@@ -323,10 +312,6 @@ export function MenuManagementPage() {
     }
 
     function openCreateMenuDialog(parentId: number) {
-        if (!systemId) {
-            toast.error('请先选择系统')
-            return
-        }
         setMenuDialogParentId(parentId)
         menuCreateForm.reset(DEFAULT_MENU_FORM)
         setMenuDialogOpen(true)
@@ -338,14 +323,10 @@ export function MenuManagementPage() {
     }
 
     async function submitCreateMenu(values: MenuFormValues) {
-        if (!systemId) {
-            toast.error('请先选择系统')
-            return
-        }
         setSavingNewMenu(true)
         try {
             const payload: MenuCreateRequest = {
-                systemId,
+                systemId: Number(values.systemId),
                 parentId: menuDialogParentId,
                 menuName: values.menuName.trim(),
                 menuType: Number(values.menuType),
@@ -359,7 +340,7 @@ export function MenuManagementPage() {
             const created = await createMenu(payload)
             toast.success('菜单创建成功')
             closeCreateMenuDialog()
-            await loadMenuTree(systemId)
+            await loadMenuTree()
             if (created.id) {
                 setSelectedMenuId(created.id)
             }
@@ -375,6 +356,7 @@ export function MenuManagementPage() {
         setSavingMenuDetail(true)
         try {
             const payload: MenuUpdateRequest = {
+                systemId: Number(values.systemId),
                 parentId: selectedMenu?.parentId ?? 0,
                 menuCode: values.menuCode?.trim() || selectedMenu?.menuCode || '',
                 menuName: values.menuName.trim(),
@@ -388,9 +370,7 @@ export function MenuManagementPage() {
             }
             await updateMenu(selectedMenuId, payload)
             toast.success('菜单更新成功')
-            if (systemId) {
-                await loadMenuTree(systemId)
-            }
+            await loadMenuTree()
             await loadMenuDetail(selectedMenuId)
         } catch (error) {
             handleServerError(error)
@@ -400,13 +380,13 @@ export function MenuManagementPage() {
     }
 
     async function confirmDeleteMenu() {
-        if (!selectedMenuId || !systemId) return
+        if (!selectedMenuId) return
         setDeletingMenuLoading(true)
         try {
             await deleteMenu(selectedMenuId)
             toast.success('菜单删除成功')
             setDeletingMenuOpen(false)
-            await loadMenuTree(systemId)
+            await loadMenuTree()
         } catch (error) {
             handleServerError(error)
         } finally {
@@ -419,51 +399,54 @@ export function MenuManagementPage() {
             toast.error('请先选择菜单')
             return
         }
-        setEditingMenuOp(null)
-        menuOpForm.reset(DEFAULT_MENU_OP_FORM)
-        setMenuOpDialogOpen(true)
+        setEditingRowId('new')
+        setEditingRow({opCode: '', opName: '', status: 1, sort: 0, isNew: true})
     }
 
-    function openEditMenuOpDialog(item: MenuOpManage) {
-        setEditingMenuOp(item)
-        menuOpForm.reset({
+    function startEditMenuOp(item: MenuOpManage) {
+        setEditingRowId(item.id ?? null)
+        setEditingRow({
+            id: item.id,
             opCode: item.opCode ?? '',
             opName: item.opName ?? '',
-            status: String(item.status ?? 1) as '1' | '2',
-            sort: String(item.sort ?? 0),
+            status: item.status ?? 1,
+            sort: item.sort ?? 0,
         })
-        setMenuOpDialogOpen(true)
     }
 
-    function closeMenuOpDialog() {
-        setMenuOpDialogOpen(false)
-        setEditingMenuOp(null)
-        menuOpForm.reset(DEFAULT_MENU_OP_FORM)
+    function cancelEditMenuOp() {
+        setEditingRowId(null)
+        setEditingRow(null)
     }
 
-    async function submitMenuOp(values: MenuOpFormValues) {
-        if (!selectedMenuId) return
+    async function saveEditingRow() {
+        if (!selectedMenuId || !editingRow) return
+        if (!editingRow.opCode) {
+            toast.error('请选择操作类型')
+            return
+        }
         setSavingMenuOp(true)
         try {
-            if (editingMenuOp?.id) {
-                const payload: MenuOpUpdateRequest = {
-                    opCode: values.opCode?.trim() || editingMenuOp.opCode || '',
-                    opName: values.opName.trim(),
-                    status: Number(values.status),
-                    sort: toOptionalNumber(values.sort),
-                }
-                await updateMenuOp(editingMenuOp.id, payload)
-                toast.success('菜单操作更新成功')
-            } else {
+            if (editingRow.isNew) {
                 const payload: MenuOpCreateRequest = {
-                    opName: values.opName.trim(),
-                    status: Number(values.status),
-                    sort: toOptionalNumber(values.sort),
+                    opCode: editingRow.opCode,
+                    opName: editingRow.opName,
+                    status: editingRow.status,
+                    sort: editingRow.sort,
                 }
                 await createMenuOp(selectedMenuId, payload)
                 toast.success('菜单操作创建成功')
+            } else if (editingRow.id) {
+                const payload: MenuOpUpdateRequest = {
+                    opCode: editingRow.opCode,
+                    opName: editingRow.opName,
+                    status: editingRow.status,
+                    sort: editingRow.sort,
+                }
+                await updateMenuOp(editingRow.id, payload)
+                toast.success('菜单操作更新成功')
             }
-            closeMenuOpDialog()
+            cancelEditMenuOp()
             await loadMenuOps(selectedMenuId, menuOpsQuery.currentPage, menuOpsQuery.pageSize)
         } catch (error) {
             handleServerError(error)
@@ -561,20 +544,6 @@ export function MenuManagementPage() {
                         {/*    <CardTitle className='text-base'>菜单树</CardTitle>*/}
                         {/*</CardHeader>*/}
                         <CardContent className='space-y-3'>
-                            <Select value={systemId ? String(systemId) : ''}
-                                    onValueChange={(value) => setSystemId(Number(value))}>
-                                <SelectTrigger disabled={systemLoading} className='w-full'>
-                                    <SelectValue placeholder='选择所属系统'/>
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {systems.map((system) => (
-                                        <SelectItem key={system.id} value={String(system.id)}>
-                                            {system.systemName}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-
                             <div className='flex items-center gap-2'>
                                 <Input
                                     value={menuKeyword}
@@ -582,17 +551,12 @@ export function MenuManagementPage() {
                                     onChange={(event) => setMenuKeyword(event.target.value)}
                                 />
                                 <Button type='button' variant='outline' size='icon'
-                                        onClick={() => systemId && loadMenuTree(systemId)}>
+                                        onClick={() => loadMenuTree()}>
                                     <RefreshCw className='h-4 w-4'/>
                                 </Button>
                             </div>
 
-                            <Button type='button' className='w-full gap-2' onClick={() => openCreateMenuDialog(0)}>
-                                <Plus className='h-4 w-4'/>
-                                新建根菜单
-                            </Button>
-
-                            <ScrollArea className='h-[calc(100vh-280px)] rounded-md border border-border/70 p-2'>
+                            <ScrollArea className='h-[calc(100vh-200px)] rounded-md border border-border/70 p-2'>
                                 {menuTreeLoading ? (
                                     <div className='flex items-center justify-center gap-2 py-8 text-muted-foreground'>
                                         <Loader2 className='h-4 w-4 animate-spin'/>
@@ -622,16 +586,42 @@ export function MenuManagementPage() {
                                 </div>
                             ) : (
                                 <Tabs defaultValue='basic' className='space-y-3'>
-                                    <TabsList className='grid w-full grid-cols-2'>
+                                    <TabsList className={`grid w-full ${selectedMenu?.menuType === 0 ? 'grid-cols-1' : 'grid-cols-2'}`}>
                                         <TabsTrigger value='basic'>基本信息</TabsTrigger>
-                                        <TabsTrigger value='ops'>菜单操作</TabsTrigger>
+                                        {selectedMenu?.menuType !== 0 && (
+                                            <TabsTrigger value='ops'>菜单操作</TabsTrigger>
+                                        )}
                                     </TabsList>
 
                                     <TabsContent value='basic'>
                                         <Form {...menuDetailForm}>
                                             <form onSubmit={menuDetailForm.handleSubmit(submitUpdateMenu)}
                                                   className='space-y-4'>
-                                                <div className='grid gap-4 md:grid-cols-3'>
+                                                <div className='grid gap-4 md:grid-cols-4'>
+                                                    <FormField
+                                                        control={menuDetailForm.control}
+                                                        name='systemId'
+                                                        render={({field}) => (
+                                                            <FormItem>
+                                                                <FormLabel>所属系统</FormLabel>
+                                                                <Select value={field.value}
+                                                                        onValueChange={field.onChange}>
+                                                                    <FormControl>
+                                                                        <SelectTrigger className='w-full'>
+                                                                            <SelectValue placeholder='请选择所属系统'/>
+                                                                        </SelectTrigger>
+                                                                    </FormControl>
+                                                                    <SelectContent>
+                                                                        {systems.map((sys) => (
+                                                                            <SelectItem key={sys.id} value={String(sys.id)}>{sys.systemName}</SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                                <FormMessage/>
+                                                            </FormItem>
+                                                        )}
+                                                    />
+
                                                     <FormField
                                                         control={menuDetailForm.control}
                                                         name='menuName'
@@ -810,7 +800,8 @@ export function MenuManagementPage() {
 
                                     <TabsContent value='ops' className='space-y-3'>
                                         <div className='flex items-center justify-end'>
-                                            <Button type='button' className='gap-2' onClick={openCreateMenuOpDialog}>
+                                            <Button type='button' className='gap-2' onClick={openCreateMenuOpDialog}
+                                                    disabled={editingRowId !== null}>
                                                 <Plus className='h-4 w-4'/>
                                                 新建操作
                                             </Button>
@@ -823,68 +814,144 @@ export function MenuManagementPage() {
                                                     <TableRow className='bg-muted/30 hover:bg-muted/30'>
                                                         <TableHead>操作编码</TableHead>
                                                         <TableHead>操作名称</TableHead>
-                                                        <TableHead>状态</TableHead>
-                                                        <TableHead>排序</TableHead>
-                                                        <TableHead className='w-[140px] text-center'>操作</TableHead>
+                                                        <TableHead className='w-[100px]'>状态</TableHead>
+                                                        <TableHead className='w-[80px]'>排序</TableHead>
+                                                        <TableHead className='w-[120px] text-center'>操作</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
+                                                    {editingRowId === 'new' && editingRow && (
+                                                        <TableRow>
+                                                            <TableCell>
+                                                                <Select value={editingRow.opCode} onValueChange={(value) => {
+                                                                    const matched = opDefinitions.find((op) => op.opCode === value)
+                                                                    setEditingRow({...editingRow, opCode: value, opName: matched?.opName ?? ''})
+                                                                }}>
+                                                                    <SelectTrigger className='w-full'>
+                                                                        <SelectValue placeholder='选择操作'/>
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        {opDefinitions.map((op) => (
+                                                                            <SelectItem key={op.opCode} value={op.opCode ?? ''}>
+                                                                                {op.opName}（{op.opCode}）
+                                                                            </SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <span className='text-muted-foreground'>{editingRow.opName || '-'}</span>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Select value={String(editingRow.status)} onValueChange={(v) => setEditingRow({...editingRow, status: Number(v)})}>
+                                                                    <SelectTrigger className='w-full'>
+                                                                        <SelectValue/>
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value='1'>启用</SelectItem>
+                                                                        <SelectItem value='2'>停用</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Input value={String(editingRow.sort)} onChange={(e) => setEditingRow({...editingRow, sort: Number(e.target.value) || 0})} className='w-full'/>
+                                                            </TableCell>
+                                                            <TableCell className='text-center'>
+                                                                <div className='flex items-center justify-center gap-1'>
+                                                                    <Button type='button' variant='ghost' size='icon' className='h-7 w-7' disabled={savingMenuOp} onClick={saveEditingRow}>
+                                                                        {savingMenuOp ? <Loader2 className='h-3.5 w-3.5 animate-spin'/> : <Check className='h-3.5 w-3.5'/>}
+                                                                    </Button>
+                                                                    <Button type='button' variant='ghost' size='icon' className='h-7 w-7' onClick={cancelEditMenuOp}>
+                                                                        <X className='h-3.5 w-3.5'/>
+                                                                    </Button>
+                                                                </div>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    )}
                                                     {menuOpsLoading ? (
                                                         <TableRow>
                                                             <TableCell colSpan={5}>
-                                                                <div
-                                                                    className='flex items-center justify-center gap-2 py-6 text-muted-foreground'>
+                                                                <div className='flex items-center justify-center gap-2 py-6 text-muted-foreground'>
                                                                     <Loader2 className='h-4 w-4 animate-spin'/>
                                                                     正在加载菜单操作...
                                                                 </div>
                                                             </TableCell>
                                                         </TableRow>
-                                                    ) : menuOps.length === 0 ? (
+                                                    ) : menuOps.length === 0 && editingRowId !== 'new' ? (
                                                         <TableRow>
-                                                            <TableCell colSpan={5}
-                                                                       className='py-6 text-center text-muted-foreground'>
+                                                            <TableCell colSpan={5} className='py-6 text-center text-muted-foreground'>
                                                                 当前菜单暂无操作定义
                                                             </TableCell>
                                                         </TableRow>
                                                     ) : (
-                                                        menuOps.map((item) => (
-                                                            <TableRow key={item.id}>
-                                                                <TableCell>{item.opCode || '-'}</TableCell>
-                                                                <TableCell>{item.opName || '-'}</TableCell>
-                                                                <TableCell>
-                                                                    <Badge
-                                                                        variant={item.status === 1 ? 'default' : 'secondary'}>
-                                                                        {toStatusLabel(item.status)}
-                                                                    </Badge>
-                                                                </TableCell>
-                                                                <TableCell>{item.sort ?? '-'}</TableCell>
-                                                                <TableCell className='text-center'>
-                                                                    <div
-                                                                        className='flex items-center justify-center gap-1'>
-                                                                        <Button
-                                                                            type='button'
-                                                                            variant='ghost'
-                                                                            size='sm'
-                                                                            className='gap-1'
-                                                                            onClick={() => openEditMenuOpDialog(item)}
-                                                                        >
-                                                                            <Pencil className='h-3.5 w-3.5'/>
-                                                                            编辑
-                                                                        </Button>
-                                                                        <Button
-                                                                            type='button'
-                                                                            variant='ghost'
-                                                                            size='sm'
-                                                                            className='gap-1 text-destructive hover:text-destructive'
-                                                                            onClick={() => setDeletingMenuOp(item)}
-                                                                        >
-                                                                            <Trash2 className='h-3.5 w-3.5'/>
-                                                                            删除
-                                                                        </Button>
-                                                                    </div>
-                                                                </TableCell>
-                                                            </TableRow>
-                                                        ))
+                                                        menuOps.map((item) => {
+                                                            const isEditing = editingRowId === item.id && editingRow
+                                                            return (
+                                                                <TableRow key={item.id}>
+                                                                    <TableCell>
+                                                                        {isEditing ? (
+                                                                            <span className='text-muted-foreground'>{editingRow.opCode}</span>
+                                                                        ) : (
+                                                                            item.opCode || '-'
+                                                                        )}
+                                                                    </TableCell>
+                                                                    <TableCell>
+                                                                        {isEditing ? (
+                                                                            <span className='text-muted-foreground'>{editingRow.opName || '-'}</span>
+                                                                        ) : (
+                                                                            item.opName || '-'
+                                                                        )}
+                                                                    </TableCell>
+                                                                    <TableCell>
+                                                                        {isEditing ? (
+                                                                            <Select value={String(editingRow.status)} onValueChange={(v) => setEditingRow({...editingRow, status: Number(v)})}>
+                                                                                <SelectTrigger className='w-full'>
+                                                                                    <SelectValue/>
+                                                                                </SelectTrigger>
+                                                                                <SelectContent>
+                                                                                    <SelectItem value='1'>启用</SelectItem>
+                                                                                    <SelectItem value='2'>停用</SelectItem>
+                                                                                </SelectContent>
+                                                                            </Select>
+                                                                        ) : (
+                                                                            <Badge variant={item.status === 1 ? 'default' : 'secondary'}>
+                                                                                {toStatusLabel(item.status)}
+                                                                            </Badge>
+                                                                        )}
+                                                                    </TableCell>
+                                                                    <TableCell>
+                                                                        {isEditing ? (
+                                                                            <Input value={String(editingRow.sort)} onChange={(e) => setEditingRow({...editingRow, sort: Number(e.target.value) || 0})} className='w-full'/>
+                                                                        ) : (
+                                                                            item.sort ?? '-'
+                                                                        )}
+                                                                    </TableCell>
+                                                                    <TableCell className='text-center'>
+                                                                        {isEditing ? (
+                                                                            <div className='flex items-center justify-center gap-1'>
+                                                                                <Button type='button' variant='ghost' size='icon' className='h-7 w-7' disabled={savingMenuOp} onClick={saveEditingRow}>
+                                                                                    {savingMenuOp ? <Loader2 className='h-3.5 w-3.5 animate-spin'/> : <Check className='h-3.5 w-3.5'/>}
+                                                                                </Button>
+                                                                                <Button type='button' variant='ghost' size='icon' className='h-7 w-7' onClick={cancelEditMenuOp}>
+                                                                                    <X className='h-3.5 w-3.5'/>
+                                                                                </Button>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <div className='flex items-center justify-center gap-1'>
+                                                                                <Button type='button' variant='ghost' size='sm' className='gap-1' disabled={editingRowId !== null} onClick={() => startEditMenuOp(item)}>
+                                                                                    <Pencil className='h-3.5 w-3.5'/>
+                                                                                    编辑
+                                                                                </Button>
+                                                                                <Button type='button' variant='ghost' size='sm' className='gap-1 text-destructive hover:text-destructive' disabled={editingRowId !== null} onClick={() => setDeletingMenuOp(item)}>
+                                                                                    <Trash2 className='h-3.5 w-3.5'/>
+                                                                                    删除
+                                                                                </Button>
+                                                                            </div>
+                                                                        )}
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            )
+                                                        })
                                                     )}
                                                 </TableBody>
                                             </Table>
@@ -916,6 +983,29 @@ export function MenuManagementPage() {
                     <Form {...menuCreateForm}>
                         <form onSubmit={menuCreateForm.handleSubmit(submitCreateMenu)} className='space-y-4'>
                             <div className='grid gap-4 md:grid-cols-2'>
+                                <FormField
+                                    control={menuCreateForm.control}
+                                    name='systemId'
+                                    render={({field}) => (
+                                        <FormItem>
+                                            <FormLabel>所属系统</FormLabel>
+                                            <Select value={field.value} onValueChange={field.onChange}>
+                                                <FormControl>
+                                                    <SelectTrigger className='w-full'>
+                                                        <SelectValue placeholder='请选择所属系统'/>
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {systems.map((sys) => (
+                                                        <SelectItem key={sys.id} value={String(sys.id)}>{sys.systemName}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage/>
+                                        </FormItem>
+                                    )}
+                                />
+
                                 <FormField
                                     control={menuCreateForm.control}
                                     name='menuName'
@@ -1073,83 +1163,6 @@ export function MenuManagementPage() {
                                 </Button>
                                 <Button type='submit' disabled={savingNewMenu}>
                                     {savingNewMenu ? <Loader2 className='mr-2 h-4 w-4 animate-spin'/> : null}
-                                    保存
-                                </Button>
-                            </DialogFooter>
-                        </form>
-                    </Form>
-                </DialogContent>
-            </Dialog>
-
-            <Dialog open={menuOpDialogOpen}
-                    onOpenChange={(open) => (open ? setMenuOpDialogOpen(true) : closeMenuOpDialog())}>
-                <DialogContent className='sm:max-w-3xl'>
-                    <DialogHeader>
-                        <DialogTitle>{editingMenuOp?.id ? '编辑菜单操作' : '新建菜单操作'}</DialogTitle>
-                        <DialogDescription>操作编码由后端自动生成，仅维护操作名称、状态与排序。</DialogDescription>
-                    </DialogHeader>
-                    <Form {...menuOpForm}>
-                        <form onSubmit={menuOpForm.handleSubmit(submitMenuOp)} className='space-y-4'>
-                            <div className='grid gap-4 md:grid-cols-1'>
-                                <FormField
-                                    control={menuOpForm.control}
-                                    name='opName'
-                                    render={({field}) => (
-                                        <FormItem>
-                                            <FormLabel>操作名称</FormLabel>
-                                            <FormControl>
-                                                <Input {...field} placeholder='请输入操作名称'/>
-                                            </FormControl>
-                                            <FormMessage/>
-                                        </FormItem>
-                                    )}
-                                />
-                            </div>
-
-                            <div className='grid gap-4 md:grid-cols-2'>
-                                <FormField
-                                    control={menuOpForm.control}
-                                    name='status'
-                                    render={({field}) => (
-                                        <FormItem>
-                                            <FormLabel>状态</FormLabel>
-                                            <Select value={field.value} onValueChange={field.onChange}>
-                                                <FormControl>
-                                                    <SelectTrigger className='w-full'>
-                                                        <SelectValue placeholder='请选择状态'/>
-                                                    </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    <SelectItem value='1'>启用</SelectItem>
-                                                    <SelectItem value='2'>停用</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                            <FormMessage/>
-                                        </FormItem>
-                                    )}
-                                />
-
-                                <FormField
-                                    control={menuOpForm.control}
-                                    name='sort'
-                                    render={({field}) => (
-                                        <FormItem>
-                                            <FormLabel>排序</FormLabel>
-                                            <FormControl>
-                                                <Input {...field} placeholder='默认 0'/>
-                                            </FormControl>
-                                            <FormMessage/>
-                                        </FormItem>
-                                    )}
-                                />
-                            </div>
-
-                            <DialogFooter>
-                                <Button type='button' variant='outline' onClick={closeMenuOpDialog}>
-                                    取消
-                                </Button>
-                                <Button type='submit' disabled={savingMenuOp}>
-                                    {savingMenuOp ? <Loader2 className='mr-2 h-4 w-4 animate-spin'/> : null}
                                     保存
                                 </Button>
                             </DialogFooter>

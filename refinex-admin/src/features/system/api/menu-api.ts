@@ -6,6 +6,7 @@ import type {
   MenuOpCreateRequest,
   MenuOpManage,
   MenuOpUpdateRequest,
+  OpDefinition,
   PageData,
   PaginationQuery,
   MenuTreeNode,
@@ -78,4 +79,9 @@ export async function updateMenuOp(
 
 export async function deleteMenuOp(menuOpId: number): Promise<void> {
   await http.delete<void>(buildSystemPath(`/menus/ops/${menuOpId}`))
+}
+
+export async function listOpDefinitions(): Promise<OpDefinition[]> {
+  const response = await http.get<OpDefinition[]>(buildSystemPath('/menus/op-definitions'))
+  return response.data ?? []
 }

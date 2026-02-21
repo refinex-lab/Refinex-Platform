@@ -16,6 +16,11 @@ public class UpdateMenuCommand {
     private Long menuId;
 
     /**
+     * 系统ID
+     */
+    private Long systemId;
+
+    /**
      * 父菜单ID
      */
     private Long parentId;
