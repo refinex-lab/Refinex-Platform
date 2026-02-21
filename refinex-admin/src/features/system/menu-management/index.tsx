@@ -1,6 +1,9 @@
-import {useEffect, useMemo, useState} from 'react'
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import {zodResolver} from '@hookform/resolvers/zod'
-import {Check, ChevronDown, ChevronRight, Loader2, Pencil, Plus, RefreshCw, Trash2, X,} from 'lucide-react'
+import {closestCenter, DndContext, DragOverlay, PointerSensor, useSensor, useSensors} from '@dnd-kit/core'
+import type {DragEndEvent, DragMoveEvent, DragOverEvent, DragStartEvent} from '@dnd-kit/core'
+import {SortableContext, verticalListSortingStrategy} from '@dnd-kit/sortable'
+import {Check, Loader2, Pencil, Plus, RefreshCw, Trash2, X,} from 'lucide-react'
 import {useForm} from 'react-hook-form'
 import {toast} from 'sonner'
 import {z} from 'zod'
@@ -38,6 +41,7 @@ import {
     listMenuOps,
     listOpDefinitions,
     listSystems,
+    reorderMenus,
     type Menu,
     type MenuCreateRequest,
     type MenuOpCreateRequest,
@@ -54,6 +58,17 @@ import {toOptionalNumber, toOptionalString} from '@/features/system/common'
 import {PageToolbar} from '@/features/system/components/page-toolbar'
 import {handleServerError} from '@/lib/handle-server-error'
 import {useAuthStore} from '@/stores/auth-store'
+import {SortableTreeItem, DragOverlayItem} from './sortable-tree-item'
+import {
+    flattenTree,
+    removeChildrenOf,
+    getProjection,
+    buildReorderPayload,
+    updateFlatItemsAfterDrop,
+    INDENTATION_WIDTH,
+    type FlattenedItem,
+    type Projected,
+} from './tree-utils'
 
 const MENU_OP_PAGE_SIZE = 10
 
@@ -95,12 +110,6 @@ const DEFAULT_MENU_FORM: MenuFormValues = {
 }
 
 type MenuTreeNodeUI = MenuTreeNode & { children?: MenuTreeNodeUI[] }
-
-function toMenuTypeLabel(value?: number): string {
-    if (value === 0) return '目录'
-    if (value === 1) return '菜单'
-    return '-'
-}
 
 function toStatusLabel(value?: number): string {
     if (value === 1) return '启用'
@@ -171,6 +180,16 @@ export function MenuManagementPage() {
     const [opDefinitions, setOpDefinitions] = useState<OpDefinition[]>([])
     const [systems, setSystems] = useState<SystemDefinition[]>([])
 
+    // DnD state
+    const [activeId, setActiveId] = useState<number | null>(null)
+    const [overId, setOverId] = useState<number | null>(null)
+    const [offsetLeft, setOffsetLeft] = useState(0)
+    const previousTreeRef = useRef<MenuTreeNodeUI[]>([])
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, {activationConstraint: {distance: 5}})
+    )
+
     const menuDetailForm = useForm<MenuFormValues>({
         resolver: zodResolver(menuFormSchema),
         defaultValues: DEFAULT_MENU_FORM,
@@ -184,6 +203,32 @@ export function MenuManagementPage() {
     })
 
     const filteredTree = useMemo(() => filterMenuTree(menuTree, menuKeyword), [menuTree, menuKeyword])
+
+    const isDragDisabled = menuKeyword.trim().length > 0
+
+    // 扁平化树用于 DnD
+    const flattenedItems = useMemo(() => {
+        const flat = flattenTree(filteredTree, expandedNodeIds)
+        if (activeId) {
+            return removeChildrenOf(flat, [activeId])
+        }
+        return flat
+    }, [filteredTree, expandedNodeIds, activeId])
+
+    const sortedIds = useMemo(() => flattenedItems.map((i) => i.id), [flattenedItems])
+
+    // 计算投影位置
+    const projected = useMemo(() => {
+        if (activeId && overId) {
+            return getProjection(flattenedItems, activeId, overId, offsetLeft, INDENTATION_WIDTH)
+        }
+        return null
+    }, [flattenedItems, activeId, overId, offsetLeft])
+
+    const activeItem = useMemo(() => {
+        if (!activeId) return null
+        return flattenedItems.find((i) => i.id === activeId) ?? null
+    }, [flattenedItems, activeId])
 
     const parentMenuName = useMemo(() => {
         if (menuDialogParentId === 0) return '根菜单'
@@ -309,6 +354,58 @@ export function MenuManagementPage() {
             else next.add(nodeId)
             return next
         })
+    }
+
+    // DnD handlers
+    const handleDragStart = useCallback(({active}: DragStartEvent) => {
+        setActiveId(active.id as number)
+        setOverId(active.id as number)
+        setOffsetLeft(0)
+        previousTreeRef.current = menuTree
+    }, [menuTree])
+
+    const handleDragMove = useCallback(({delta}: DragMoveEvent) => {
+        setOffsetLeft(delta.x)
+    }, [])
+
+    const handleDragOver = useCallback(({over}: DragOverEvent) => {
+        setOverId((over?.id as number) ?? null)
+    }, [])
+
+    const handleDragEnd = useCallback(async ({active, over}: DragEndEvent) => {
+        resetDragState()
+        if (!over || active.id === over.id || !projected) return
+
+        const originalFlat = flattenTree(filteredTree, expandedNodeIds)
+        const newFlat = updateFlatItemsAfterDrop(
+            flattenedItems,
+            active.id as number,
+            over.id as number,
+            projected,
+        )
+
+        const payload = buildReorderPayload(originalFlat, newFlat)
+        if (payload.length === 0) return
+
+        // 乐观更新：重新加载树
+        try {
+            await reorderMenus(payload)
+            toast.success('菜单排序已更新')
+            await loadMenuTree()
+        } catch (error) {
+            handleServerError(error)
+            setMenuTree(previousTreeRef.current)
+        }
+    }, [projected, flattenedItems, filteredTree, expandedNodeIds])
+
+    const handleDragCancel = useCallback(() => {
+        resetDragState()
+    }, [])
+
+    function resetDragState() {
+        setActiveId(null)
+        setOverId(null)
+        setOffsetLeft(0)
     }
 
     function openCreateMenuDialog(parentId: number) {
@@ -478,54 +575,6 @@ export function MenuManagementPage() {
         setMenuOpsQuery((prev) => ({...prev, currentPage: 1, pageSize: size}))
     }
 
-    function renderTreeNode(node: MenuTreeNodeUI, level = 0) {
-        const nodeId = node.id
-        const hasChildren = Boolean(node.children?.length)
-        const expanded = nodeId ? expandedNodeIds.has(nodeId) : false
-        const selected = nodeId != null && selectedMenuId === nodeId
-
-        return (
-            <div key={node.id ?? `${node.menuCode}-${level}`}>
-                <div
-                    className={`group flex items-center gap-1 rounded-md border border-transparent px-2 py-1.5 ${
-                        selected ? 'bg-muted text-foreground' : 'hover:bg-muted/40'
-                    }`}
-                    style={{marginLeft: level * 14}}
-                >
-                    {hasChildren ? (
-                        <Button type='button' variant='ghost' size='icon' className='h-6 w-6'
-                                onClick={() => toggleNode(nodeId)}>
-                            {expanded ? <ChevronDown className='h-4 w-4'/> : <ChevronRight className='h-4 w-4'/>}
-                        </Button>
-                    ) : (
-                        <span className='inline-block h-6 w-6'/>
-                    )}
-
-                    <button
-                        type='button'
-                        className='flex min-w-0 flex-1 items-center gap-2 text-left'
-                        onClick={() => setSelectedMenuId(nodeId)}
-                    >
-                        <span className='truncate'>{node.menuName || '-'}</span>
-                        <Badge variant='outline'>{toMenuTypeLabel(node.menuType)}</Badge>
-                    </button>
-
-                    <Button
-                        type='button'
-                        variant='ghost'
-                        size='icon'
-                        className='h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100'
-                        onClick={() => openCreateMenuDialog(nodeId ?? 0)}
-                    >
-                        <Plus className='h-3.5 w-3.5'/>
-                    </Button>
-                </div>
-
-                {hasChildren && expanded ? node.children?.map((child) => renderTreeNode(child, level + 1)) : null}
-            </div>
-        )
-    }
-
     return (
         <>
             <Header>
@@ -540,9 +589,6 @@ export function MenuManagementPage() {
             <Main fixed fluid>
                 <div className='grid h-full gap-2 xl:grid-cols-[340px_1fr]'>
                     <Card className='py-3 gap-3'>
-                        {/*<CardHeader className='pb-0'>*/}
-                        {/*    <CardTitle className='text-base'>菜单树</CardTitle>*/}
-                        {/*</CardHeader>*/}
                         <CardContent className='space-y-3'>
                             <div className='flex items-center gap-2'>
                                 <Input
@@ -564,8 +610,40 @@ export function MenuManagementPage() {
                                     </div>
                                 ) : filteredTree.length === 0 ? (
                                     <div className='py-8 text-center text-sm text-muted-foreground'>暂无菜单定义</div>
-                                ) : (
-                                    <div className='space-y-1'>{filteredTree.map((node) => renderTreeNode(node))}</div>
+                     ) : (
+                                    <DndContext
+                                        sensors={sensors}
+                                        collisionDetection={closestCenter}
+                                        onDragStart={handleDragStart}
+                                        onDragMove={handleDragMove}
+                                        onDragOver={handleDragOver}
+                                        onDragEnd={handleDragEnd}
+                                        onDragCancel={handleDragCancel}
+                                    >
+                                        <SortableContext items={sortedIds} strategy={verticalListSortingStrategy}>
+                                            <div className='space-y-1'>
+                                                {flattenedItems.map((item) => (
+                                                    <SortableTreeItem
+                                                        key={item.id}
+                                                        item={item}
+                                                        depth={item.id === activeId && projected ? projected.depth : item.depth}
+                                                        isActive={item.id === activeId}
+                                                        isSelected={item.id === selectedMenuId}
+                                                        isExpanded={expandedNodeIds.has(item.id)}
+                                                        projected={projected}
+                                                        activeId={activeId}
+                                                        onSelect={setSelectedMenuId}
+                                                        onToggle={toggleNode}
+                                                        onAddChild={openCreateMenuDialog}
+                                                        isDragDisabled={isDragDisabled}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </SortableContext>
+                                        <DragOverlay dropAnimation={{duration: 200, easing: 'ease'}}>
+                                            {activeId && activeItem ? <DragOverlayItem item={activeItem}/> : null}
+                                        </DragOverlay>
+                                    </DndContext>
                                 )}
                             </ScrollArea>
                         </CardContent>

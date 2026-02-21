@@ -223,6 +223,12 @@ export interface OpDefinition {
   sort?: number
 }
 
+export interface MenuReorderItem {
+  menuId: number
+  parentId: number
+  sort: number
+}
+
 export interface ValueSet {
   id?: number
   setCode?: string

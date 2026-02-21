@@ -37,12 +37,14 @@ import cn.refinex.system.domain.model.entity.RoleEntity;
 import cn.refinex.system.domain.model.entity.SystemEntity;
 import cn.refinex.system.domain.repository.SystemRepository;
 import cn.refinex.system.infrastructure.client.user.UserManageRemoteGateway;
+import cn.refinex.system.interfaces.dto.MenuReorderItem;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -739,5 +741,79 @@ public class SystemApplicationService {
             normalized.add(id);
         }
         return new ArrayList<>(normalized);
+    }
+
+    /**
+     * 批量调整菜单排序和层级
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void reorderMenus(List<MenuReorderItem> items) {
+        if (items == null || items.isEmpty()) {
+            return;
+        }
+        if (items.size() > 200) {
+            throw new BizException(SystemErrorCode.INVALID_PARAM);
+        }
+
+        validateNoDuplicateMenuIds(items);
+        Map<Long, MenuEntity> menuMap = loadMenusForReorder(items);
+        Long estabId = validateSameEstab(menuMap);
+        validateParentIds(items, estabId);
+
+        for (MenuReorderItem item : items) {
+            MenuEntity existing = menuMap.get(item.getMenuId());
+            boolean changed = !Objects.equals(existing.getParentId(), item.getParentId())
+                    || !Objects.equals(existing.getSort(), item.getSort());
+            if (changed) {
+                existing.setParentId(item.getParentId());
+                existing.setSort(item.getSort());
+                systemRepository.updateMenu(existing);
+            }
+        }
+    }
+
+    private void validateNoDuplicateMenuIds(List<MenuReorderItem> items) {
+        Set<Long> idSet = new HashSet<>();
+        for (MenuReorderItem item : items) {
+            if (!idSet.add(item.getMenuId())) {
+                throw new BizException(SystemErrorCode.INVALID_PARAM);
+            }
+        }
+    }
+
+    private Map<Long, MenuEntity> loadMenusForReorder(List<MenuReorderItem> items) {
+        Map<Long, MenuEntity> menuMap = new LinkedHashMap<>();
+        for (MenuReorderItem item : items) {
+            MenuEntity menu = systemRepository.findMenuById(item.getMenuId());
+            if (menu == null) {
+                throw new BizException(SystemErrorCode.MENU_NOT_FOUND);
+            }
+            menuMap.put(item.getMenuId(), menu);
+        }
+        return menuMap;
+    }
+
+    private Long validateSameEstab(Map<Long, MenuEntity> menuMap) {
+        Long estabId = menuMap.values().iterator().next().getEstabId();
+        for (MenuEntity menu : menuMap.values()) {
+            if (!Objects.equals(menu.getEstabId(), estabId)) {
+                throw new BizException(SystemErrorCode.INVALID_PARAM);
+            }
+        }
+        return estabId;
+    }
+
+    private void validateParentIds(List<MenuReorderItem> items, Long estabId) {
+        for (MenuReorderItem item : items) {
+            if (Objects.equals(item.getMenuId(), item.getParentId())) {
+                throw new BizException(SystemErrorCode.INVALID_PARAM);
+            }
+            if (item.getParentId() > 0) {
+                MenuEntity parent = systemRepository.findMenuById(item.getParentId());
+                if (parent == null || !Objects.equals(parent.getEstabId(), estabId)) {
+                    throw new BizException(SystemErrorCode.INVALID_PARAM);
+                }
+            }
+        }
     }
 }

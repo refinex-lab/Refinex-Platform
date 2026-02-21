@@ -16,6 +16,7 @@ import cn.refinex.system.interfaces.dto.MenuCreateRequest;
 import cn.refinex.system.interfaces.dto.MenuOpListQuery;
 import cn.refinex.system.interfaces.dto.MenuOpCreateRequest;
 import cn.refinex.system.interfaces.dto.MenuOpUpdateRequest;
+import cn.refinex.system.interfaces.dto.MenuReorderItem;
 import cn.refinex.system.interfaces.dto.MenuTreeQuery;
 import cn.refinex.system.interfaces.dto.MenuUpdateRequest;
 import cn.refinex.system.interfaces.vo.MenuOpManageVO;
@@ -206,5 +207,17 @@ public class MenuController {
     public Result<List<OpVO>> listOpDefinitions() {
         List<OpDTO> ops = systemApplicationService.listOps();
         return Result.success(systemApiAssembler.toOpVoList(ops));
+    }
+
+    /**
+     * 批量调整菜单排序和层级
+     *
+     * @param items 排序项列表
+     * @return 操作结果
+     */
+    @PutMapping("/reorder")
+    public Result<Void> reorderMenus(@Valid @RequestBody List<MenuReorderItem> items) {
+        systemApplicationService.reorderMenus(items);
+        return Result.success();
     }
 }
