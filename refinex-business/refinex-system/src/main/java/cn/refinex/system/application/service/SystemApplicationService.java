@@ -375,24 +375,24 @@ public class SystemApplicationService {
 
         MenuEntity existing = requireMenu(command.getMenuId());
         Long parentId = defaultIfNull(command.getParentId(), existing.getParentId());
+        Long systemId = defaultIfNull(command.getSystemId(), existing.getSystemId());
         if (Objects.equals(parentId, existing.getId())) {
             throw new BizException(SystemErrorCode.INVALID_PARAM);
         }
         if (parentId > 0) {
             MenuEntity parent = requireMenu(parentId);
-            if (!Objects.equals(parent.getSystemId(), existing.getSystemId())
-                    || !Objects.equals(parent.getEstabId(), existing.getEstabId())) {
+            if (!Objects.equals(parent.getEstabId(), existing.getEstabId())) {
                 throw new BizException(SystemErrorCode.INVALID_PARAM);
             }
         }
 
         String menuCode = command.getMenuCode().trim();
-        if (systemRepository.countMenuCode(existing.getEstabId(), existing.getSystemId(), menuCode, existing.getId()) > 0) {
+        if (systemRepository.countMenuCode(existing.getEstabId(), systemId, menuCode, existing.getId()) > 0) {
             throw new BizException(SystemErrorCode.MENU_CODE_DUPLICATED);
         }
 
         existing.setParentId(parentId);
-        existing.setSystemId(defaultIfNull(command.getSystemId(), existing.getSystemId()));
+        existing.setSystemId(systemId);
         existing.setMenuCode(menuCode);
         existing.setMenuName(command.getMenuName().trim());
         existing.setMenuType(defaultIfNull(command.getMenuType(), existing.getMenuType()));
