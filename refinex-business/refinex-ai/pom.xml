@@ -57,12 +57,16 @@
         <!-- Advisors：向量库问答（QuestionAnswerAdvisor）等 -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-vector-store-milvus</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-advisors-vector-store</artifactId>
         </dependency>
         <!-- MCP Client（连接外部 MCP Server） -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-mcp-client-spring</artifactId>
+            <artifactId>spring-ai-starter-mcp-client-webflux</artifactId>
         </dependency>
         <!-- 文档读取器（PDF/DOCX/PPTX/HTML 等，用于知识库文档解析） -->
         <dependency>
