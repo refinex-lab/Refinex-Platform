@@ -28,7 +28,23 @@ AI 与 Agent 智能服务，基于 Spring AI 1.1.2 构建。
 `refinex-web` 传递依赖 `spring-boot-starter-web`（Servlet/Tomcat），已在 pom.xml 中排除。排除后：
 - `Result`、`PageResult`、`UserContext`、`TokenUtils` 等工具类仍可用
 - `TokenFilter`（Servlet Filter）和 `GlobalExceptionHandler`（`@ControllerAdvice`）不生效
-- 需要在 `infrastructure/config/` 下实现 WebFlux 版本替代
+- 已在 `infrastructure/config/` 下实现 WebFlux 版本替代（见下方）
+
+### WebFlux 基础设施组件（infrastructure/config/）
+
+本服务已实现三个 WebFlux 专属配置类，替代 `refinex-web` 中基于 Servlet 的对应组件：
+
+| 本服务类 | 替代的 refinex-web 类 | 说明 |
+|---|---|---|
+| `ReactiveTokenFilter` | `TokenFilter` | 实现 `WebFilter`（非 Servlet `Filter`），阻塞操作（Redis Lua、Sa-Token）调度到 `boundedElastic` 线程 |
+| `ReactiveGlobalExceptionHandler` | `GlobalExceptionHandler` | 参数校验异常捕获 `WebExchangeBindException`（非 `MethodArgumentNotValidException`），其余逻辑一致 |
+| `AiWebFluxConfiguration` | `RefinexWebAutoConfiguration` | 注册上述两个 Bean，复用 `RefinexWebProperties` 配置 |
+
+关键设计决策：
+- `ReactiveTokenFilter` 的校验逻辑（防重放 Token + en 登录态）与 Servlet 版完全对齐，确保网关透传的 Token 在 AI 服务中同样有效
+- `UserContext`（ThreadLocal）在 `boundedElastic` 线程上设置，后续阻塞的 JDBC 操作也在同一线程池，ThreadLocal 传递无问题
+- `ReactiveGlobalExceptionHandler` 使用 `@RestControllerAdvice`，WebFlux 原生支持，无需额外适配
+- 配置开关复用 `refinex.web.enabled=true` 和 `refinex.web.exclude-urls`，与其他服务保持一致
 
 ## 包结构（DDD 分层）
 
