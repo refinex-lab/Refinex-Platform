@@ -115,6 +115,9 @@ VALUES
   (@provider_openai, 'tts-1', 'TTS-1', 5,
    0, 0, 0, 0, 4096, NULL, NULL, NULL,
    1, 210, '文字转语音', @super_user_id, @super_user_id, 0, 0),
+  (@provider_openai, 'gpt-4o-mini-tts', 'GPT-4o Mini TTS', 5,
+   0, 0, 0, 1, 4096, NULL, NULL, NULL,
+   1, 220, '高质量TTS，支持指令控制语气', @super_user_id, @super_user_id, 0, 0),
 
   -- Anthropic 聊天模型
   (@provider_anthropic, 'claude-sonnet-4-20250514', 'Claude Sonnet 4', 1,

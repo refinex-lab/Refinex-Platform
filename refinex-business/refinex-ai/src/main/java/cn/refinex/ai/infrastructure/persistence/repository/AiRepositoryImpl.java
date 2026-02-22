@@ -639,6 +639,30 @@ public class AiRepositoryImpl implements AiRepository {
         return row == null ? null : modelProvisionDoConverter.toEntity(row);
     }
 
+    /**
+     * 查询租户指定类型的默认模型开通（is_default=1, status=1, deleted=0, model_type匹配）
+     * <p>
+     * 需要关联 ai_model 表按 model_type 过滤，使用 inSql 子查询实现。
+     *
+     * @param estabId   组织ID
+     * @param modelType 模型类型 1聊天 2嵌入 3图像生成 4语音转文字 5文字转语音 6重排序
+     * @return 租户指定类型的默认模型开通实体，不存在返回 null
+     */
+    @Override
+    public ModelProvisionEntity findDefaultProvisionByType(Long estabId, Integer modelType) {
+        AiModelProvisionDo row = aiModelProvisionMapper.selectOne(
+                Wrappers.lambdaQuery(AiModelProvisionDo.class)
+                        .eq(AiModelProvisionDo::getEstabId, estabId)
+                        .eq(AiModelProvisionDo::getIsDefault, 1)
+                        .eq(AiModelProvisionDo::getStatus, 1)
+                        .eq(AiModelProvisionDo::getDeleted, 0)
+                        .inSql(AiModelProvisionDo::getModelId,
+                                "SELECT id FROM ai_model WHERE model_type = " + modelType + " AND deleted = 0")
+                        .last("LIMIT 1")
+        );
+        return row == null ? null : modelProvisionDoConverter.toEntity(row);
+    }
+
     // ── Tool ──
 
     /**

@@ -1,6 +1,5 @@
 package cn.refinex.ai.interfaces.dto;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -23,7 +22,7 @@ public class ChatRequest {
     /**
      * 用户消息
      */
-    @NotBlank(message = "消息内容不能为空")
+    @Size(max = 10000, message = "消息长度不能超过10000字符")
     private String message;
 
     /**
@@ -51,4 +50,9 @@ public class ChatRequest {
      */
     @Size(max = 5, message = "最多支持5张图片")
     private List<String> imageUrls;
+
+    /**
+     * 音频URL(已上传的音频CDN地址，用于语音转文字后进入对话)
+     */
+    private String audioUrl;
 }

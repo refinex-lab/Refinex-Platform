@@ -49,6 +49,11 @@ public class StreamChatCommand {
     private List<String> imageUrls;
 
     /**
+     * 音频URL(已上传的音频CDN地址，用于语音转文字后进入对话)
+     */
+    private String audioUrl;
+
+    /**
      * 组织ID(Controller 从 LoginUserHelper 注入)
      */
     private Long estabId;

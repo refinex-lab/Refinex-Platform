@@ -39,4 +39,34 @@ public enum ModelType {
     public static boolean isImageGen(Integer type) {
         return type != null && type == IMAGE_GEN.code;
     }
+
+    /**
+     * 判断给定类型值是否为文字转语音
+     *
+     * @param type 模型类型值（可为 null）
+     * @return true 表示文字转语音类型
+     */
+    public static boolean isTts(Integer type) {
+        return type != null && type == TTS.code;
+    }
+
+    /**
+     * 判断给定类型值是否为语音转文字
+     *
+     * @param type 模型类型值（可为 null）
+     * @return true 表示语音转文字类型
+     */
+    public static boolean isStt(Integer type) {
+        return type != null && type == STT.code;
+    }
+
+    /**
+     * 判断给定类型值是否需要 ChatModel（非图像生成/TTS/STT 等）
+     *
+     * @param type 模型类型值（可为 null）
+     * @return true 表示需要 ChatModel
+     */
+    public static boolean requiresChatModel(Integer type) {
+        return type == null || type == CHAT.code;
+    }
 }

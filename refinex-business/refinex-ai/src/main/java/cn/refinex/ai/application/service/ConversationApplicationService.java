@@ -12,6 +12,7 @@ import cn.refinex.ai.domain.model.enums.RequestType;
 import cn.refinex.ai.domain.repository.AiRepository;
 import cn.refinex.ai.infrastructure.ai.ChatModelRouter;
 import cn.refinex.ai.infrastructure.ai.ImageModelRouter;
+import cn.refinex.ai.infrastructure.ai.TranscriptionModelRouter;
 import cn.refinex.ai.interfaces.vo.ChatMessageVO;
 import cn.refinex.ai.interfaces.vo.ConversationDetailVO;
 import cn.refinex.base.exception.BizException;
@@ -20,6 +21,9 @@ import cn.refinex.base.utils.PageUtils;
 import cn.refinex.file.api.FileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.audio.transcription.AudioTranscriptionPrompt;
+import org.springframework.ai.audio.transcription.AudioTranscriptionResponse;
+import org.springframework.ai.audio.transcription.TranscriptionModel;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
@@ -40,6 +44,7 @@ import org.springframework.ai.image.ImageModel;
 import org.springframework.ai.image.ImagePrompt;
 import org.springframework.ai.image.ImageResponse;
 import org.springframework.ai.template.st.StTemplateRenderer;
+import org.springframework.core.io.UrlResource;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MimeType;
@@ -70,6 +75,7 @@ public class ConversationApplicationService {
     private final AiDomainAssembler aiDomainAssembler;
     private final ChatModelRouter chatModelRouter;
     private final ImageModelRouter imageModelRouter;
+    private final TranscriptionModelRouter transcriptionModelRouter;
     private final ChatMemory chatMemory;
     private final JdbcChatMemoryRepository jdbcChatMemoryRepository;
     private final FileService fileService;
@@ -473,11 +479,26 @@ public class ConversationApplicationService {
     private ChatContext prepareChat(StreamChatCommand command) {
         ConversationResolution resolution = resolveConversation(command);
 
+        // STT：如果携带 audioUrl，先转录为文本
+        if (command.getAudioUrl() != null && !command.getAudioUrl().isBlank()) {
+            String transcribedText = transcribeAudio(command);
+            if (command.getMessage() == null || command.getMessage().isBlank()) {
+                command.setMessage(transcribedText);
+            } else {
+                command.setMessage(command.getMessage() + "\n" + transcribedText);
+            }
+        }
+
+        // 校验：message 和 audioUrl 至少有一个非空
+        if (command.getMessage() == null || command.getMessage().isBlank()) {
+            throw new BizException(AiErrorCode.INVALID_PARAM);
+        }
+
         ModelMetadata metadata = resolveModelMetadata(resolution.modelId(), command);
 
-        ChatModel chatModel = ModelType.isImageGen(metadata.modelType())
-                ? null
-                : resolveChatModel(resolution.modelId(), command.getEstabId());
+        ChatModel chatModel = ModelType.requiresChatModel(metadata.modelType())
+                ? resolveChatModel(resolution.modelId(), command.getEstabId())
+                : null;
 
         return new ChatContext(
                 resolution.conversationId(), resolution.modelId(), resolution.systemPrompt(),
@@ -563,6 +584,33 @@ public class ConversationApplicationService {
         return modelId != null
                 ? chatModelRouter.resolve(estabId, modelId)
                 : chatModelRouter.resolveDefault(estabId);
+    }
+
+    /**
+     * 转录音频为文本
+     * <p>
+     * 从 audioUrl 下载音频，调用租户默认 STT 模型转录为文本。
+     *
+     * @param command 流式对话命令（含 audioUrl 和 estabId）
+     * @return 转录后的文本
+     */
+    private String transcribeAudio(StreamChatCommand command) {
+        try {
+            TranscriptionModel transcriptionModel = transcriptionModelRouter.resolveDefault(command.getEstabId());
+            UrlResource audioResource = new UrlResource(URI.create(command.getAudioUrl()));
+            AudioTranscriptionPrompt prompt = new AudioTranscriptionPrompt(audioResource);
+            AudioTranscriptionResponse response = transcriptionModel.call(prompt);
+            String text = response.getResult().getOutput();
+            if (text.isBlank()) {
+                throw new BizException(AiErrorCode.STT_FAILED);
+            }
+            return text;
+        } catch (BizException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("音频转录失败, audioUrl={}", command.getAudioUrl(), e);
+            throw new BizException(AiErrorCode.STT_FAILED);
+        }
     }
 
     /**

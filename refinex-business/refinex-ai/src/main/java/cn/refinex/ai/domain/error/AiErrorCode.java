@@ -51,6 +51,10 @@ public enum AiErrorCode implements ErrorCode {
     MODEL_VISION_NOT_SUPPORTED("AI_400_VISION", "该模型不支持图像理解"),
     IMAGE_GEN_FAILED("AI_500_IMAGE_GEN", "图像生成失败"),
     IMAGE_UPLOAD_FAILED("AI_500_IMAGE_UPLOAD", "图像上传失败"),
+    TTS_FAILED("AI_500_TTS", "语音合成失败"),
+    TTS_UPLOAD_FAILED("AI_500_TTS_UPLOAD", "语音文件上传失败"),
+    STT_FAILED("AI_500_STT", "语音识别失败"),
+    AUDIO_DOWNLOAD_FAILED("AI_500_AUDIO_DOWNLOAD", "音频文件下载失败"),
     ;
 
     private final String code;

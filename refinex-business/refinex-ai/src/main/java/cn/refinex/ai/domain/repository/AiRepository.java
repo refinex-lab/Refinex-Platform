@@ -287,6 +287,15 @@ public interface AiRepository {
      */
     ModelProvisionEntity findDefaultProvision(Long estabId);
 
+    /**
+     * 查询租户指定类型的默认模型开通（is_default=1, status=1, deleted=0, model_type匹配）
+     *
+     * @param estabId   组织ID
+     * @param modelType 模型类型 1聊天 2嵌入 3图像生成 4语音转文字 5文字转语音 6重排序
+     * @return 租户指定类型的默认模型开通实体，不存在返回 null
+     */
+    ModelProvisionEntity findDefaultProvisionByType(Long estabId, Integer modelType);
+
     // ── Tool ──
 
     /**
