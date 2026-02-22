@@ -56,6 +56,9 @@ public enum AiErrorCode implements ErrorCode {
     STT_FAILED("AI_500_STT", "语音识别失败"),
     AUDIO_DOWNLOAD_FAILED("AI_500_AUDIO_DOWNLOAD", "音频文件下载失败"),
 
+    CONTENT_MODERATION_REJECTED("AI_403_MODERATION", "内容审核未通过"),
+    MODERATION_CHECK_FAILED("AI_500_MODERATION", "内容审核服务调用失败"),
+
     KB_NOT_FOUND("AI_404_KB", "知识库不存在"),
     KB_CODE_DUPLICATED("AI_409_KB_CODE", "知识库编码已存在"),
     KB_FOLDER_NOT_FOUND("AI_404_KB_FOLDER", "目录不存在"),

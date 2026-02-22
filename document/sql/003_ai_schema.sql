@@ -53,7 +53,7 @@ CREATE TABLE ai_model (
   provider_id BIGINT NOT NULL COMMENT '供应商ID',
   model_code VARCHAR(128) NOT NULL COMMENT '模型编码(API 调用时的 model 参数值，如 gpt-4o)',
   model_name VARCHAR(128) NOT NULL COMMENT '模型显示名称',
-  model_type TINYINT NOT NULL DEFAULT 1 COMMENT '模型类型 1聊天 2嵌入 3图像生成 4语音转文字 5文字转语音 6重排序',
+  model_type TINYINT NOT NULL DEFAULT 1 COMMENT '模型类型 1聊天 2嵌入 3图像生成 4语音转文字 5文字转语音 6重排序 7内容审核',
   cap_vision TINYINT NOT NULL DEFAULT 0 COMMENT '能力:视觉理解 1支持 0不支持',
   cap_tool_call TINYINT NOT NULL DEFAULT 0 COMMENT '能力:工具调用 1支持 0不支持',
   cap_structured_output TINYINT NOT NULL DEFAULT 0 COMMENT '能力:结构化输出 1支持 0不支持',

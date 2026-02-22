@@ -12,6 +12,7 @@ import cn.refinex.ai.domain.model.enums.RequestType;
 import cn.refinex.ai.domain.repository.AiRepository;
 import cn.refinex.ai.infrastructure.ai.ChatModelRouter;
 import cn.refinex.ai.infrastructure.ai.ImageModelRouter;
+import cn.refinex.ai.infrastructure.ai.ModerationModelRouter;
 import cn.refinex.ai.infrastructure.ai.TranscriptionModelRouter;
 import cn.refinex.ai.infrastructure.ai.VectorStoreRouter;
 import cn.refinex.ai.interfaces.vo.ChatMessageVO;
@@ -47,6 +48,10 @@ import org.springframework.ai.image.Image;
 import org.springframework.ai.image.ImageModel;
 import org.springframework.ai.image.ImagePrompt;
 import org.springframework.ai.image.ImageResponse;
+import org.springframework.ai.moderation.ModerationModel;
+import org.springframework.ai.moderation.ModerationPrompt;
+import org.springframework.ai.moderation.ModerationResponse;
+import org.springframework.ai.moderation.ModerationResult;
 import org.springframework.ai.template.st.StTemplateRenderer;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -83,6 +88,7 @@ public class ConversationApplicationService {
     private final ChatModelRouter chatModelRouter;
     private final ImageModelRouter imageModelRouter;
     private final TranscriptionModelRouter transcriptionModelRouter;
+    private final ModerationModelRouter moderationModelRouter;
     private final VectorStoreRouter vectorStoreRouter;
     private final ChatMemory chatMemory;
     private final JdbcChatMemoryRepository jdbcChatMemoryRepository;
@@ -505,6 +511,9 @@ public class ConversationApplicationService {
             throw new BizException(AiErrorCode.INVALID_PARAM);
         }
 
+        // ── 内容审核（可选）──
+        moderateIfConfigured(command.getEstabId(), command.getMessage());
+
         ModelMetadata metadata = resolveModelMetadata(resolution.modelId(), command);
 
         ChatModel chatModel = ModelType.requiresChatModel(metadata.modelType())
@@ -536,6 +545,38 @@ public class ConversationApplicationService {
             command.setMessage(transcribedText);
         } else {
             command.setMessage(command.getMessage() + "\n" + transcribedText);
+        }
+    }
+
+    /**
+     * 内容审核（可选）：仅当租户配置了默认内容审核模型时触发
+     * <p>
+     * fail-open 策略：审核服务调用失败时记录日志并跳过，不阻断对话。
+     * 审核命中（flagged）时抛 {@link BizException}。
+     *
+     * @param estabId 组织ID
+     * @param message 用户消息文本
+     */
+    private void moderateIfConfigured(Long estabId, String message) {
+        ModerationModel moderationModel = moderationModelRouter.resolveDefaultOrNull(estabId);
+        if (moderationModel == null) {
+            return;
+        }
+
+        try {
+            ModerationResponse response = moderationModel.call(new ModerationPrompt(message));
+            if (response.getResult().getOutput().getResults() != null) {
+                for (ModerationResult result : response.getResult().getOutput().getResults()) {
+                    if (result.isFlagged()) {
+                        log.warn("内容审核未通过, estabId={}", estabId);
+                        throw new BizException(AiErrorCode.CONTENT_MODERATION_REJECTED);
+                    }
+                }
+            }
+        } catch (BizException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("内容审核服务调用失败, estabId={}", estabId, e);
         }
     }
 
@@ -1240,17 +1281,17 @@ public class ConversationApplicationService {
     /**
      * 对话上下文（内部传递用）
      *
-     * @param conversationId        会话唯一标识
-     * @param modelId               模型ID
-     * @param systemPrompt          系统提示词
-     * @param chatModel             ChatModel 实例（图像生成模型时为 null）
-     * @param isNewConversation     是否为新建对话
-     * @param capReasoning          是否支持深度推理
-     * @param providerCode          供应商编码
-     * @param modelType             模型类型 1聊天 2嵌入 3图像生成 4语音转文字 5文字转语音 6重排序
-     * @param knowledgeBaseIds      知识库ID列表（RAG）
-     * @param vectorStore           VectorStore 实例（RAG）
-     * @param ragTopK               RAG检索返回文档数
+     * @param conversationId         会话唯一标识
+     * @param modelId                模型ID
+     * @param systemPrompt           系统提示词
+     * @param chatModel              ChatModel 实例（图像生成模型时为 null）
+     * @param isNewConversation      是否为新建对话
+     * @param capReasoning           是否支持深度推理
+     * @param providerCode           供应商编码
+     * @param modelType              模型类型 1聊天 2嵌入 3图像生成 4语音转文字 5文字转语音 6重排序
+     * @param knowledgeBaseIds       知识库ID列表（RAG）
+     * @param vectorStore            VectorStore 实例（RAG）
+     * @param ragTopK                RAG检索返回文档数
      * @param ragSimilarityThreshold RAG相似度阈值
      */
     private record ChatContext(
