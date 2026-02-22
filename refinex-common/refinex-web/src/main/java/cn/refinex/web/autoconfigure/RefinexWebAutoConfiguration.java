@@ -11,7 +11,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplicat
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.util.Collections;
 
@@ -23,9 +22,9 @@ import java.util.Collections;
  * @author refinex
  */
 @AutoConfiguration
-@ConditionalOnWebApplication // 仅在 Web 环境下生效
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @EnableConfigurationProperties(RefinexWebProperties.class)
-public class RefinexWebAutoConfiguration implements WebMvcConfigurer {
+public class RefinexWebAutoConfiguration {
 
     /**
      * 注册全局异常处理器
