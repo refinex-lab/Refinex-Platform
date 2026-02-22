@@ -107,4 +107,9 @@ public class SkillCreateRequest {
      * 关联的工具ID列表
      */
     private List<Long> toolIds;
+
+    /**
+     * 关联的知识库ID列表
+     */
+    private List<Long> knowledgeBaseIds;
 }

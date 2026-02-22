@@ -3,6 +3,7 @@ package cn.refinex.ai.application.assembler;
 import cn.refinex.ai.application.dto.*;
 import cn.refinex.ai.domain.model.entity.*;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 /**
  * AI 领域层组装器（Entity ↔ DTO）
@@ -61,11 +62,13 @@ public interface AiDomainAssembler {
     McpServerDTO toMcpServerDto(McpServerEntity mcpServerEntity);
 
     /**
-     * 将技能实体转换为技能 DTO（不含 toolIds，需手动补充）
+     * 将技能实体转换为技能 DTO（不含 toolIds 和 knowledgeBaseIds，需手动补充）
      *
      * @param skillEntity 技能实体
      * @return 技能 DTO
      */
+    @Mapping(target = "toolIds", ignore = true)
+    @Mapping(target = "knowledgeBaseIds", ignore = true)
     SkillDTO toSkillDto(SkillEntity skillEntity);
 
     /**

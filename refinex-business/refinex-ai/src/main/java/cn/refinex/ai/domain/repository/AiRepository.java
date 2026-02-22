@@ -573,6 +573,264 @@ public interface AiRepository {
      */
     void deleteConversationByConversationId(String conversationId);
 
+    // ── KnowledgeBase ──
+
+    /**
+     * 查询知识库分页列表
+     *
+     * @param estabId     组织ID
+     * @param status      状态 1启用 0停用
+     * @param keyword     搜索关键词
+     * @param currentPage 当前页码
+     * @param pageSize    每页数量
+     * @return 知识库分页列表
+     */
+    PageResponse<KnowledgeBaseEntity> listKnowledgeBases(Long estabId, Integer status, String keyword, int currentPage, int pageSize);
+
+    /**
+     * 查询全部知识库
+     *
+     * @param estabId 组织ID
+     * @param status  状态 1启用 0停用
+     * @return 知识库列表
+     */
+    List<KnowledgeBaseEntity> listAllKnowledgeBases(Long estabId, Integer status);
+
+    /**
+     * 查询知识库
+     *
+     * @param id 知识库ID
+     * @return 知识库实体
+     */
+    KnowledgeBaseEntity findKnowledgeBaseById(Long id);
+
+    /**
+     * 统计知识库编码数量
+     *
+     * @param estabId   组织ID
+     * @param kbCode    知识库编码
+     * @param excludeId 排除的知识库ID
+     * @return 知识库编码数量
+     */
+    long countKbCode(Long estabId, String kbCode, Long excludeId);
+
+    /**
+     * 插入知识库
+     *
+     * @param entity 知识库实体
+     * @return 插入的知识库实体
+     */
+    KnowledgeBaseEntity insertKnowledgeBase(KnowledgeBaseEntity entity);
+
+    /**
+     * 更新知识库
+     *
+     * @param entity 知识库实体
+     */
+    void updateKnowledgeBase(KnowledgeBaseEntity entity);
+
+    /**
+     * 删除知识库
+     *
+     * @param id 知识库ID
+     */
+    void deleteKnowledgeBaseById(Long id);
+
+    // ── Folder ──
+
+    /**
+     * 查询知识库下的全部目录
+     *
+     * @param knowledgeBaseId 知识库ID
+     * @return 目录列表
+     */
+    List<FolderEntity> listFoldersByKnowledgeBaseId(Long knowledgeBaseId);
+
+    /**
+     * 查询目录
+     *
+     * @param id 目录ID
+     * @return 目录实体
+     */
+    FolderEntity findFolderById(Long id);
+
+    /**
+     * 统计同级目录名称数量
+     *
+     * @param knowledgeBaseId 知识库ID
+     * @param parentId        父目录ID
+     * @param folderName      目录名称
+     * @param excludeId       排除的目录ID
+     * @return 目录名称数量
+     */
+    long countFolderName(Long knowledgeBaseId, Long parentId, String folderName, Long excludeId);
+
+    /**
+     * 插入目录
+     *
+     * @param entity 目录实体
+     * @return 插入的目录实体
+     */
+    FolderEntity insertFolder(FolderEntity entity);
+
+    /**
+     * 更新目录
+     *
+     * @param entity 目录实体
+     */
+    void updateFolder(FolderEntity entity);
+
+    /**
+     * 删除目录
+     *
+     * @param id 目录ID
+     */
+    void deleteFolderById(Long id);
+
+    /**
+     * 统计子目录数量
+     *
+     * @param parentId 父目录ID
+     * @return 子目录数量
+     */
+    long countFoldersByParentId(Long parentId);
+
+    /**
+     * 更新目录排序
+     *
+     * @param id   目录ID
+     * @param sort 排序值
+     */
+    void updateFolderSort(Long id, Integer sort);
+
+    // ── Document ──
+
+    /**
+     * 查询文档分页列表
+     *
+     * @param knowledgeBaseId 知识库ID
+     * @param folderId        目录ID
+     * @param status          状态 1正常 0禁用
+     * @param keyword         搜索关键词
+     * @param currentPage     当前页码
+     * @param pageSize        每页数量
+     * @return 文档分页列表
+     */
+    PageResponse<DocumentEntity> listDocuments(Long knowledgeBaseId, Long folderId, Integer status, String keyword, int currentPage, int pageSize);
+
+    /**
+     * 查询文档
+     *
+     * @param id 文档ID
+     * @return 文档实体
+     */
+    DocumentEntity findDocumentById(Long id);
+
+    /**
+     * 统计同目录下文档名称数量
+     *
+     * @param knowledgeBaseId 知识库ID
+     * @param folderId        目录ID
+     * @param docName         文档名称
+     * @param excludeId       排除的文档ID
+     * @return 文档名称数量
+     */
+    long countDocumentName(Long knowledgeBaseId, Long folderId, String docName, Long excludeId);
+
+    /**
+     * 插入文档
+     *
+     * @param entity 文档实体
+     * @return 插入的文档实体
+     */
+    DocumentEntity insertDocument(DocumentEntity entity);
+
+    /**
+     * 更新文档
+     *
+     * @param entity 文档实体
+     */
+    void updateDocument(DocumentEntity entity);
+
+    /**
+     * 删除文档
+     *
+     * @param id 文档ID
+     */
+    void deleteDocumentById(Long id);
+
+    /**
+     * 统计知识库下的文档数量
+     *
+     * @param knowledgeBaseId 知识库ID
+     * @return 文档数量
+     */
+    long countDocumentsByKnowledgeBaseId(Long knowledgeBaseId);
+
+    /**
+     * 统计目录下的文档数量
+     *
+     * @param folderId 目录ID
+     * @return 文档数量
+     */
+    long countDocumentsByFolderId(Long folderId);
+
+    /**
+     * 更新文档排序
+     *
+     * @param id   文档ID
+     * @param sort 排序值
+     */
+    void updateDocumentSort(Long id, Integer sort);
+
+    // ── DocumentChunk ──
+
+    /**
+     * 查询文档的全部切片
+     *
+     * @param documentId 文档ID
+     * @return 切片列表
+     */
+    List<DocumentChunkEntity> listChunksByDocumentId(Long documentId);
+
+    /**
+     * 删除文档的全部切片
+     *
+     * @param documentId 文档ID
+     */
+    void deleteChunksByDocumentId(Long documentId);
+
+    /**
+     * 批量插入切片
+     *
+     * @param chunks 切片列表
+     */
+    void batchInsertChunks(List<DocumentChunkEntity> chunks);
+
+    // ── SkillKnowledge ──
+
+    /**
+     * 查询技能关联的知识库列表
+     *
+     * @param skillId 技能ID
+     * @return 技能知识库关联列表
+     */
+    List<SkillKnowledgeEntity> listSkillKnowledgesBySkillId(Long skillId);
+
+    /**
+     * 删除技能的所有知识库关联
+     *
+     * @param skillId 技能ID
+     */
+    void deleteSkillKnowledgesBySkillId(Long skillId);
+
+    /**
+     * 批量插入技能知识库关联
+     *
+     * @param list 技能知识库关联列表
+     */
+    void batchInsertSkillKnowledges(List<SkillKnowledgeEntity> list);
+
     // ── UsageLog ──
 
     /**

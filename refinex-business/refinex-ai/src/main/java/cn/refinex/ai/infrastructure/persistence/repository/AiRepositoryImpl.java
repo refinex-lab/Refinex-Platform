@@ -34,6 +34,11 @@ public class AiRepositoryImpl implements AiRepository {
     private final AiSkillToolMapper aiSkillToolMapper;
     private final AiConversationMapper aiConversationMapper;
     private final AiUsageLogMapper aiUsageLogMapper;
+    private final KbKnowledgeBaseMapper kbKnowledgeBaseMapper;
+    private final KbFolderMapper kbFolderMapper;
+    private final KbDocumentMapper kbDocumentMapper;
+    private final KbDocumentChunkMapper kbDocumentChunkMapper;
+    private final AiSkillKnowledgeMapper aiSkillKnowledgeMapper;
     private final ProviderDoConverter providerDoConverter;
     private final ModelDoConverter modelDoConverter;
     private final PromptTemplateDoConverter promptTemplateDoConverter;
@@ -44,6 +49,11 @@ public class AiRepositoryImpl implements AiRepository {
     private final SkillToolDoConverter skillToolDoConverter;
     private final ConversationDoConverter conversationDoConverter;
     private final UsageLogDoConverter usageLogDoConverter;
+    private final KnowledgeBaseDoConverter knowledgeBaseDoConverter;
+    private final FolderDoConverter folderDoConverter;
+    private final DocumentDoConverter documentDoConverter;
+    private final DocumentChunkDoConverter documentChunkDoConverter;
+    private final SkillKnowledgeDoConverter skillKnowledgeDoConverter;
 
     // ── Provider ──
 
@@ -1287,5 +1297,532 @@ public class AiRepositoryImpl implements AiRepository {
         AiUsageLogDo row = usageLogDoConverter.toDo(usageLog);
         aiUsageLogMapper.insert(row);
         return usageLogDoConverter.toEntity(row);
+    }
+
+    // ── KnowledgeBase ──
+
+    /**
+     * 查询知识库分页列表
+     *
+     * @param estabId     组织ID
+     * @param status      状态 1启用 0停用
+     * @param keyword     搜索关键词
+     * @param currentPage 当前页码
+     * @param pageSize    每页数量
+     * @return 知识库分页列表
+     */
+    @Override
+    public PageResponse<KnowledgeBaseEntity> listKnowledgeBases(Long estabId, Integer status, String keyword, int currentPage, int pageSize) {
+        LambdaQueryWrapper<KbKnowledgeBaseDo> query = Wrappers.lambdaQuery(KbKnowledgeBaseDo.class)
+                .eq(KbKnowledgeBaseDo::getDeleted, 0)
+                .orderByAsc(KbKnowledgeBaseDo::getSort, KbKnowledgeBaseDo::getId);
+
+        if (estabId != null) {
+            query.and(w -> w.eq(KbKnowledgeBaseDo::getEstabId, 0).or().eq(KbKnowledgeBaseDo::getEstabId, estabId));
+        }
+        if (status != null) {
+            query.eq(KbKnowledgeBaseDo::getStatus, status);
+        }
+        if (keyword != null && !keyword.isBlank()) {
+            String trimmed = keyword.trim();
+            query.and(w -> w
+                    .like(KbKnowledgeBaseDo::getKbCode, trimmed)
+                    .or().like(KbKnowledgeBaseDo::getKbName, trimmed));
+        }
+
+        Page<KbKnowledgeBaseDo> page = new Page<>(currentPage, pageSize);
+        Page<KbKnowledgeBaseDo> rowsPage = kbKnowledgeBaseMapper.selectPage(page, query);
+
+        List<KnowledgeBaseEntity> result = new ArrayList<>();
+        for (KbKnowledgeBaseDo row : rowsPage.getRecords()) {
+            result.add(knowledgeBaseDoConverter.toEntity(row));
+        }
+
+        return PageResponse.of(result, rowsPage.getTotal(), (int) rowsPage.getSize(), (int) rowsPage.getCurrent());
+    }
+
+    /**
+     * 查询全部知识库
+     *
+     * @param estabId 组织ID
+     * @param status  状态 1启用 0停用
+     * @return 知识库列表
+     */
+    @Override
+    public List<KnowledgeBaseEntity> listAllKnowledgeBases(Long estabId, Integer status) {
+        LambdaQueryWrapper<KbKnowledgeBaseDo> query = Wrappers.lambdaQuery(KbKnowledgeBaseDo.class)
+                .eq(KbKnowledgeBaseDo::getDeleted, 0)
+                .orderByAsc(KbKnowledgeBaseDo::getSort, KbKnowledgeBaseDo::getId);
+
+        if (estabId != null) {
+            query.and(w -> w.eq(KbKnowledgeBaseDo::getEstabId, 0).or().eq(KbKnowledgeBaseDo::getEstabId, estabId));
+        }
+        if (status != null) {
+            query.eq(KbKnowledgeBaseDo::getStatus, status);
+        }
+
+        List<KbKnowledgeBaseDo> rows = kbKnowledgeBaseMapper.selectList(query);
+        List<KnowledgeBaseEntity> result = new ArrayList<>();
+        for (KbKnowledgeBaseDo row : rows) {
+            result.add(knowledgeBaseDoConverter.toEntity(row));
+        }
+        return result;
+    }
+
+    /**
+     * 查询知识库
+     *
+     * @param id 知识库ID
+     * @return 知识库实体
+     */
+    @Override
+    public KnowledgeBaseEntity findKnowledgeBaseById(Long id) {
+        KbKnowledgeBaseDo row = kbKnowledgeBaseMapper.selectById(id);
+        return row == null ? null : knowledgeBaseDoConverter.toEntity(row);
+    }
+
+    /**
+     * 统计知识库编码数量
+     *
+     * @param estabId   组织ID
+     * @param kbCode    知识库编码
+     * @param excludeId 排除的知识库ID
+     * @return 知识库编码数量
+     */
+    @Override
+    public long countKbCode(Long estabId, String kbCode, Long excludeId) {
+        LambdaQueryWrapper<KbKnowledgeBaseDo> query = Wrappers.lambdaQuery(KbKnowledgeBaseDo.class)
+                .eq(KbKnowledgeBaseDo::getEstabId, estabId)
+                .eq(KbKnowledgeBaseDo::getKbCode, kbCode)
+                .eq(KbKnowledgeBaseDo::getDeleted, 0);
+
+        if (excludeId != null) {
+            query.ne(KbKnowledgeBaseDo::getId, excludeId);
+        }
+
+        Long count = kbKnowledgeBaseMapper.selectCount(query);
+        return count == null ? 0L : count;
+    }
+
+    /**
+     * 插入知识库
+     *
+     * @param entity 知识库实体
+     * @return 插入的知识库实体
+     */
+    @Override
+    public KnowledgeBaseEntity insertKnowledgeBase(KnowledgeBaseEntity entity) {
+        KbKnowledgeBaseDo row = knowledgeBaseDoConverter.toDo(entity);
+        kbKnowledgeBaseMapper.insert(row);
+        return knowledgeBaseDoConverter.toEntity(row);
+    }
+
+    /**
+     * 更新知识库
+     *
+     * @param entity 知识库实体
+     */
+    @Override
+    public void updateKnowledgeBase(KnowledgeBaseEntity entity) {
+        KbKnowledgeBaseDo row = knowledgeBaseDoConverter.toDo(entity);
+        kbKnowledgeBaseMapper.updateById(row);
+    }
+
+    /**
+     * 删除知识库
+     *
+     * @param id 知识库ID
+     */
+    @Override
+    public void deleteKnowledgeBaseById(Long id) {
+        kbKnowledgeBaseMapper.deleteById(id);
+    }
+
+    // ── Folder ──
+
+    /**
+     * 查询知识库下的全部目录
+     *
+     * @param knowledgeBaseId 知识库ID
+     * @return 目录列表
+     */
+    @Override
+    public List<FolderEntity> listFoldersByKnowledgeBaseId(Long knowledgeBaseId) {
+        List<KbFolderDo> rows = kbFolderMapper.selectList(
+                Wrappers.lambdaQuery(KbFolderDo.class)
+                        .eq(KbFolderDo::getKnowledgeBaseId, knowledgeBaseId)
+                        .eq(KbFolderDo::getDeleted, 0)
+                        .orderByAsc(KbFolderDo::getSort, KbFolderDo::getId)
+        );
+
+        List<FolderEntity> result = new ArrayList<>();
+        for (KbFolderDo row : rows) {
+            result.add(folderDoConverter.toEntity(row));
+        }
+        return result;
+    }
+
+    /**
+     * 查询目录
+     *
+     * @param id 目录ID
+     * @return 目录实体
+     */
+    @Override
+    public FolderEntity findFolderById(Long id) {
+        KbFolderDo row = kbFolderMapper.selectById(id);
+        return row == null ? null : folderDoConverter.toEntity(row);
+    }
+
+    /**
+     * 统计同级目录名称数量
+     *
+     * @param knowledgeBaseId 知识库ID
+     * @param parentId        父目录ID
+     * @param folderName      目录名称
+     * @param excludeId       排除的目录ID
+     * @return 目录名称数量
+     */
+    @Override
+    public long countFolderName(Long knowledgeBaseId, Long parentId, String folderName, Long excludeId) {
+        LambdaQueryWrapper<KbFolderDo> query = Wrappers.lambdaQuery(KbFolderDo.class)
+                .eq(KbFolderDo::getKnowledgeBaseId, knowledgeBaseId)
+                .eq(KbFolderDo::getParentId, parentId)
+                .eq(KbFolderDo::getFolderName, folderName)
+                .eq(KbFolderDo::getDeleted, 0);
+
+        if (excludeId != null) {
+            query.ne(KbFolderDo::getId, excludeId);
+        }
+
+        Long count = kbFolderMapper.selectCount(query);
+        return count == null ? 0L : count;
+    }
+
+    /**
+     * 插入目录
+     *
+     * @param entity 目录实体
+     * @return 插入的目录实体
+     */
+    @Override
+    public FolderEntity insertFolder(FolderEntity entity) {
+        KbFolderDo row = folderDoConverter.toDo(entity);
+        kbFolderMapper.insert(row);
+        return folderDoConverter.toEntity(row);
+    }
+
+    /**
+     * 更新目录
+     *
+     * @param entity 目录实体
+     */
+    @Override
+    public void updateFolder(FolderEntity entity) {
+        KbFolderDo row = folderDoConverter.toDo(entity);
+        kbFolderMapper.updateById(row);
+    }
+
+    /**
+     * 删除目录
+     *
+     * @param id 目录ID
+     */
+    @Override
+    public void deleteFolderById(Long id) {
+        kbFolderMapper.deleteById(id);
+    }
+
+    /**
+     * 统计子目录数量
+     *
+     * @param parentId 父目录ID
+     * @return 子目录数量
+     */
+    @Override
+    public long countFoldersByParentId(Long parentId) {
+        Long count = kbFolderMapper.selectCount(
+                Wrappers.lambdaQuery(KbFolderDo.class)
+                        .eq(KbFolderDo::getParentId, parentId)
+                        .eq(KbFolderDo::getDeleted, 0)
+        );
+        return count == null ? 0L : count;
+    }
+
+    /**
+     * 更新目录排序
+     *
+     * @param id   目录ID
+     * @param sort 排序值
+     */
+    @Override
+    public void updateFolderSort(Long id, Integer sort) {
+        KbFolderDo row = new KbFolderDo();
+        row.setId(id);
+        row.setSort(sort);
+        kbFolderMapper.updateById(row);
+    }
+
+    // ── Document ──
+
+    /**
+     * 查询文档分页列表
+     *
+     * @param knowledgeBaseId 知识库ID
+     * @param folderId        目录ID
+     * @param status          状态 1正常 0禁用
+     * @param keyword         搜索关键词
+     * @param currentPage     当前页码
+     * @param pageSize        每页数量
+     * @return 文档分页列表
+     */
+    @Override
+    public PageResponse<DocumentEntity> listDocuments(Long knowledgeBaseId, Long folderId, Integer status, String keyword, int currentPage, int pageSize) {
+        LambdaQueryWrapper<KbDocumentDo> query = Wrappers.lambdaQuery(KbDocumentDo.class)
+                .eq(KbDocumentDo::getKnowledgeBaseId, knowledgeBaseId)
+                .eq(KbDocumentDo::getDeleted, 0)
+                .orderByAsc(KbDocumentDo::getSort, KbDocumentDo::getId);
+
+        if (folderId != null) {
+            query.eq(KbDocumentDo::getFolderId, folderId);
+        }
+        if (status != null) {
+            query.eq(KbDocumentDo::getStatus, status);
+        }
+        if (keyword != null && !keyword.isBlank()) {
+            String trimmed = keyword.trim();
+            query.like(KbDocumentDo::getDocName, trimmed);
+        }
+
+        Page<KbDocumentDo> page = new Page<>(currentPage, pageSize);
+        Page<KbDocumentDo> rowsPage = kbDocumentMapper.selectPage(page, query);
+
+        List<DocumentEntity> result = new ArrayList<>();
+        for (KbDocumentDo row : rowsPage.getRecords()) {
+            result.add(documentDoConverter.toEntity(row));
+        }
+
+        return PageResponse.of(result, rowsPage.getTotal(), (int) rowsPage.getSize(), (int) rowsPage.getCurrent());
+    }
+
+    /**
+     * 查询文档
+     *
+     * @param id 文档ID
+     * @return 文档实体
+     */
+    @Override
+    public DocumentEntity findDocumentById(Long id) {
+        KbDocumentDo row = kbDocumentMapper.selectById(id);
+        return row == null ? null : documentDoConverter.toEntity(row);
+    }
+
+    /**
+     * 统计同目录下文档名称数量
+     *
+     * @param knowledgeBaseId 知识库ID
+     * @param folderId        目录ID
+     * @param docName         文档名称
+     * @param excludeId       排除的文档ID
+     * @return 文档名称数量
+     */
+    @Override
+    public long countDocumentName(Long knowledgeBaseId, Long folderId, String docName, Long excludeId) {
+        LambdaQueryWrapper<KbDocumentDo> query = Wrappers.lambdaQuery(KbDocumentDo.class)
+                .eq(KbDocumentDo::getKnowledgeBaseId, knowledgeBaseId)
+                .eq(KbDocumentDo::getFolderId, folderId)
+                .eq(KbDocumentDo::getDocName, docName)
+                .eq(KbDocumentDo::getDeleted, 0);
+
+        if (excludeId != null) {
+            query.ne(KbDocumentDo::getId, excludeId);
+        }
+
+        Long count = kbDocumentMapper.selectCount(query);
+        return count == null ? 0L : count;
+    }
+
+    /**
+     * 插入文档
+     *
+     * @param entity 文档实体
+     * @return 插入的文档实体
+     */
+    @Override
+    public DocumentEntity insertDocument(DocumentEntity entity) {
+        KbDocumentDo row = documentDoConverter.toDo(entity);
+        kbDocumentMapper.insert(row);
+        return documentDoConverter.toEntity(row);
+    }
+
+    /**
+     * 更新文档
+     *
+     * @param entity 文档实体
+     */
+    @Override
+    public void updateDocument(DocumentEntity entity) {
+        KbDocumentDo row = documentDoConverter.toDo(entity);
+        kbDocumentMapper.updateById(row);
+    }
+
+    /**
+     * 删除文档
+     *
+     * @param id 文档ID
+     */
+    @Override
+    public void deleteDocumentById(Long id) {
+        kbDocumentMapper.deleteById(id);
+    }
+
+    /**
+     * 统计知识库下的文档数量
+     *
+     * @param knowledgeBaseId 知识库ID
+     * @return 文档数量
+     */
+    @Override
+    public long countDocumentsByKnowledgeBaseId(Long knowledgeBaseId) {
+        Long count = kbDocumentMapper.selectCount(
+                Wrappers.lambdaQuery(KbDocumentDo.class)
+                        .eq(KbDocumentDo::getKnowledgeBaseId, knowledgeBaseId)
+                        .eq(KbDocumentDo::getDeleted, 0)
+        );
+        return count == null ? 0L : count;
+    }
+
+    /**
+     * 统计目录下的文档数量
+     *
+     * @param folderId 目录ID
+     * @return 文档数量
+     */
+    @Override
+    public long countDocumentsByFolderId(Long folderId) {
+        Long count = kbDocumentMapper.selectCount(
+                Wrappers.lambdaQuery(KbDocumentDo.class)
+                        .eq(KbDocumentDo::getFolderId, folderId)
+                        .eq(KbDocumentDo::getDeleted, 0)
+        );
+        return count == null ? 0L : count;
+    }
+
+    /**
+     * 更新文档排序
+     *
+     * @param id   文档ID
+     * @param sort 排序值
+     */
+    @Override
+    public void updateDocumentSort(Long id, Integer sort) {
+        KbDocumentDo row = new KbDocumentDo();
+        row.setId(id);
+        row.setSort(sort);
+        kbDocumentMapper.updateById(row);
+    }
+
+    // ── DocumentChunk ──
+
+    /**
+     * 查询文档的全部切片
+     *
+     * @param documentId 文档ID
+     * @return 切片列表
+     */
+    @Override
+    public List<DocumentChunkEntity> listChunksByDocumentId(Long documentId) {
+        List<KbDocumentChunkDo> rows = kbDocumentChunkMapper.selectList(
+                Wrappers.lambdaQuery(KbDocumentChunkDo.class)
+                        .eq(KbDocumentChunkDo::getDocumentId, documentId)
+                        .eq(KbDocumentChunkDo::getDeleted, 0)
+                        .orderByAsc(KbDocumentChunkDo::getChunkIndex)
+        );
+
+        List<DocumentChunkEntity> result = new ArrayList<>();
+        for (KbDocumentChunkDo row : rows) {
+            result.add(documentChunkDoConverter.toEntity(row));
+        }
+        return result;
+    }
+
+    /**
+     * 删除文档的全部切片
+     *
+     * @param documentId 文档ID
+     */
+    @Override
+    public void deleteChunksByDocumentId(Long documentId) {
+        kbDocumentChunkMapper.delete(
+                Wrappers.lambdaQuery(KbDocumentChunkDo.class)
+                        .eq(KbDocumentChunkDo::getDocumentId, documentId)
+        );
+    }
+
+    /**
+     * 批量插入切片
+     *
+     * @param chunks 切片列表
+     */
+    @Override
+    public void batchInsertChunks(List<DocumentChunkEntity> chunks) {
+        if (chunks != null && !chunks.isEmpty()) {
+            for (DocumentChunkEntity chunk : chunks) {
+                KbDocumentChunkDo row = documentChunkDoConverter.toDo(chunk);
+                kbDocumentChunkMapper.insert(row);
+            }
+        }
+    }
+
+    // ── SkillKnowledge ──
+
+    /**
+     * 查询技能关联的知识库列表
+     *
+     * @param skillId 技能ID
+     * @return 技能知识库关联列表
+     */
+    @Override
+    public List<SkillKnowledgeEntity> listSkillKnowledgesBySkillId(Long skillId) {
+        List<AiSkillKnowledgeDo> rows = aiSkillKnowledgeMapper.selectList(
+                Wrappers.lambdaQuery(AiSkillKnowledgeDo.class)
+                        .eq(AiSkillKnowledgeDo::getSkillId, skillId)
+                        .eq(AiSkillKnowledgeDo::getDeleted, 0)
+                        .orderByAsc(AiSkillKnowledgeDo::getSort, AiSkillKnowledgeDo::getId)
+        );
+
+        List<SkillKnowledgeEntity> result = new ArrayList<>();
+        for (AiSkillKnowledgeDo row : rows) {
+            result.add(skillKnowledgeDoConverter.toEntity(row));
+        }
+        return result;
+    }
+
+    /**
+     * 删除技能的所有知识库关联
+     *
+     * @param skillId 技能ID
+     */
+    @Override
+    public void deleteSkillKnowledgesBySkillId(Long skillId) {
+        aiSkillKnowledgeMapper.delete(
+                Wrappers.lambdaQuery(AiSkillKnowledgeDo.class)
+                        .eq(AiSkillKnowledgeDo::getSkillId, skillId)
+        );
+    }
+
+    /**
+     * 批量插入技能知识库关联
+     *
+     * @param list 技能知识库关联列表
+     */
+    @Override
+    public void batchInsertSkillKnowledges(List<SkillKnowledgeEntity> list) {
+        if (list != null && !list.isEmpty()) {
+            for (SkillKnowledgeEntity entity : list) {
+                AiSkillKnowledgeDo row = skillKnowledgeDoConverter.toDo(entity);
+                aiSkillKnowledgeMapper.insert(row);
+            }
+        }
     }
 }

@@ -55,6 +55,16 @@ public enum AiErrorCode implements ErrorCode {
     TTS_UPLOAD_FAILED("AI_500_TTS_UPLOAD", "语音文件上传失败"),
     STT_FAILED("AI_500_STT", "语音识别失败"),
     AUDIO_DOWNLOAD_FAILED("AI_500_AUDIO_DOWNLOAD", "音频文件下载失败"),
+
+    KB_NOT_FOUND("AI_404_KB", "知识库不存在"),
+    KB_CODE_DUPLICATED("AI_409_KB_CODE", "知识库编码已存在"),
+    KB_FOLDER_NOT_FOUND("AI_404_KB_FOLDER", "目录不存在"),
+    KB_FOLDER_NAME_DUPLICATED("AI_409_KB_FOLDER_NAME", "同级目录名称已存在"),
+    KB_DOCUMENT_NOT_FOUND("AI_404_KB_DOCUMENT", "文档不存在"),
+    KB_DOCUMENT_NAME_DUPLICATED("AI_409_KB_DOCUMENT_NAME", "同目录下文档名称已存在"),
+    KB_HAS_DOCUMENTS("AI_409_KB_HAS_DOCS", "知识库下存在文档，无法删除"),
+    KB_FOLDER_HAS_CHILDREN("AI_409_KB_FOLDER_HAS_CHILDREN", "目录下存在子目录或文档，无法删除"),
+    KB_DOCUMENT_PARSE_FAILED("AI_500_KB_DOC_PARSE", "文档内容解析失败"),
     ;
 
     private final String code;

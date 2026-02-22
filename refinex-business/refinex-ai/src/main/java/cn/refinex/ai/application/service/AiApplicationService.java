@@ -896,6 +896,7 @@ public class AiApplicationService {
         for (SkillEntity entity : entities.getData()) {
             SkillDTO dto = aiDomainAssembler.toSkillDto(entity);
             dto.setToolIds(loadToolIds(entity.getId()));
+            dto.setKnowledgeBaseIds(loadKnowledgeBaseIds(entity.getId()));
             result.add(dto);
         }
 
@@ -915,13 +916,14 @@ public class AiApplicationService {
         for (SkillEntity entity : entities) {
             SkillDTO dto = aiDomainAssembler.toSkillDto(entity);
             dto.setToolIds(loadToolIds(entity.getId()));
+            dto.setKnowledgeBaseIds(loadKnowledgeBaseIds(entity.getId()));
             result.add(dto);
         }
         return result;
     }
 
     /**
-     * 查询技能详情（含toolIds）
+     * 查询技能详情（含toolIds和knowledgeBaseIds）
      *
      * @param skillId 技能ID
      * @return 技能详情
@@ -930,6 +932,7 @@ public class AiApplicationService {
         SkillEntity entity = requireSkill(skillId);
         SkillDTO dto = aiDomainAssembler.toSkillDto(entity);
         dto.setToolIds(loadToolIds(entity.getId()));
+        dto.setKnowledgeBaseIds(loadKnowledgeBaseIds(entity.getId()));
         return dto;
     }
 
@@ -985,8 +988,14 @@ public class AiApplicationService {
             saveSkillTools(created.getId(), command.getToolIds());
         }
 
+        // 处理知识库关联
+        if (command.getKnowledgeBaseIds() != null && !command.getKnowledgeBaseIds().isEmpty()) {
+            saveSkillKnowledges(created.getId(), command.getKnowledgeBaseIds());
+        }
+
         SkillDTO dto = aiDomainAssembler.toSkillDto(created);
         dto.setToolIds(loadToolIds(created.getId()));
+        dto.setKnowledgeBaseIds(loadKnowledgeBaseIds(created.getId()));
         return dto;
     }
 
@@ -1034,14 +1043,20 @@ public class AiApplicationService {
             saveSkillTools(existing.getId(), command.getToolIds());
         }
 
+        // 全量替换知识库关联（knowledgeBaseIds 为 null 时不操作，为空列表时清空）
+        if (command.getKnowledgeBaseIds() != null) {
+            saveSkillKnowledges(existing.getId(), command.getKnowledgeBaseIds());
+        }
+
         SkillEntity updated = requireSkill(existing.getId());
         SkillDTO dto = aiDomainAssembler.toSkillDto(updated);
         dto.setToolIds(loadToolIds(updated.getId()));
+        dto.setKnowledgeBaseIds(loadKnowledgeBaseIds(updated.getId()));
         return dto;
     }
 
     /**
-     * 删除技能（逻辑删除，级联删除SkillTool）
+     * 删除技能（逻辑删除，级联删除SkillTool和SkillKnowledge）
      *
      * @param skillId 技能ID
      */
@@ -1049,6 +1064,7 @@ public class AiApplicationService {
     public void deleteSkill(Long skillId) {
         requireSkill(skillId);
         aiRepository.deleteSkillToolsBySkillId(skillId);
+        aiRepository.deleteSkillKnowledgesBySkillId(skillId);
         aiRepository.deleteSkillById(skillId);
     }
 
@@ -1220,6 +1236,42 @@ public class AiApplicationService {
             skillTools.add(st);
         }
         aiRepository.replaceSkillTools(skillId, skillTools);
+    }
+
+    /**
+     * 加载技能关联的知识库ID列表
+     *
+     * @param skillId 技能ID
+     * @return 知识库ID列表
+     */
+    private List<Long> loadKnowledgeBaseIds(Long skillId) {
+        List<SkillKnowledgeEntity> skillKnowledges = aiRepository.listSkillKnowledgesBySkillId(skillId);
+        List<Long> knowledgeBaseIds = new ArrayList<>();
+        for (SkillKnowledgeEntity sk : skillKnowledges) {
+            knowledgeBaseIds.add(sk.getKnowledgeBaseId());
+        }
+        return knowledgeBaseIds;
+    }
+
+    /**
+     * 保存技能知识库关联（先删后插）
+     *
+     * @param skillId          技能ID
+     * @param knowledgeBaseIds 知识库ID列表
+     */
+    private void saveSkillKnowledges(Long skillId, List<Long> knowledgeBaseIds) {
+        aiRepository.deleteSkillKnowledgesBySkillId(skillId);
+        if (knowledgeBaseIds != null && !knowledgeBaseIds.isEmpty()) {
+            List<SkillKnowledgeEntity> list = new ArrayList<>();
+            for (int i = 0; i < knowledgeBaseIds.size(); i++) {
+                SkillKnowledgeEntity sk = new SkillKnowledgeEntity();
+                sk.setSkillId(skillId);
+                sk.setKnowledgeBaseId(knowledgeBaseIds.get(i));
+                sk.setSort(i);
+                list.add(sk);
+            }
+            aiRepository.batchInsertSkillKnowledges(list);
+        }
     }
 
     /**
