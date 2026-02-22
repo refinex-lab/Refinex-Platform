@@ -1,5 +1,9 @@
 package cn.refinex.ai.interfaces.dto;
 
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -55,4 +59,24 @@ public class ChatRequest {
      * 音频URL(已上传的音频CDN地址，用于语音转文字后进入对话)
      */
     private String audioUrl;
+
+    /**
+     * 知识库ID列表(选择向量化知识库进行RAG检索增强)
+     */
+    @Size(max = 5, message = "最多支持5个知识库")
+    private List<Long> knowledgeBaseIds;
+
+    /**
+     * RAG检索返回文档数(可选，默认5)
+     */
+    @Min(value = 1, message = "topK最小为1")
+    @Max(value = 20, message = "topK最大为20")
+    private Integer ragTopK;
+
+    /**
+     * RAG相似度阈值(可选，默认0.0)
+     */
+    @DecimalMin(value = "0.0", message = "相似度阈值最小为0.0")
+    @DecimalMax(value = "1.0", message = "相似度阈值最大为1.0")
+    private Double ragSimilarityThreshold;
 }

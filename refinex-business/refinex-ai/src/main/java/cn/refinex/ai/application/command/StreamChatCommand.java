@@ -54,6 +54,21 @@ public class StreamChatCommand {
     private String audioUrl;
 
     /**
+     * 知识库ID列表(选择向量化知识库进行RAG检索增强)
+     */
+    private List<Long> knowledgeBaseIds;
+
+    /**
+     * RAG检索返回文档数(可选，默认5)
+     */
+    private Integer ragTopK;
+
+    /**
+     * RAG相似度阈值(可选，默认0.0)
+     */
+    private Double ragSimilarityThreshold;
+
+    /**
      * 组织ID(Controller 从 LoginUserHelper 注入)
      */
     private Long estabId;

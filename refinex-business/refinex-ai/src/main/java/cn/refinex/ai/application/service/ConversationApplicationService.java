@@ -13,6 +13,7 @@ import cn.refinex.ai.domain.repository.AiRepository;
 import cn.refinex.ai.infrastructure.ai.ChatModelRouter;
 import cn.refinex.ai.infrastructure.ai.ImageModelRouter;
 import cn.refinex.ai.infrastructure.ai.TranscriptionModelRouter;
+import cn.refinex.ai.infrastructure.ai.VectorStoreRouter;
 import cn.refinex.ai.interfaces.vo.ChatMessageVO;
 import cn.refinex.ai.interfaces.vo.ConversationDetailVO;
 import cn.refinex.base.exception.BizException;
@@ -27,6 +28,8 @@ import org.springframework.ai.audio.transcription.TranscriptionModel;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
+import org.springframework.ai.chat.client.advisor.api.Advisor;
+import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.repository.jdbc.JdbcChatMemoryRepository;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -39,11 +42,15 @@ import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.content.Media;
 import org.springframework.ai.deepseek.DeepSeekAssistantMessage;
+import org.springframework.ai.document.Document;
 import org.springframework.ai.image.Image;
 import org.springframework.ai.image.ImageModel;
 import org.springframework.ai.image.ImagePrompt;
 import org.springframework.ai.image.ImageResponse;
 import org.springframework.ai.template.st.StTemplateRenderer;
+import org.springframework.ai.vectorstore.SearchRequest;
+import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.stereotype.Service;
@@ -76,9 +83,11 @@ public class ConversationApplicationService {
     private final ChatModelRouter chatModelRouter;
     private final ImageModelRouter imageModelRouter;
     private final TranscriptionModelRouter transcriptionModelRouter;
+    private final VectorStoreRouter vectorStoreRouter;
     private final ChatMemory chatMemory;
     private final JdbcChatMemoryRepository jdbcChatMemoryRepository;
     private final FileService fileService;
+    private final tools.jackson.databind.ObjectMapper jsonMapper;
 
     /**
      * 字符串 "[DONE]" 的常量
@@ -229,9 +238,10 @@ public class ConversationApplicationService {
     private Flux<ServerSentEvent<String>> buildStreamPipeline(StreamChatCommand command, ChatContext ctx) {
         AtomicReference<Usage> usageRef = new AtomicReference<>();
         AtomicReference<String> finishReasonRef = new AtomicReference<>();
+        AtomicReference<List<Document>> retrievedDocsRef = new AtomicReference<>();
         AtomicLong startTime = new AtomicLong(System.currentTimeMillis());
 
-        ChatClient chatClient = buildChatClient(ctx.chatModel(), ctx.systemPrompt());
+        ChatClient chatClient = buildChatClient(ctx.chatModel(), ctx.systemPrompt(), ctx);
 
         ChatClient.ChatClientRequestSpec promptSpec = chatClient.prompt();
 
@@ -246,9 +256,19 @@ public class ConversationApplicationService {
                 .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, ctx.conversationId()))
                 .stream()
                 .chatResponse()
-                .doOnNext(chatResponse -> captureMetadata(chatResponse, usageRef, finishReasonRef))
+                .doOnNext(chatResponse -> {
+                    captureMetadata(chatResponse, usageRef, finishReasonRef);
+                    captureRetrievedDocuments(chatResponse, retrievedDocsRef);
+                })
                 .flatMapIterable(chatResponse -> extractSseEvents(chatResponse, ctx.capReasoning()))
-                .concatWith(Flux.just(ServerSentEvent.<String>builder().event("done").data(DONE_EVENT_DATA).build()))
+                .concatWith(Flux.defer(() -> {
+                    List<ServerSentEvent<String>> tail = new ArrayList<>();
+                    if (retrievedDocsRef.get() != null && !retrievedDocsRef.get().isEmpty()) {
+                        tail.add(buildReferencesEvent(retrievedDocsRef.get()));
+                    }
+                    tail.add(ServerSentEvent.<String>builder().event("done").data(DONE_EVENT_DATA).build());
+                    return Flux.fromIterable(tail);
+                }))
                 .doOnComplete(() ->
                         Mono.fromRunnable(() -> onStreamComplete(command, ctx, usageRef.get(), finishReasonRef.get(),
                                         (int) (System.currentTimeMillis() - startTime.get())))
@@ -479,17 +499,8 @@ public class ConversationApplicationService {
     private ChatContext prepareChat(StreamChatCommand command) {
         ConversationResolution resolution = resolveConversation(command);
 
-        // STT：如果携带 audioUrl，先转录为文本
-        if (command.getAudioUrl() != null && !command.getAudioUrl().isBlank()) {
-            String transcribedText = transcribeAudio(command);
-            if (command.getMessage() == null || command.getMessage().isBlank()) {
-                command.setMessage(transcribedText);
-            } else {
-                command.setMessage(command.getMessage() + "\n" + transcribedText);
-            }
-        }
+        resolveAudioIfPresent(command);
 
-        // 校验：message 和 audioUrl 至少有一个非空
         if (command.getMessage() == null || command.getMessage().isBlank()) {
             throw new BizException(AiErrorCode.INVALID_PARAM);
         }
@@ -500,11 +511,99 @@ public class ConversationApplicationService {
                 ? resolveChatModel(resolution.modelId(), command.getEstabId())
                 : null;
 
+        RagResolution rag = resolveRag(command);
+
         return new ChatContext(
                 resolution.conversationId(), resolution.modelId(), resolution.systemPrompt(),
                 chatModel, resolution.isNewConversation(),
-                metadata.capReasoning(), metadata.providerCode(), metadata.modelType()
+                metadata.capReasoning(), metadata.providerCode(), metadata.modelType(),
+                rag.knowledgeBaseIds(), rag.vectorStore(), command.getRagTopK(), command.getRagSimilarityThreshold()
         );
+    }
+
+    /**
+     * 如果携带 audioUrl，转录音频并合并到 message
+     *
+     * @param command 流式对话命令
+     */
+    private void resolveAudioIfPresent(StreamChatCommand command) {
+        if (command.getAudioUrl() == null || command.getAudioUrl().isBlank()) {
+            return;
+        }
+
+        String transcribedText = transcribeAudio(command);
+        if (command.getMessage() == null || command.getMessage().isBlank()) {
+            command.setMessage(transcribedText);
+        } else {
+            command.setMessage(command.getMessage() + "\n" + transcribedText);
+        }
+    }
+
+    /**
+     * 解析知识库列表并获取 VectorStore 实例
+     *
+     * @param command 流式对话命令
+     * @return RAG 解析结果
+     */
+    private RagResolution resolveRag(StreamChatCommand command) {
+        if (command.getKnowledgeBaseIds() == null || command.getKnowledgeBaseIds().isEmpty()) {
+            return new RagResolution(null, null);
+        }
+
+        List<Long> validKbIds = new ArrayList<>();
+        VectorStore vectorStore = null;
+
+        for (Long kbId : command.getKnowledgeBaseIds()) {
+            KnowledgeBaseEntity kb = aiRepository.findKnowledgeBaseById(kbId);
+            if (!isVectorizedKnowledgeBase(kb)) {
+                continue;
+            }
+            if (vectorStore == null) {
+                vectorStore = tryResolveVectorStore(kb, kbId);
+            }
+            validKbIds.add(kbId);
+        }
+
+        return new RagResolution(validKbIds.isEmpty() ? null : validKbIds, vectorStore);
+    }
+
+    /**
+     * 判断知识库是否为有效的已向量化知识库
+     *
+     * @param kb 知识库实体（可为 null）
+     * @return true 表示有效且已向量化
+     */
+    private boolean isVectorizedKnowledgeBase(KnowledgeBaseEntity kb) {
+        return kb != null && kb.getDeleted() != null && kb.getDeleted() == 0
+                && kb.getVectorized() != null && kb.getVectorized() == 1;
+    }
+
+    /**
+     * 尝试为知识库解析 VectorStore，失败时返回 null
+     *
+     * @param kb   知识库实体
+     * @param kbId 知识库ID（用于日志）
+     * @return VectorStore 实例，失败返回 null
+     */
+    private VectorStore tryResolveVectorStore(KnowledgeBaseEntity kb, Long kbId) {
+        try {
+            return vectorStoreRouter.resolve(kb);
+        } catch (Exception e) {
+            log.warn("解析知识库 VectorStore 失败, kbId={}", kbId, e);
+            return null;
+        }
+    }
+
+    /**
+     * RAG 解析结果（内部传递用）
+     *
+     * @param knowledgeBaseIds 有效的知识库ID列表
+     * @param vectorStore      VectorStore 实例
+     */
+    private record RagResolution(
+            List<Long> knowledgeBaseIds,
+            VectorStore vectorStore
+    ) {
     }
 
     /**
@@ -521,6 +620,13 @@ public class ConversationApplicationService {
             ConversationEntity conversation = requireConversation(conversationId);
             requireOwnership(conversation, command.getUserId());
             Long resolvedModelId = modelId != null ? modelId : conversation.getModelId();
+
+            // 已有对话：如果前端未传知识库ID，从 extJson 恢复
+            if ((command.getKnowledgeBaseIds() == null || command.getKnowledgeBaseIds().isEmpty())
+                    && conversation.getExtJson() != null && !conversation.getExtJson().isBlank()) {
+                restoreRagParamsFromExtJson(command, conversation.getExtJson());
+            }
+
             return new ConversationResolution(conversationId, resolvedModelId, conversation.getSystemPrompt(), false);
         }
 
@@ -536,6 +642,12 @@ public class ConversationApplicationService {
         newConversation.setSystemPrompt(systemPrompt);
         newConversation.setPinned(0);
         newConversation.setStatus(1);
+
+        // 新建对话：将知识库选择持久化到 extJson
+        if (command.getKnowledgeBaseIds() != null && !command.getKnowledgeBaseIds().isEmpty()) {
+            newConversation.setExtJson(buildRagExtJson(command));
+        }
+
         aiRepository.insertConversation(newConversation);
 
         return new ConversationResolution(conversationId, modelId, systemPrompt, true);
@@ -758,24 +870,142 @@ public class ConversationApplicationService {
     }
 
     /**
-     * 构建 ChatClient（挂载 ChatMemory Advisor 和 Logger Advisor）
+     * 构建 ChatClient（挂载 ChatMemory Advisor、RAG Advisor 和 Logger Advisor）
      *
      * @param chatModel    ChatModel 实例
      * @param systemPrompt 系统提示词（可为 null）
+     * @param ctx          对话上下文（含 RAG 参数）
      * @return ChatClient 实例
      */
-    private ChatClient buildChatClient(ChatModel chatModel, String systemPrompt) {
+    private ChatClient buildChatClient(ChatModel chatModel, String systemPrompt, ChatContext ctx) {
+        List<Advisor> advisors = new ArrayList<>();
+        advisors.add(MessageChatMemoryAdvisor.builder(chatMemory).build());
+
+        // 条件挂载 RAG Advisor
+        if (ctx.vectorStore() != null && ctx.knowledgeBaseIds() != null && !ctx.knowledgeBaseIds().isEmpty()) {
+            FilterExpressionBuilder b = new FilterExpressionBuilder();
+            Object[] kbIdStrings = ctx.knowledgeBaseIds().stream().map(String::valueOf).toArray(Object[]::new);
+
+            int topK = ctx.ragTopK() != null ? ctx.ragTopK() : 5;
+            double threshold = ctx.ragSimilarityThreshold() != null ? ctx.ragSimilarityThreshold() : 0.0;
+
+            SearchRequest searchRequest = SearchRequest.builder()
+                    .topK(topK)
+                    .similarityThreshold(threshold)
+                    .filterExpression(b.in("knowledge_base_id", kbIdStrings).build())
+                    .build();
+
+            advisors.add(QuestionAnswerAdvisor.builder(ctx.vectorStore())
+                    .searchRequest(searchRequest)
+                    .build());
+        }
+
+        advisors.add(SimpleLoggerAdvisor.builder().build());
+
         ChatClient.Builder builder = ChatClient.builder(chatModel)
-                .defaultAdvisors(
-                        MessageChatMemoryAdvisor.builder(chatMemory).build(),
-                        SimpleLoggerAdvisor.builder().build()
-                );
+                .defaultAdvisors(advisors.toArray(new Advisor[0]));
 
         if (systemPrompt != null && !systemPrompt.isBlank()) {
             builder.defaultSystem(systemPrompt);
         }
 
         return builder.build();
+    }
+
+    /**
+     * 从 ChatResponse 中捕获 RAG 检索到的文档
+     *
+     * @param chatResponse 流式响应帧
+     * @param ref          检索文档引用
+     */
+    @SuppressWarnings("unchecked")
+    private void captureRetrievedDocuments(ChatResponse chatResponse, AtomicReference<List<Document>> ref) {
+        if (ref.get() != null) {
+            return;
+        }
+
+        Object docs = chatResponse.getMetadata().get(QuestionAnswerAdvisor.RETRIEVED_DOCUMENTS);
+        if (docs instanceof List<?> docList && !docList.isEmpty()) {
+            ref.set((List<Document>) docs);
+        }
+    }
+
+    /**
+     * 构建 references SSE 事件
+     *
+     * @param documents RAG 检索到的文档列表
+     * @return references SSE 事件
+     */
+    private ServerSentEvent<String> buildReferencesEvent(List<Document> documents) {
+        List<Map<String, Object>> refs = new ArrayList<>();
+        for (Document doc : documents) {
+            Map<String, Object> ref = new LinkedHashMap<>();
+            String content = doc.getText();
+            ref.put("content", content != null && content.length() > 200 ? content.substring(0, 200) + "..." : content);
+            ref.put("score", doc.getScore());
+            ref.put("documentId", doc.getMetadata().get("document_id"));
+            ref.put("documentName", doc.getMetadata().get("doc_name"));
+            ref.put("knowledgeBaseId", doc.getMetadata().get("knowledge_base_id"));
+            ref.put("chunkIndex", doc.getMetadata().get("chunk_index"));
+            refs.add(ref);
+        }
+
+        try {
+            String json = jsonMapper.writeValueAsString(refs);
+            return ServerSentEvent.<String>builder().event("references").data(json).build();
+        } catch (tools.jackson.core.JacksonException e) {
+            log.error("序列化 references 事件失败", e);
+            return ServerSentEvent.<String>builder().event("references").data("[]").build();
+        }
+    }
+
+    /**
+     * 从 extJson 恢复 RAG 参数到 command
+     *
+     * @param command 流式对话命令
+     * @param extJson 扩展信息 JSON
+     */
+    @SuppressWarnings("unchecked")
+    private void restoreRagParamsFromExtJson(StreamChatCommand command, String extJson) {
+        try {
+            Map<String, Object> ext = jsonMapper.readValue(extJson, new tools.jackson.core.type.TypeReference<>() {
+            });
+            List<Integer> ids = (List<Integer>) ext.get("knowledgeBaseIds");
+            if (ids != null && !ids.isEmpty()) {
+                command.setKnowledgeBaseIds(ids.stream().map(Integer::longValue).toList());
+            }
+            if (ext.get("ragTopK") instanceof Integer topK) {
+                command.setRagTopK(topK);
+            }
+            if (ext.get("ragSimilarityThreshold") instanceof Number threshold) {
+                command.setRagSimilarityThreshold(threshold.doubleValue());
+            }
+        } catch (Exception e) {
+            log.warn("从 extJson 恢复 RAG 参数失败, extJson={}", extJson, e);
+        }
+    }
+
+    /**
+     * 构建 RAG 扩展信息 JSON
+     *
+     * @param command 流式对话命令
+     * @return extJson 字符串
+     */
+    private String buildRagExtJson(StreamChatCommand command) {
+        try {
+            Map<String, Object> ext = new LinkedHashMap<>();
+            ext.put("knowledgeBaseIds", command.getKnowledgeBaseIds());
+            if (command.getRagTopK() != null) {
+                ext.put("ragTopK", command.getRagTopK());
+            }
+            if (command.getRagSimilarityThreshold() != null) {
+                ext.put("ragSimilarityThreshold", command.getRagSimilarityThreshold());
+            }
+            return jsonMapper.writeValueAsString(ext);
+        } catch (tools.jackson.core.JacksonException e) {
+            log.warn("构建 RAG extJson 失败", e);
+            return null;
+        }
     }
 
     /**
@@ -1010,14 +1240,18 @@ public class ConversationApplicationService {
     /**
      * 对话上下文（内部传递用）
      *
-     * @param conversationId    会话唯一标识
-     * @param modelId           模型ID
-     * @param systemPrompt      系统提示词
-     * @param chatModel         ChatModel 实例（图像生成模型时为 null）
-     * @param isNewConversation 是否为新建对话
-     * @param capReasoning      是否支持深度推理
-     * @param providerCode      供应商编码
-     * @param modelType         模型类型 1聊天 2嵌入 3图像生成 4语音转文字 5文字转语音 6重排序
+     * @param conversationId        会话唯一标识
+     * @param modelId               模型ID
+     * @param systemPrompt          系统提示词
+     * @param chatModel             ChatModel 实例（图像生成模型时为 null）
+     * @param isNewConversation     是否为新建对话
+     * @param capReasoning          是否支持深度推理
+     * @param providerCode          供应商编码
+     * @param modelType             模型类型 1聊天 2嵌入 3图像生成 4语音转文字 5文字转语音 6重排序
+     * @param knowledgeBaseIds      知识库ID列表（RAG）
+     * @param vectorStore           VectorStore 实例（RAG）
+     * @param ragTopK               RAG检索返回文档数
+     * @param ragSimilarityThreshold RAG相似度阈值
      */
     private record ChatContext(
             String conversationId,
@@ -1027,7 +1261,11 @@ public class ConversationApplicationService {
             boolean isNewConversation,
             boolean capReasoning,
             String providerCode,
-            Integer modelType
+            Integer modelType,
+            List<Long> knowledgeBaseIds,
+            VectorStore vectorStore,
+            Integer ragTopK,
+            Double ragSimilarityThreshold
     ) {
     }
 }
