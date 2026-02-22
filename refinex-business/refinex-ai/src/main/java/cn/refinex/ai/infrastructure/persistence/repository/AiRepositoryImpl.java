@@ -131,6 +131,25 @@ public class AiRepositoryImpl implements AiRepository {
     }
 
     /**
+     * 批量查询供应商
+     *
+     * @param providerIds 供应商ID集合
+     * @return 供应商实体列表
+     */
+    @Override
+    public List<ProviderEntity> findProvidersByIds(java.util.Collection<Long> providerIds) {
+        if (providerIds == null || providerIds.isEmpty()) {
+            return List.of();
+        }
+        List<AiProviderDo> rows = aiProviderMapper.selectByIds(providerIds);
+        List<ProviderEntity> result = new ArrayList<>();
+        for (AiProviderDo row : rows) {
+            result.add(providerDoConverter.toEntity(row));
+        }
+        return result;
+    }
+
+    /**
      * 统计供应商编码数量
      *
      * @param providerCode      供应商编码
@@ -264,6 +283,25 @@ public class AiRepositoryImpl implements AiRepository {
     public ModelEntity findModelById(Long modelId) {
         AiModelDo row = aiModelMapper.selectById(modelId);
         return row == null ? null : modelDoConverter.toEntity(row);
+    }
+
+    /**
+     * 批量查询模型
+     *
+     * @param modelIds 模型ID集合
+     * @return 模型实体列表
+     */
+    @Override
+    public List<ModelEntity> findModelsByIds(java.util.Collection<Long> modelIds) {
+        if (modelIds == null || modelIds.isEmpty()) {
+            return List.of();
+        }
+        List<AiModelDo> rows = aiModelMapper.selectByIds(modelIds);
+        List<ModelEntity> result = new ArrayList<>();
+        for (AiModelDo row : rows) {
+            result.add(modelDoConverter.toEntity(row));
+        }
+        return result;
     }
 
     /**

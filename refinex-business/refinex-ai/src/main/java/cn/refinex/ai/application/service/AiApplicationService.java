@@ -20,6 +20,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static org.apache.commons.lang3.ObjectUtils.getIfNull;
 import static org.apache.commons.lang3.StringUtils.isBlank;
@@ -486,6 +491,8 @@ public class AiApplicationService {
             result.add(aiDomainAssembler.toModelProvisionDto(entity));
         }
 
+        enrichModelProvisionDtos(result);
+
         return PageResponse.of(result, entities.getTotal(), entities.getPageSize(), entities.getCurrentPage());
     }
 
@@ -497,7 +504,9 @@ public class AiApplicationService {
      */
     public ModelProvisionDTO getModelProvision(Long provisionId) {
         ModelProvisionEntity entity = requireModelProvision(provisionId);
-        return aiDomainAssembler.toModelProvisionDto(entity);
+        ModelProvisionDTO dto = aiDomainAssembler.toModelProvisionDto(entity);
+        enrichModelProvisionDtos(List.of(dto));
+        return dto;
     }
 
     /**
@@ -538,7 +547,9 @@ public class AiApplicationService {
         entity.setExtJson(trimToNull(command.getExtJson()));
 
         ModelProvisionEntity created = aiRepository.insertModelProvision(entity);
-        return aiDomainAssembler.toModelProvisionDto(created);
+        ModelProvisionDTO dto = aiDomainAssembler.toModelProvisionDto(created);
+        enrichModelProvisionDtos(List.of(dto));
+        return dto;
     }
 
     /**
@@ -569,7 +580,9 @@ public class AiApplicationService {
 
         aiRepository.updateModelProvision(existing);
         chatModelRegistry.evict(existing.getId());
-        return aiDomainAssembler.toModelProvisionDto(requireModelProvision(existing.getId()));
+        ModelProvisionDTO dto = aiDomainAssembler.toModelProvisionDto(requireModelProvision(existing.getId()));
+        enrichModelProvisionDtos(List.of(dto));
+        return dto;
     }
 
     /**
@@ -1292,5 +1305,61 @@ public class AiApplicationService {
      */
     private String decryptApiKey(String cipher) {
         return AesUtils.decrypt(cipher, cryptoProperties.getAesKey());
+    }
+
+    /**
+     * 批量填充租户模型开通DTO的关联字段（供应商ID、供应商编码、模型编码、模型名称）
+     * <p>
+     * 通过批量查询 Model 和 Provider，避免循环内逐条查库。
+     *
+     * @param dtos 租户模型开通DTO列表
+     */
+    private void enrichModelProvisionDtos(List<ModelProvisionDTO> dtos) {
+        if (dtos == null || dtos.isEmpty()) {
+            return;
+        }
+
+        // 1. 收集所有 modelId，批量查询 Model
+        Set<Long> modelIds = dtos.stream()
+                .map(ModelProvisionDTO::getModelId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (modelIds.isEmpty()) {
+            return;
+        }
+
+        Map<Long, ModelEntity> modelMap = aiRepository.findModelsByIds(modelIds).stream()
+                .collect(Collectors.toMap(ModelEntity::getId, Function.identity()));
+
+        // 2. 收集所有 providerId，批量查询 Provider
+        Set<Long> providerIds = modelMap.values().stream()
+                .map(ModelEntity::getProviderId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Map<Long, ProviderEntity> providerMap = providerIds.isEmpty()
+                ? Map.of()
+                : aiRepository.findProvidersByIds(providerIds).stream()
+                        .collect(Collectors.toMap(ProviderEntity::getId, Function.identity()));
+
+        // 3. 填充每个 DTO
+        for (ModelProvisionDTO dto : dtos) {
+            if (dto.getModelId() == null) {
+                continue;
+            }
+            ModelEntity model = modelMap.get(dto.getModelId());
+            if (model == null) {
+                continue;
+            }
+            dto.setModelCode(model.getModelCode());
+            dto.setModelName(model.getModelName());
+            if (model.getProviderId() != null) {
+                dto.setProviderId(model.getProviderId());
+                ProviderEntity provider = providerMap.get(model.getProviderId());
+                if (provider != null) {
+                    dto.setProviderCode(provider.getProviderCode());
+                }
+            }
+        }
     }
 }

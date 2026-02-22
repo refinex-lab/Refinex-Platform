@@ -3,6 +3,7 @@ package cn.refinex.ai.domain.repository;
 import cn.refinex.ai.domain.model.entity.*;
 import cn.refinex.base.response.PageResponse;
 
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -40,6 +41,14 @@ public interface AiRepository {
      * @return 供应商
      */
     ProviderEntity findProviderById(Long providerId);
+
+    /**
+     * 批量查询供应商
+     *
+     * @param providerIds 供应商ID集合
+     * @return 供应商列表
+     */
+    List<ProviderEntity> findProvidersByIds(Collection<Long> providerIds);
 
     /**
      * 统计供应商编码数量
@@ -102,6 +111,14 @@ public interface AiRepository {
      * @return 模型
      */
     ModelEntity findModelById(Long modelId);
+
+    /**
+     * 批量查询模型
+     *
+     * @param modelIds 模型ID集合
+     * @return 模型列表
+     */
+    List<ModelEntity> findModelsByIds(Collection<Long> modelIds);
 
     /**
      * 统计模型编码数量
@@ -179,8 +196,8 @@ public interface AiRepository {
     /**
      * 统计Prompt模板编码数量
      *
-     * @param estabId              组织ID
-     * @param promptCode           模板编码
+     * @param estabId                 组织ID
+     * @param promptCode              模板编码
      * @param excludePromptTemplateId 排除的模板ID
      * @return 模板编码数量
      */
@@ -241,9 +258,9 @@ public interface AiRepository {
     /**
      * 统计租户模型开通数量（唯一性校验）
      *
-     * @param estabId    组织ID
-     * @param modelId    模型ID
-     * @param excludeId  排除的ID
+     * @param estabId   组织ID
+     * @param modelId   模型ID
+     * @param excludeId 排除的ID
      * @return 数量
      */
     long countModelProvision(Long estabId, Long modelId, Long excludeId);

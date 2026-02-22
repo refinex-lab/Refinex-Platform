@@ -26,6 +26,26 @@ public class ModelProvisionDTO {
     private Long modelId;
 
     /**
+     * 供应商ID（关联查询）
+     */
+    private Long providerId;
+
+    /**
+     * 供应商编码（关联查询）
+     */
+    private String providerCode;
+
+    /**
+     * 模型编码（关联查询）
+     */
+    private String modelCode;
+
+    /**
+     * 模型名称（关联查询）
+     */
+    private String modelName;
+
+    /**
      * API Key密文(AES加密存储)
      */
     private String apiKeyCipher;
