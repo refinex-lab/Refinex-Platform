@@ -42,6 +42,9 @@ import { Route as AuthenticatedSystemManagementSystemUsersRouteImport } from './
 import { Route as AuthenticatedSystemManagementRolesRouteImport } from './routes/_authenticated/system-management/roles'
 import { Route as AuthenticatedSystemManagementMenusRouteImport } from './routes/_authenticated/system-management/menus'
 import { Route as AuthenticatedSystemManagementDataResourcesRouteImport } from './routes/_authenticated/system-management/data-resources'
+import { Route as AuthenticatedSystemManagementAiProvisionsRouteImport } from './routes/_authenticated/system-management/ai-provisions'
+import { Route as AuthenticatedSystemManagementAiProvidersRouteImport } from './routes/_authenticated/system-management/ai-providers'
+import { Route as AuthenticatedSystemManagementAiModelsRouteImport } from './routes/_authenticated/system-management/ai-models'
 import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes/_authenticated/settings/notifications'
 import { Route as AuthenticatedSettingsDisplayRouteImport } from './routes/_authenticated/settings/display'
 import { Route as AuthenticatedSettingsAppearanceRouteImport } from './routes/_authenticated/settings/appearance'
@@ -227,6 +230,24 @@ const AuthenticatedSystemManagementDataResourcesRoute =
     path: '/system-management/data-resources',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedSystemManagementAiProvisionsRoute =
+  AuthenticatedSystemManagementAiProvisionsRouteImport.update({
+    id: '/system-management/ai-provisions',
+    path: '/system-management/ai-provisions',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSystemManagementAiProvidersRoute =
+  AuthenticatedSystemManagementAiProvidersRouteImport.update({
+    id: '/system-management/ai-providers',
+    path: '/system-management/ai-providers',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSystemManagementAiModelsRoute =
+  AuthenticatedSystemManagementAiModelsRouteImport.update({
+    id: '/system-management/ai-models',
+    path: '/system-management/ai-models',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSettingsNotificationsRoute =
   AuthenticatedSettingsNotificationsRouteImport.update({
     id: '/notifications',
@@ -321,6 +342,9 @@ export interface FileRoutesByFullPath {
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/display': typeof AuthenticatedSettingsDisplayRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
+  '/system-management/ai-models': typeof AuthenticatedSystemManagementAiModelsRoute
+  '/system-management/ai-providers': typeof AuthenticatedSystemManagementAiProvidersRoute
+  '/system-management/ai-provisions': typeof AuthenticatedSystemManagementAiProvisionsRoute
   '/system-management/data-resources': typeof AuthenticatedSystemManagementDataResourcesRoute
   '/system-management/menus': typeof AuthenticatedSystemManagementMenusRoute
   '/system-management/roles': typeof AuthenticatedSystemManagementRolesRoute
@@ -364,6 +388,9 @@ export interface FileRoutesByTo {
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/display': typeof AuthenticatedSettingsDisplayRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
+  '/system-management/ai-models': typeof AuthenticatedSystemManagementAiModelsRoute
+  '/system-management/ai-providers': typeof AuthenticatedSystemManagementAiProvidersRoute
+  '/system-management/ai-provisions': typeof AuthenticatedSystemManagementAiProvisionsRoute
   '/system-management/data-resources': typeof AuthenticatedSystemManagementDataResourcesRoute
   '/system-management/menus': typeof AuthenticatedSystemManagementMenusRoute
   '/system-management/roles': typeof AuthenticatedSystemManagementRolesRoute
@@ -412,6 +439,9 @@ export interface FileRoutesById {
   '/_authenticated/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/_authenticated/settings/display': typeof AuthenticatedSettingsDisplayRoute
   '/_authenticated/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
+  '/_authenticated/system-management/ai-models': typeof AuthenticatedSystemManagementAiModelsRoute
+  '/_authenticated/system-management/ai-providers': typeof AuthenticatedSystemManagementAiProvidersRoute
+  '/_authenticated/system-management/ai-provisions': typeof AuthenticatedSystemManagementAiProvisionsRoute
   '/_authenticated/system-management/data-resources': typeof AuthenticatedSystemManagementDataResourcesRoute
   '/_authenticated/system-management/menus': typeof AuthenticatedSystemManagementMenusRoute
   '/_authenticated/system-management/roles': typeof AuthenticatedSystemManagementRolesRoute
@@ -458,6 +488,9 @@ export interface FileRouteTypes {
     | '/settings/appearance'
     | '/settings/display'
     | '/settings/notifications'
+    | '/system-management/ai-models'
+    | '/system-management/ai-providers'
+    | '/system-management/ai-provisions'
     | '/system-management/data-resources'
     | '/system-management/menus'
     | '/system-management/roles'
@@ -501,6 +534,9 @@ export interface FileRouteTypes {
     | '/settings/appearance'
     | '/settings/display'
     | '/settings/notifications'
+    | '/system-management/ai-models'
+    | '/system-management/ai-providers'
+    | '/system-management/ai-provisions'
     | '/system-management/data-resources'
     | '/system-management/menus'
     | '/system-management/roles'
@@ -548,6 +584,9 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/appearance'
     | '/_authenticated/settings/display'
     | '/_authenticated/settings/notifications'
+    | '/_authenticated/system-management/ai-models'
+    | '/_authenticated/system-management/ai-providers'
+    | '/_authenticated/system-management/ai-provisions'
     | '/_authenticated/system-management/data-resources'
     | '/_authenticated/system-management/menus'
     | '/_authenticated/system-management/roles'
@@ -822,6 +861,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSystemManagementDataResourcesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/system-management/ai-provisions': {
+      id: '/_authenticated/system-management/ai-provisions'
+      path: '/system-management/ai-provisions'
+      fullPath: '/system-management/ai-provisions'
+      preLoaderRoute: typeof AuthenticatedSystemManagementAiProvisionsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/system-management/ai-providers': {
+      id: '/_authenticated/system-management/ai-providers'
+      path: '/system-management/ai-providers'
+      fullPath: '/system-management/ai-providers'
+      preLoaderRoute: typeof AuthenticatedSystemManagementAiProvidersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/system-management/ai-models': {
+      id: '/_authenticated/system-management/ai-models'
+      path: '/system-management/ai-models'
+      fullPath: '/system-management/ai-models'
+      preLoaderRoute: typeof AuthenticatedSystemManagementAiModelsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/settings/notifications': {
       id: '/_authenticated/settings/notifications'
       path: '/notifications'
@@ -951,6 +1011,9 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
+  AuthenticatedSystemManagementAiModelsRoute: typeof AuthenticatedSystemManagementAiModelsRoute
+  AuthenticatedSystemManagementAiProvidersRoute: typeof AuthenticatedSystemManagementAiProvidersRoute
+  AuthenticatedSystemManagementAiProvisionsRoute: typeof AuthenticatedSystemManagementAiProvisionsRoute
   AuthenticatedSystemManagementDataResourcesRoute: typeof AuthenticatedSystemManagementDataResourcesRoute
   AuthenticatedSystemManagementMenusRoute: typeof AuthenticatedSystemManagementMenusRoute
   AuthenticatedSystemManagementRolesRoute: typeof AuthenticatedSystemManagementRolesRoute
@@ -974,6 +1037,12 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,
+  AuthenticatedSystemManagementAiModelsRoute:
+    AuthenticatedSystemManagementAiModelsRoute,
+  AuthenticatedSystemManagementAiProvidersRoute:
+    AuthenticatedSystemManagementAiProvidersRoute,
+  AuthenticatedSystemManagementAiProvisionsRoute:
+    AuthenticatedSystemManagementAiProvisionsRoute,
   AuthenticatedSystemManagementDataResourcesRoute:
     AuthenticatedSystemManagementDataResourcesRoute,
   AuthenticatedSystemManagementMenusRoute:

@@ -878,3 +878,160 @@ export interface SystemUserEstab {
 export interface SystemUserBatchDeleteRequest {
   userIds: number[]
 }
+
+// ─── AI Provider ───
+
+export interface AiProvider {
+  id?: number
+  providerCode?: string
+  providerName?: string
+  protocol?: string
+  baseUrl?: string
+  iconUrl?: string
+  status?: number
+  sort?: number
+  remark?: string
+  extJson?: string
+}
+
+export interface AiProviderListQuery extends PaginationQuery {
+  status?: number
+  keyword?: string
+}
+
+export interface AiProviderCreateRequest {
+  providerCode: string
+  providerName: string
+  protocol?: string
+  baseUrl?: string
+  iconUrl?: string
+  status?: number
+  sort?: number
+  remark?: string
+  extJson?: string
+}
+
+export interface AiProviderUpdateRequest {
+  providerName: string
+  protocol?: string
+  baseUrl?: string
+  iconUrl?: string
+  status?: number
+  sort?: number
+  remark?: string
+  extJson?: string
+}
+
+// ─── AI Model ───
+
+export interface AiModel {
+  id?: number
+  providerId?: number
+  modelCode?: string
+  modelName?: string
+  modelType?: number
+  capVision?: number
+  capToolCall?: number
+  capStructuredOutput?: number
+  capStreaming?: number
+  capReasoning?: number
+  maxContextWindow?: number
+  maxOutputTokens?: number
+  inputPrice?: number
+  outputPrice?: number
+  status?: number
+  sort?: number
+  remark?: string
+  extJson?: string
+}
+
+export interface AiModelListQuery extends PaginationQuery {
+  providerId?: number
+  modelType?: number
+  status?: number
+  keyword?: string
+}
+
+export interface AiModelCreateRequest {
+  providerId: number
+  modelCode: string
+  modelName: string
+  modelType?: number
+  capVision?: number
+  capToolCall?: number
+  capStructuredOutput?: number
+  capStreaming?: number
+  capReasoning?: number
+  maxContextWindow?: number
+  maxOutputTokens?: number
+  inputPrice?: number
+  outputPrice?: number
+  status?: number
+  sort?: number
+  remark?: string
+  extJson?: string
+}
+
+export interface AiModelUpdateRequest {
+  modelName: string
+  modelType?: number
+  capVision?: number
+  capToolCall?: number
+  capStructuredOutput?: number
+  capStreaming?: number
+  capReasoning?: number
+  maxContextWindow?: number
+  maxOutputTokens?: number
+  inputPrice?: number
+  outputPrice?: number
+  status?: number
+  sort?: number
+  remark?: string
+  extJson?: string
+}
+
+// ─── AI Model Provision ───
+
+export interface AiModelProvision {
+  id?: number
+  estabId?: number
+  modelId?: number
+  apiKeyMasked?: string
+  apiBaseUrl?: string
+  dailyQuota?: number
+  monthlyQuota?: number
+  isDefault?: number
+  status?: number
+  remark?: string
+  extJson?: string
+}
+
+export interface AiModelProvisionListQuery extends PaginationQuery {
+  estabId?: number
+  modelId?: number
+  status?: number
+}
+
+export interface AiModelProvisionCreateRequest {
+  estabId: number
+  modelId: number
+  apiKey?: string
+  apiBaseUrl?: string
+  dailyQuota?: number
+  monthlyQuota?: number
+  isDefault?: number
+  status?: number
+  remark?: string
+  extJson?: string
+}
+
+export interface AiModelProvisionUpdateRequest {
+  apiKey?: string
+  apiBaseUrl?: string
+  dailyQuota?: number
+  monthlyQuota?: number
+  isDefault?: number
+  status?: number
+  remark?: string
+  extJson?: string
+}

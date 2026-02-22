@@ -18,6 +18,7 @@ import {
   Database,
   Building2,
   UserRound,
+  Bot,
 } from 'lucide-react'
 import { appConfig } from '@/config/app-config'
 import { type SidebarData } from '../types'
@@ -238,6 +239,24 @@ export const sidebarData: SidebarData = {
               title: '集合定义',
               url: '/system-management/value-sets',
               icon: Database,
+            },
+            {
+              title: 'AI 管理',
+              icon: Bot,
+              items: [
+                {
+                  title: '供应商管理',
+                  url: '/system-management/ai-providers',
+                },
+                {
+                  title: '模型管理',
+                  url: '/system-management/ai-models',
+                },
+                {
+                  title: '模型开通',
+                  url: '/system-management/ai-provisions',
+                },
+              ],
             },
             {
               title: '日志管理',

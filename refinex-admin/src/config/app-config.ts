@@ -35,6 +35,7 @@ export const appConfig = {
       user: normalizePrefix(import.meta.env.VITE_API_PREFIX_USER, '/refinex-user'),
       token: normalizePrefix(import.meta.env.VITE_API_PREFIX_TOKEN, '/refinex-auth'),
       system: normalizePrefix(import.meta.env.VITE_API_PREFIX_SYSTEM, '/refinex-system'),
+      ai: normalizePrefix(import.meta.env.VITE_API_PREFIX_AI, '/refinex-ai'),
     },
   },
   auth: {

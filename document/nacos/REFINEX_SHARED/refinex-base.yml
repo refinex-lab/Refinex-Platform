@@ -7,7 +7,12 @@
 
 refinex:
   crypto:
-    # AES 加密密钥（16/24/32字节，敏感）
+    # AES 加密密钥（Hex 格式：32/48/64 个十六进制字符，对应 AES-128/192/256）
+    # 生成方式（任选其一）：
+    #   1. Java 工具类：java -cp refinex-base.jar cn.refinex.base.utils.AesUtils 256
+    #   2. openssl 命令：openssl rand -hex 32  （生成 AES-256 密钥，64 个 hex 字符）
+    #   3. openssl 命令：openssl rand -hex 16  （生成 AES-128 密钥，32 个 hex 字符）
+    # 注意：密钥必须是纯十六进制字符串，长度 32/48/64，不要使用任意长度的随机字符串
     aes-key: ${REFINEX_CRYPTO_AES_KEY:}
 
   nacos:
