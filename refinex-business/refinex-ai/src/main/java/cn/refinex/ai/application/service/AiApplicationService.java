@@ -255,6 +255,7 @@ public class AiApplicationService {
         entity.setCapToolCall(getIfNull(command.getCapToolCall(), 0));
         entity.setCapStructuredOutput(getIfNull(command.getCapStructuredOutput(), 0));
         entity.setCapStreaming(getIfNull(command.getCapStreaming(), 1));
+        entity.setCapReasoning(getIfNull(command.getCapReasoning(), 0));
         entity.setMaxContextWindow(command.getMaxContextWindow());
         entity.setMaxOutputTokens(command.getMaxOutputTokens());
         entity.setInputPrice(command.getInputPrice());
@@ -287,6 +288,7 @@ public class AiApplicationService {
         existing.setCapToolCall(getIfNull(command.getCapToolCall(), existing.getCapToolCall()));
         existing.setCapStructuredOutput(getIfNull(command.getCapStructuredOutput(), existing.getCapStructuredOutput()));
         existing.setCapStreaming(getIfNull(command.getCapStreaming(), existing.getCapStreaming()));
+        existing.setCapReasoning(getIfNull(command.getCapReasoning(), existing.getCapReasoning()));
         existing.setMaxContextWindow(command.getMaxContextWindow());
         existing.setMaxOutputTokens(command.getMaxOutputTokens());
         existing.setInputPrice(command.getInputPrice());

@@ -48,6 +48,11 @@ public class UpdateModelCommand {
     private Integer capStreaming;
 
     /**
+     * 能力:深度推理 1支持 0不支持
+     */
+    private Integer capReasoning;
+
+    /**
      * 最大上下文窗口(token数)
      */
     private Integer maxContextWindow;

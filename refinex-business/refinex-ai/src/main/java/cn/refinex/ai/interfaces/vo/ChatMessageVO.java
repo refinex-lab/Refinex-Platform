@@ -24,4 +24,9 @@ public class ChatMessageVO {
      * 消息时间
      */
     private String timestamp;
+
+    /**
+     * 推理内容(仅推理模型的 ASSISTANT 消息)
+     */
+    private String reasoningContent;
 }

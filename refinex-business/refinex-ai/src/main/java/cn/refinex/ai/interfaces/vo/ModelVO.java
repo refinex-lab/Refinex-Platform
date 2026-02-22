@@ -58,6 +58,11 @@ public class ModelVO {
     private Integer capStreaming;
 
     /**
+     * 能力:深度推理 1支持 0不支持
+     */
+    private Integer capReasoning;
+
+    /**
      * 最大上下文窗口大小
      */
     private Integer maxContextWindow;

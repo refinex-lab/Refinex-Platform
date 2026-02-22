@@ -58,6 +58,7 @@ CREATE TABLE ai_model (
   cap_tool_call TINYINT NOT NULL DEFAULT 0 COMMENT '能力:工具调用 1支持 0不支持',
   cap_structured_output TINYINT NOT NULL DEFAULT 0 COMMENT '能力:结构化输出 1支持 0不支持',
   cap_streaming TINYINT NOT NULL DEFAULT 1 COMMENT '能力:流式输出 1支持 0不支持',
+  cap_reasoning TINYINT NOT NULL DEFAULT 0 COMMENT '能力:深度推理 1支持 0不支持',
   max_context_window INT DEFAULT NULL COMMENT '最大上下文窗口(token数)',
   max_output_tokens INT DEFAULT NULL COMMENT '最大输出token数',
   input_price DECIMAL(12,6) DEFAULT NULL COMMENT '输入价格(每百万token/美元)',

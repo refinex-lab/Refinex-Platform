@@ -70,6 +70,13 @@ public class ModelCreateRequest {
     private Integer capStreaming;
 
     /**
+     * 能力:深度推理 1支持 0不支持
+     */
+    @Min(value = 0, message = "能力标识取值非法")
+    @Max(value = 1, message = "能力标识取值非法")
+    private Integer capReasoning;
+
+    /**
      * 最大上下文窗口(token数)
      */
     @Positive(message = "最大上下文窗口必须大于0")

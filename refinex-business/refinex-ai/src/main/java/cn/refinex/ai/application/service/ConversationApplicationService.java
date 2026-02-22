@@ -5,10 +5,8 @@ import cn.refinex.ai.application.command.QueryConversationListCommand;
 import cn.refinex.ai.application.command.StreamChatCommand;
 import cn.refinex.ai.application.dto.ConversationDTO;
 import cn.refinex.ai.domain.error.AiErrorCode;
-import cn.refinex.ai.domain.model.entity.ConversationEntity;
-import cn.refinex.ai.domain.model.entity.ModelEntity;
-import cn.refinex.ai.domain.model.entity.PromptTemplateEntity;
-import cn.refinex.ai.domain.model.entity.UsageLogEntity;
+import cn.refinex.ai.domain.model.entity.*;
+import cn.refinex.ai.domain.model.enums.ContinueIntentDetector;
 import cn.refinex.ai.domain.model.enums.RequestType;
 import cn.refinex.ai.domain.repository.AiRepository;
 import cn.refinex.ai.infrastructure.ai.ChatModelRouter;
@@ -24,10 +22,15 @@ import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.repository.jdbc.JdbcChatMemoryRepository;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
+import org.springframework.ai.deepseek.DeepSeekAssistantMessage;
 import org.springframework.ai.template.st.StTemplateRenderer;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.stereotype.Service;
@@ -82,7 +85,12 @@ public class ConversationApplicationService {
     public Flux<ServerSentEvent<String>> streamChat(StreamChatCommand command) {
         return Mono.fromCallable(() -> prepareChat(command))
                 .subscribeOn(Schedulers.boundedElastic())
-                .flatMapMany(ctx -> buildStreamPipeline(command, ctx));
+                .flatMapMany(ctx -> {
+                    if (isPrefixContinueEligible(command, ctx)) {
+                        return buildPrefixContinuePipeline(command, ctx);
+                    }
+                    return buildStreamPipeline(command, ctx);
+                });
     }
 
     /**
@@ -206,9 +214,7 @@ public class ConversationApplicationService {
                 .stream()
                 .chatResponse()
                 .doOnNext(chatResponse -> captureMetadata(chatResponse, usageRef, finishReasonRef))
-                .mapNotNull(chatResponse -> chatResponse.getResult().getOutput().getText())
-                .filter(text -> !text.isEmpty())
-                .map(text -> ServerSentEvent.<String>builder().data(text).build())
+                .flatMapIterable(chatResponse -> extractSseEvents(chatResponse, ctx.capReasoning()))
                 .concatWith(Flux.just(ServerSentEvent.<String>builder().event("done").data("[DONE]").build()))
                 .doOnComplete(() ->
                         Mono.fromRunnable(() -> onStreamComplete(command, ctx, usageRef.get(), finishReasonRef.get(),
@@ -241,6 +247,176 @@ public class ConversationApplicationService {
         if (chatResponse.getResult().getMetadata().getFinishReason() != null) {
             finishReasonRef.set(chatResponse.getResult().getMetadata().getFinishReason());
         }
+    }
+
+    /**
+     * 从流式响应帧中提取 SSE 事件（推理感知）
+     * <p>
+     * 推理模型（capReasoning=true）的 {@link DeepSeekAssistantMessage} 会携带 reasoningContent，
+     * 通过独立的 {@code event: reasoning} 事件推送给前端，与回答内容 {@code event: answer} 分离。
+     * 非推理模型只发 {@code event: answer}。
+     *
+     * @param chatResponse 流式响应帧
+     * @param capReasoning 是否支持深度推理
+     * @return SSE 事件列表
+     */
+    private List<ServerSentEvent<String>> extractSseEvents(ChatResponse chatResponse, boolean capReasoning) {
+        List<ServerSentEvent<String>> events = new ArrayList<>();
+        var output = chatResponse.getResult().getOutput();
+
+        // 推理内容提取（仅 DeepSeek 推理模型）
+        if (capReasoning && output instanceof DeepSeekAssistantMessage deepSeekMsg) {
+            String reasoning = deepSeekMsg.getReasoningContent();
+            if (reasoning != null && !reasoning.isEmpty()) {
+                events.add(ServerSentEvent.<String>builder().event("reasoning").data(reasoning).build());
+            }
+        }
+
+        // 回答内容提取
+        String text = output.getText();
+        if (text != null && !text.isEmpty()) {
+            events.add(ServerSentEvent.<String>builder().event("answer").data(text).build());
+        }
+        return events;
+    }
+
+    /**
+     * 判断是否满足前缀续写条件
+     * <p>
+     * 条件：非新建对话 + DeepSeek 供应商 + 用户消息为续写意图
+     *
+     * @param command 流式对话命令
+     * @param ctx     对话上下文
+     * @return true 表示应走前缀续写管道
+     */
+    private boolean isPrefixContinueEligible(StreamChatCommand command, ChatContext ctx) {
+        return !ctx.isNewConversation()
+                && "deepseek".equals(ctx.providerCode())
+                && ContinueIntentDetector.isContinueIntent(command.getMessage());
+    }
+
+    /**
+     * 构建前缀续写管道
+     * <p>
+     * 绕过 ChatClient + MessageChatMemoryAdvisor，直接使用 ChatModel.stream(Prompt) 实现前缀续写。
+     * 核心流程：
+     * <ol>
+     *   <li>从 ChatMemory 加载历史消息</li>
+     *   <li>找到最后一条 ASSISTANT 消息作为 prefix</li>
+     *   <li>移除该 ASSISTANT 消息，追加 DeepSeekAssistantMessage.prefixAssistantMessage(lastContent)</li>
+     *   <li>直接调用 ChatModel.stream(Prompt)</li>
+     *   <li>完成后手动将用户"继续"消息 + 续写内容保存到 ChatMemory</li>
+     * </ol>
+     *
+     * @param command 流式对话命令
+     * @param ctx     对话上下文
+     * @return SSE 流
+     */
+    private Flux<ServerSentEvent<String>> buildPrefixContinuePipeline(StreamChatCommand command, ChatContext ctx) {
+        AtomicReference<Usage> usageRef = new AtomicReference<>();
+        AtomicReference<String> finishReasonRef = new AtomicReference<>();
+        AtomicLong startTime = new AtomicLong(System.currentTimeMillis());
+        StringBuilder contentCollector = new StringBuilder();
+
+        return Mono.fromCallable(() -> buildPrefixPrompt(ctx.conversationId()))
+                .subscribeOn(Schedulers.boundedElastic())
+                .flatMapMany(prompt -> ctx.chatModel().stream(prompt)
+                        .doOnNext(chatResponse -> {
+                            captureMetadata(chatResponse, usageRef, finishReasonRef);
+                            collectText(chatResponse, contentCollector);
+                        })
+                        .flatMapIterable(chatResponse -> extractSseEvents(chatResponse, ctx.capReasoning()))
+                        .concatWith(Flux.just(ServerSentEvent.<String>builder().event("done").data("[DONE]").build()))
+                        .doOnComplete(() ->
+                                Mono.fromRunnable(() -> onPrefixContinueComplete(command, ctx, contentCollector,
+                                                usageRef, finishReasonRef, startTime))
+                                        .subscribeOn(Schedulers.boundedElastic()).subscribe()
+                        )
+                        .doOnError(error -> {
+                            log.error("前缀续写异常, conversationId={}", ctx.conversationId(), error);
+                            Mono.fromRunnable(() -> recordUsageLog(
+                                    command, ctx, usageRef.get(), "error",
+                                    (int) (System.currentTimeMillis() - startTime.get()), false, error.getMessage()
+                            )).subscribeOn(Schedulers.boundedElastic()).subscribe();
+                        })
+                );
+    }
+
+    /**
+     * 从历史消息构建前缀续写 Prompt
+     * <p>
+     * 找到最后一条 ASSISTANT 消息，将其替换为 {@link DeepSeekAssistantMessage#prefixAssistantMessage(String)}，
+     * 使 DeepSeek Beta 端点从该前缀处继续生成。
+     *
+     * @param conversationId 会话唯一标识
+     * @return 构建好的 Prompt
+     */
+    private Prompt buildPrefixPrompt(String conversationId) {
+        List<Message> history = chatMemory.get(conversationId);
+        if (history.isEmpty()) {
+            throw new BizException(AiErrorCode.PREFIX_CONTINUE_NO_HISTORY);
+        }
+
+        // 找到最后一条 ASSISTANT 消息
+        String lastAssistantContent = null;
+        int lastAssistantIndex = -1;
+        for (int i = history.size() - 1; i >= 0; i--) {
+            if (history.get(i) instanceof AssistantMessage am) {
+                lastAssistantContent = am.getText();
+                lastAssistantIndex = i;
+                break;
+            }
+        }
+        if (lastAssistantContent == null || lastAssistantContent.isBlank()) {
+            throw new BizException(AiErrorCode.PREFIX_CONTINUE_NO_HISTORY);
+        }
+
+        // 构建消息列表：移除最后一条 ASSISTANT，追加 prefix 消息
+        List<Message> messages = new ArrayList<>(history.subList(0, lastAssistantIndex));
+        if (lastAssistantIndex + 1 < history.size()) {
+            messages.addAll(history.subList(lastAssistantIndex + 1, history.size()));
+        }
+        messages.add(DeepSeekAssistantMessage.prefixAssistantMessage(lastAssistantContent));
+
+        return new Prompt(messages);
+    }
+
+    /**
+     * 从流式响应帧中收集文本内容到 StringBuilder
+     *
+     * @param chatResponse     流式响应帧
+     * @param contentCollector 内容收集器
+     */
+    private void collectText(ChatResponse chatResponse, StringBuilder contentCollector) {
+        String text = chatResponse.getResult().getOutput().getText();
+        if (text != null && !text.isEmpty()) {
+            contentCollector.append(text);
+        }
+    }
+
+    /**
+     * 前缀续写完成后的回调：持久化消息到 ChatMemory + 记录用量日志
+     *
+     * @param command          流式对话命令
+     * @param ctx              对话上下文
+     * @param contentCollector 续写内容收集器
+     * @param usageRef         Usage 引用
+     * @param finishReasonRef  finishReason 引用
+     * @param startTime        开始时间
+     */
+    private void onPrefixContinueComplete(StreamChatCommand command, ChatContext ctx, StringBuilder contentCollector,
+                                          AtomicReference<Usage> usageRef, AtomicReference<String> finishReasonRef,
+                                          AtomicLong startTime) {
+        try {
+            chatMemory.add(ctx.conversationId(), List.of(
+                    new UserMessage(command.getMessage()),
+                    new AssistantMessage(contentCollector.toString())
+            ));
+        } catch (Exception e) {
+            log.error("前缀续写消息持久化失败, conversationId={}", ctx.conversationId(), e);
+        }
+
+        recordUsageLog(command, ctx, usageRef.get(), finishReasonRef.get(), (int) (System.currentTimeMillis() - startTime.get()), true, null);
     }
 
     /**
@@ -305,7 +481,21 @@ public class ConversationApplicationService {
                 ? chatModelRouter.resolve(command.getEstabId(), modelId)
                 : chatModelRouter.resolveDefault(command.getEstabId());
 
-        return new ChatContext(conversationId, modelId, systemPrompt, chatModel, isNewConversation);
+        // 解析 capReasoning 和 providerCode
+        boolean capReasoning = false;
+        String providerCode = null;
+        if (modelId != null) {
+            ModelEntity modelEntity = aiRepository.findModelById(modelId);
+            if (modelEntity != null) {
+                capReasoning = modelEntity.getCapReasoning() != null && modelEntity.getCapReasoning() == 1;
+                ProviderEntity provider = aiRepository.findProviderById(modelEntity.getProviderId());
+                if (provider != null) {
+                    providerCode = provider.getProviderCode();
+                }
+            }
+        }
+
+        return new ChatContext(conversationId, modelId, systemPrompt, chatModel, isNewConversation, capReasoning, providerCode);
     }
 
     /**
@@ -558,13 +748,17 @@ public class ConversationApplicationService {
      * @param systemPrompt      系统提示词
      * @param chatModel         ChatModel 实例
      * @param isNewConversation 是否为新建对话
+     * @param capReasoning      是否支持深度推理
+     * @param providerCode      供应商编码
      */
     private record ChatContext(
             String conversationId,
             Long modelId,
             String systemPrompt,
             ChatModel chatModel,
-            boolean isNewConversation
+            boolean isNewConversation,
+            boolean capReasoning,
+            String providerCode
     ) {
     }
 }

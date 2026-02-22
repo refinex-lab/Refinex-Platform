@@ -47,6 +47,7 @@ public enum AiErrorCode implements ErrorCode {
     CONVERSATION_NOT_OWNED("AI_403_CONVERSATION", "无权访问该对话"),
     CHAT_STREAM_ERROR("AI_500_CHAT_STREAM", "对话流式响应异常"),
     PROMPT_TEMPLATE_RENDER_ERROR("AI_500_PROMPT_RENDER", "Prompt模板渲染失败"),
+    PREFIX_CONTINUE_NO_HISTORY("AI_400_PREFIX_CONTINUE", "无可续写的历史消息"),
     ;
 
     private final String code;
