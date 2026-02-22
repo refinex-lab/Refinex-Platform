@@ -8,12 +8,19 @@ server:
   port: 8084
 
 spring:
+  ai:
+    chat:
+      client:
+        # 禁用 ChatClient 自动配置（由 ChatModelRouter 动态构建）
+        enabled: false
+
   servlet:
     multipart:
       # 单个文件最大大小
       max-file-size: 10MB
       # 单次请求最大大小
       max-request-size: 20MB
+
   http:
     clients:
       # HTTP Service Client 全局连接超时

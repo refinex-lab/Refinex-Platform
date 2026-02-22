@@ -6,6 +6,7 @@ import cn.refinex.ai.application.dto.*;
 import cn.refinex.ai.domain.error.AiErrorCode;
 import cn.refinex.ai.domain.model.entity.*;
 import cn.refinex.ai.domain.repository.AiRepository;
+import cn.refinex.ai.infrastructure.ai.ChatModelRegistry;
 import cn.refinex.base.config.RefinexCryptoProperties;
 import cn.refinex.base.exception.BizException;
 import cn.refinex.base.response.PageResponse;
@@ -34,6 +35,7 @@ public class AiApplicationService {
     private final AiRepository aiRepository;
     private final AiDomainAssembler aiDomainAssembler;
     private final RefinexCryptoProperties cryptoProperties;
+    private final ChatModelRegistry chatModelRegistry;
 
     // ══════════════════════════════════════
     // Provider（供应商）
@@ -145,6 +147,7 @@ public class AiApplicationService {
         existing.setExtJson(trimToNull(command.getExtJson()));
 
         aiRepository.updateProvider(existing);
+        chatModelRegistry.evictAll();
         return aiDomainAssembler.toProviderDto(requireProvider(existing.getId()));
     }
 
@@ -161,6 +164,7 @@ public class AiApplicationService {
             throw new BizException("该供应商下仍有关联模型，请先删除模型", AiErrorCode.INVALID_PARAM);
         }
         aiRepository.deleteProviderById(providerId);
+        chatModelRegistry.evictAll();
     }
 
     // ══════════════════════════════════════
@@ -292,6 +296,7 @@ public class AiApplicationService {
         existing.setExtJson(trimToNull(command.getExtJson()));
 
         aiRepository.updateModel(existing);
+        chatModelRegistry.evictAll();
         return aiDomainAssembler.toModelDto(requireModel(existing.getId()));
     }
 
@@ -304,6 +309,7 @@ public class AiApplicationService {
     public void deleteModel(Long modelId) {
         requireModel(modelId);
         aiRepository.deleteModelById(modelId);
+        chatModelRegistry.evictAll();
     }
 
     // ══════════════════════════════════════
@@ -559,6 +565,7 @@ public class AiApplicationService {
         existing.setExtJson(trimToNull(command.getExtJson()));
 
         aiRepository.updateModelProvision(existing);
+        chatModelRegistry.evict(existing.getId());
         return aiDomainAssembler.toModelProvisionDto(requireModelProvision(existing.getId()));
     }
 
@@ -571,6 +578,7 @@ public class AiApplicationService {
     public void deleteModelProvision(Long provisionId) {
         requireModelProvision(provisionId);
         aiRepository.deleteModelProvisionById(provisionId);
+        chatModelRegistry.evict(provisionId);
     }
 
     // ══════════════════════════════════════

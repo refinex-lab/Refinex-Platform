@@ -270,6 +270,23 @@ public interface AiRepository {
      */
     void deleteModelProvisionById(Long provisionId);
 
+    /**
+     * 查询租户的活跃模型开通（estabId + modelId, status=1, deleted=0）
+     *
+     * @param estabId 组织ID
+     * @param modelId 模型ID
+     * @return 租户模型开通实体，不存在返回 null
+     */
+    ModelProvisionEntity findActiveProvision(Long estabId, Long modelId);
+
+    /**
+     * 查询租户的默认模型开通（is_default=1, status=1, deleted=0）
+     *
+     * @param estabId 组织ID
+     * @return 租户默认模型开通实体，不存在返回 null
+     */
+    ModelProvisionEntity findDefaultProvision(Long estabId);
+
     // ── Tool ──
 
     /**

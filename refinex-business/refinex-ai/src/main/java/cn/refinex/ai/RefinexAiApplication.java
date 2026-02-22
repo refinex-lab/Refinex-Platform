@@ -12,7 +12,17 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
  */
 @EnableDiscoveryClient
 @MapperScan("cn.refinex.ai.infrastructure.persistence.mapper")
-@SpringBootApplication(scanBasePackages = "cn.refinex")
+@SpringBootApplication(
+        scanBasePackages = "cn.refinex",
+        exclude = {
+                org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration.class,
+                org.springframework.ai.model.deepseek.autoconfigure.DeepSeekChatAutoConfiguration.class,
+                org.springframework.ai.model.anthropic.autoconfigure.AnthropicChatAutoConfiguration.class,
+                org.springframework.ai.model.minimax.autoconfigure.MiniMaxChatAutoConfiguration.class,
+                org.springframework.ai.model.zhipuai.autoconfigure.ZhiPuAiChatAutoConfiguration.class,
+                org.springframework.ai.model.chat.client.autoconfigure.ChatClientAutoConfiguration.class,
+        }
+)
 public class RefinexAiApplication {
 
     public static void main(String[] args) {

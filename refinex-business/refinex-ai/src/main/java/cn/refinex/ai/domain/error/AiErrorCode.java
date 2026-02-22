@@ -35,6 +35,13 @@ public enum AiErrorCode implements ErrorCode {
 
     SKILL_NOT_FOUND("AI_404_SKILL", "技能不存在"),
     SKILL_CODE_DUPLICATED("AI_409_SKILL_CODE", "技能编码已存在"),
+
+    MODEL_PROVISION_DISABLED("AI_403_MODEL_PROVISION", "该模型配置已停用"),
+    PROVIDER_DISABLED("AI_403_PROVIDER", "该供应商已停用"),
+    MODEL_DISABLED("AI_403_MODEL", "该模型已停用"),
+    API_KEY_MISSING("AI_400_API_KEY", "API Key未配置"),
+    UNSUPPORTED_PROTOCOL("AI_400_PROTOCOL", "不支持的接口协议"),
+    DEFAULT_MODEL_NOT_CONFIGURED("AI_404_DEFAULT_MODEL", "该租户未配置默认模型"),
     ;
 
     private final String code;
