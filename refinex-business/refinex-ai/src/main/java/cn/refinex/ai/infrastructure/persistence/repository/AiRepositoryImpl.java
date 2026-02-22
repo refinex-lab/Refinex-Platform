@@ -1774,6 +1774,31 @@ public class AiRepositoryImpl implements AiRepository {
         }
     }
 
+    /**
+     * 查询知识库下所有需要向量化的文档（vectorStatus != VECTORIZING，content 非空）
+     *
+     * @param knowledgeBaseId 知识库ID
+     * @return 待向量化的文档列表
+     */
+    @Override
+    public List<DocumentEntity> listDocumentsForVectorization(Long knowledgeBaseId) {
+        List<KbDocumentDo> rows = kbDocumentMapper.selectList(
+                Wrappers.lambdaQuery(KbDocumentDo.class)
+                        .eq(KbDocumentDo::getKnowledgeBaseId, knowledgeBaseId)
+                        .eq(KbDocumentDo::getDeleted, 0)
+                        .isNotNull(KbDocumentDo::getContent)
+                        .ne(KbDocumentDo::getContent, "")
+                        .ne(KbDocumentDo::getVectorStatus, 1)
+                        .orderByAsc(KbDocumentDo::getId)
+        );
+
+        List<DocumentEntity> result = new ArrayList<>();
+        for (KbDocumentDo row : rows) {
+            result.add(documentDoConverter.toEntity(row));
+        }
+        return result;
+    }
+
     // ── SkillKnowledge ──
 
     /**

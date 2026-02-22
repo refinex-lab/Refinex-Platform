@@ -25,6 +25,15 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
                 org.springframework.ai.model.zhipuai.autoconfigure.ZhiPuAiChatAutoConfiguration.class,
                 org.springframework.ai.model.zhipuai.autoconfigure.ZhiPuAiImageAutoConfiguration.class,
                 org.springframework.ai.model.chat.client.autoconfigure.ChatClientAutoConfiguration.class,
+                // Embedding 自动配置排除（动态路由，不用单例 bean）
+                org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration.class,
+                org.springframework.ai.model.zhipuai.autoconfigure.ZhiPuAiEmbeddingAutoConfiguration.class,
+                org.springframework.ai.model.minimax.autoconfigure.MiniMaxEmbeddingAutoConfiguration.class,
+                // VectorStore 自动配置排除（程序化创建，不用单例 bean）
+                org.springframework.ai.vectorstore.redis.autoconfigure.RedisVectorStoreAutoConfiguration.class,
+                org.springframework.ai.vectorstore.elasticsearch.autoconfigure.ElasticsearchVectorStoreAutoConfiguration.class,
+                org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreAutoConfiguration.class,
+                org.springframework.ai.vectorstore.qdrant.autoconfigure.QdrantVectorStoreAutoConfiguration.class,
         }
 )
 public class RefinexAiApplication {

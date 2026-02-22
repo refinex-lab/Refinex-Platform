@@ -1,15 +1,12 @@
 package cn.refinex.ai.interfaces.controller;
 
 import cn.refinex.ai.application.command.*;
-import cn.refinex.ai.application.dto.DocumentDTO;
-import cn.refinex.ai.application.dto.FolderDTO;
-import cn.refinex.ai.application.dto.KnowledgeBaseDTO;
+import cn.refinex.ai.application.dto.*;
 import cn.refinex.ai.application.service.KbApplicationService;
+import cn.refinex.ai.application.service.VectorizationService;
 import cn.refinex.ai.interfaces.assembler.KbApiAssembler;
 import cn.refinex.ai.interfaces.dto.*;
-import cn.refinex.ai.interfaces.vo.DocumentVO;
-import cn.refinex.ai.interfaces.vo.FolderVO;
-import cn.refinex.ai.interfaces.vo.KnowledgeBaseVO;
+import cn.refinex.ai.interfaces.vo.*;
 import cn.refinex.base.response.PageResponse;
 import cn.refinex.web.vo.PageResult;
 import cn.refinex.web.vo.Result;
@@ -35,6 +32,7 @@ import java.util.List;
 public class KnowledgeBaseController {
 
     private final KbApplicationService kbApplicationService;
+    private final VectorizationService vectorizationService;
     private final KbApiAssembler kbApiAssembler;
 
     // ── KnowledgeBase ──
@@ -342,6 +340,90 @@ public class KnowledgeBaseController {
             List<SortItemCommand> commands = kbApiAssembler.toSortItemCommandList(request.getItems());
             kbApplicationService.sortItems(kbId, commands);
             return Result.<Void>success();
+        }).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    // ── Vectorization ──
+
+    /**
+     * 触发单文档向量化
+     *
+     * @param kbId  知识库ID
+     * @param docId 文档ID
+     * @return 空结果
+     */
+    @PostMapping("/{kbId}/documents/{docId}/vectorize")
+    public Mono<Result<Void>> vectorizeDocument(
+            @PathVariable @Positive(message = "知识库ID必须大于0") Long kbId,
+            @PathVariable @Positive(message = "文档ID必须大于0") Long docId) {
+        return Mono.fromCallable(() -> {
+            vectorizationService.vectorizeDocument(kbId, docId);
+            return Result.<Void>success();
+        }).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    /**
+     * 批量向量化知识库全部文档
+     *
+     * @param kbId 知识库ID
+     * @return 空结果
+     */
+    @PostMapping("/{kbId}/vectorize")
+    public Mono<Result<Void>> vectorizeKnowledgeBase(@PathVariable @Positive(message = "知识库ID必须大于0") Long kbId) {
+        return Mono.fromCallable(() -> {
+            vectorizationService.vectorizeKnowledgeBase(kbId);
+            return Result.<Void>success();
+        }).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    /**
+     * 移除文档向量
+     *
+     * @param kbId  知识库ID
+     * @param docId 文档ID
+     * @return 空结果
+     */
+    @DeleteMapping("/{kbId}/documents/{docId}/vectors")
+    public Mono<Result<Void>> devectorizeDocument(
+            @PathVariable @Positive(message = "知识库ID必须大于0") Long kbId,
+            @PathVariable @Positive(message = "文档ID必须大于0") Long docId) {
+        return Mono.fromCallable(() -> {
+            vectorizationService.devectorizeDocument(kbId, docId);
+            return Result.<Void>success();
+        }).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    /**
+     * 查看文档切片列表
+     *
+     * @param kbId  知识库ID
+     * @param docId 文档ID
+     * @return 切片列表
+     */
+    @GetMapping("/{kbId}/documents/{docId}/chunks")
+    public Mono<Result<List<DocumentChunkVO>>> listDocumentChunks(
+            @PathVariable @Positive(message = "知识库ID必须大于0") Long kbId,
+            @PathVariable @Positive(message = "文档ID必须大于0") Long docId) {
+        return Mono.fromCallable(() -> {
+            List<DocumentChunkDTO> chunks = vectorizationService.listChunks(kbId, docId);
+            return Result.success(kbApiAssembler.toDocumentChunkVoList(chunks));
+        }).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    /**
+     * 测试 RAG 检索
+     *
+     * @param kbId    知识库ID
+     * @param request 检索请求
+     * @return 检索结果列表
+     */
+    @PostMapping("/{kbId}/search")
+    public Mono<Result<List<SearchResultVO>>> search(
+            @PathVariable @Positive(message = "知识库ID必须大于0") Long kbId,
+            @Valid @RequestBody KbSearchRequest request) {
+        return Mono.fromCallable(() -> {
+            List<SearchResultDTO> results = vectorizationService.search(kbId, request.getQuery(), request.getTopK(), request.getSimilarityThreshold());
+            return Result.success(kbApiAssembler.toSearchResultVoList(results));
         }).subscribeOn(Schedulers.boundedElastic());
     }
 }

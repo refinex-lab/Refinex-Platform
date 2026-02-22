@@ -1,8 +1,10 @@
 package cn.refinex.ai.application.assembler;
 
+import cn.refinex.ai.application.dto.DocumentChunkDTO;
 import cn.refinex.ai.application.dto.DocumentDTO;
 import cn.refinex.ai.application.dto.FolderDTO;
 import cn.refinex.ai.application.dto.KnowledgeBaseDTO;
+import cn.refinex.ai.domain.model.entity.DocumentChunkEntity;
 import cn.refinex.ai.domain.model.entity.DocumentEntity;
 import cn.refinex.ai.domain.model.entity.FolderEntity;
 import cn.refinex.ai.domain.model.entity.KnowledgeBaseEntity;
@@ -39,4 +41,12 @@ public interface KbDomainAssembler {
      * @return 文档 DTO
      */
     DocumentDTO toDocumentDto(DocumentEntity entity);
+
+    /**
+     * 将文档切片实体转换为文档切片 DTO
+     *
+     * @param entity 文档切片实体
+     * @return 文档切片 DTO
+     */
+    DocumentChunkDTO toDocumentChunkDto(DocumentChunkEntity entity);
 }

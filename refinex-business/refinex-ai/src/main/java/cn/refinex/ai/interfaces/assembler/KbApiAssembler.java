@@ -1,13 +1,17 @@
 package cn.refinex.ai.interfaces.assembler;
 
 import cn.refinex.ai.application.command.*;
+import cn.refinex.ai.application.dto.DocumentChunkDTO;
 import cn.refinex.ai.application.dto.DocumentDTO;
 import cn.refinex.ai.application.dto.FolderDTO;
 import cn.refinex.ai.application.dto.KnowledgeBaseDTO;
+import cn.refinex.ai.application.dto.SearchResultDTO;
 import cn.refinex.ai.interfaces.dto.*;
+import cn.refinex.ai.interfaces.vo.DocumentChunkVO;
 import cn.refinex.ai.interfaces.vo.DocumentVO;
 import cn.refinex.ai.interfaces.vo.FolderVO;
 import cn.refinex.ai.interfaces.vo.KnowledgeBaseVO;
+import cn.refinex.ai.interfaces.vo.SearchResultVO;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -162,4 +166,40 @@ public interface KbApiAssembler {
      * @return 排序命令列表
      */
     List<SortItemCommand> toSortItemCommandList(List<SortRequest.SortItem> items);
+
+    // ── DocumentChunk ──
+
+    /**
+     * 文档切片DTO转换为文档切片VO
+     *
+     * @param dto 文档切片DTO
+     * @return 文档切片VO
+     */
+    DocumentChunkVO toDocumentChunkVo(DocumentChunkDTO dto);
+
+    /**
+     * 文档切片DTO列表转换为文档切片VO列表
+     *
+     * @param dtos 文档切片DTO列表
+     * @return 文档切片VO列表
+     */
+    List<DocumentChunkVO> toDocumentChunkVoList(List<DocumentChunkDTO> dtos);
+
+    // ── SearchResult ──
+
+    /**
+     * 检索结果DTO转换为检索结果VO
+     *
+     * @param dto 检索结果DTO
+     * @return 检索结果VO
+     */
+    SearchResultVO toSearchResultVo(SearchResultDTO dto);
+
+    /**
+     * 检索结果DTO列表转换为检索结果VO列表
+     *
+     * @param dtos 检索结果DTO列表
+     * @return 检索结果VO列表
+     */
+    List<SearchResultVO> toSearchResultVoList(List<SearchResultDTO> dtos);
 }

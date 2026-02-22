@@ -47,3 +47,61 @@ refinex:
   web:
     # 关闭 TokenFilter，统一使用 Sa-Token 进行鉴权
     enabled: false
+
+  # ── 向量存储配置 ──
+  vector-store:
+    # 激活的向量存储后端: redis / elasticsearch / pgvector / qdrant / simple
+    # simple 为内存+文件存储，适合本地开发和功能验证，生产环境请切换为其他后端
+    provider: simple
+    # 是否自动初始化 schema（索引/表/集合），首次部署设为 true，稳定后可关闭
+    initialize-schema: true
+
+    # --- Redis Stack（provider=redis 时生效）---
+    # 需要 Redis Stack 7.2+（内置 RediSearch + RedisJSON 模块）
+    # 复用 refinex-cache 的 Redis 连接，需额外注册 JedisPooled bean
+    redis:
+      # RediSearch 索引名称
+      index-name: refinex-vectors
+      # Redis key 前缀
+      prefix: "refinex:vec:"
+
+    # --- Elasticsearch（provider=elasticsearch 时生效）---
+    # 需要 Elasticsearch 8.x+，由 spring-boot-starter-data-elasticsearch 提供 RestClient
+    elasticsearch:
+      # 向量索引名称
+      index-name: refinex-vectors
+      # 向量维度（需与嵌入模型输出维度一致，如 text-embedding-3-small=1536）
+      dimensions: 1536
+      # 相似度算法: cosine / dot_product / l2_norm
+      similarity: cosine
+
+    # --- PGvector（provider=pgvector 时生效）---
+    # 需要独立的 PostgreSQL 15+ 实例（已安装 pgvector 扩展），当前主库为 MySQL 不支持
+    # 需配置独立的 PostgreSQL DataSource + JdbcTemplate bean
+    pgvector:
+      # 向量表名
+      table-name: vector_store
+      # PostgreSQL schema
+      schema-name: public
+      # 向量维度
+      dimensions: 1536
+
+    # --- Qdrant（provider=qdrant 时生效）---
+    # 需要 Qdrant 1.7+ 实例
+    qdrant:
+      # Qdrant 服务地址
+      host: localhost
+      # gRPC 端口
+      port: 6334
+      # API Key（无认证时留空）
+      api-key:
+      # 集合名称
+      collection-name: refinex-vectors
+      # 是否启用 TLS
+      use-tls: false
+
+    # --- SimpleVectorStore（provider=simple 时生效）---
+    # 内存存储 + JSON 文件持久化，仅用于开发测试，不支持生产环境
+    simple:
+      # JSON 持久化文件路径
+      file-path: /tmp/refinex-vectors.json

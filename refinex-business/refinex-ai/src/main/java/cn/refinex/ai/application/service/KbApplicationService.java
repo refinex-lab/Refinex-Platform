@@ -6,10 +6,12 @@ import cn.refinex.ai.application.dto.DocumentDTO;
 import cn.refinex.ai.application.dto.FolderDTO;
 import cn.refinex.ai.application.dto.KnowledgeBaseDTO;
 import cn.refinex.ai.domain.error.AiErrorCode;
+import cn.refinex.ai.domain.model.entity.DocumentChunkEntity;
 import cn.refinex.ai.domain.model.entity.DocumentEntity;
 import cn.refinex.ai.domain.model.entity.FolderEntity;
 import cn.refinex.ai.domain.model.entity.KnowledgeBaseEntity;
 import cn.refinex.ai.domain.repository.AiRepository;
+import cn.refinex.ai.infrastructure.ai.VectorStoreRouter;
 import cn.refinex.base.exception.BizException;
 import cn.refinex.base.response.PageResponse;
 import cn.refinex.base.utils.PageUtils;
@@ -18,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.reader.tika.TikaDocumentReader;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +46,8 @@ public class KbApplicationService {
 
     private final AiRepository aiRepository;
     private final KbDomainAssembler kbDomainAssembler;
+    private final VectorStoreRouter vectorStoreRouter;
+    private final VectorizationService vectorizationService;
 
     // ══════════════════════════════════════
     // KnowledgeBase（知识库）
@@ -383,6 +388,16 @@ public class KbApplicationService {
         // 更新知识库 docCount
         updateKbDocCount(command.getKnowledgeBaseId());
 
+        // 自动向量化：知识库开启向量化且文档内容非空时，异步触发向量化
+        KnowledgeBaseEntity kb = aiRepository.findKnowledgeBaseById(command.getKnowledgeBaseId());
+        if (kb != null && kb.getVectorized() != null && kb.getVectorized() == 1 && created.getContent() != null && !created.getContent().isBlank()) {
+            try {
+                vectorizationService.vectorizeDocument(kb.getId(), created.getId());
+            } catch (Exception e) {
+                log.warn("文档创建后自动向量化触发失败: kbId={}, docId={}", kb.getId(), created.getId(), e);
+            }
+        }
+
         return kbDomainAssembler.toDocumentDto(created);
     }
 
@@ -425,6 +440,26 @@ public class KbApplicationService {
     @Transactional(rollbackFor = Exception.class)
     public void deleteDocument(Long id) {
         DocumentEntity entity = requireDocument(id);
+
+        // 清理向量库中的向量数据（仅在 KB 开启向量化时执行）
+        KnowledgeBaseEntity kb = aiRepository.findKnowledgeBaseById(entity.getKnowledgeBaseId());
+        if (kb != null && kb.getVectorized() != null && kb.getVectorized() == 1) {
+            List<DocumentChunkEntity> chunks = aiRepository.listChunksByDocumentId(id);
+            List<String> embeddingIds = chunks.stream()
+                    .map(DocumentChunkEntity::getEmbeddingId)
+                    .filter(eid -> eid != null && !eid.isBlank())
+                    .toList();
+
+            if (!embeddingIds.isEmpty()) {
+                try {
+                    VectorStore vectorStore = vectorStoreRouter.resolve(kb);
+                    vectorStore.delete(embeddingIds);
+                } catch (Exception e) {
+                    log.warn("删除文档时清理向量库失败: docId={}, error={}", id, e.getMessage());
+                }
+            }
+        }
+
         aiRepository.deleteChunksByDocumentId(id);
         aiRepository.deleteDocumentById(id);
         updateKbDocCount(entity.getKnowledgeBaseId());

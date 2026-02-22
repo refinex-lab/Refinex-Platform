@@ -65,6 +65,12 @@ public enum AiErrorCode implements ErrorCode {
     KB_HAS_DOCUMENTS("AI_409_KB_HAS_DOCS", "知识库下存在文档，无法删除"),
     KB_FOLDER_HAS_CHILDREN("AI_409_KB_FOLDER_HAS_CHILDREN", "目录下存在子目录或文档，无法删除"),
     KB_DOCUMENT_PARSE_FAILED("AI_500_KB_DOC_PARSE", "文档内容解析失败"),
+
+    DEFAULT_EMBEDDING_MODEL_NOT_CONFIGURED("AI_404_DEFAULT_EMBEDDING", "该租户未配置默认嵌入模型"),
+    VECTORIZATION_FAILED("AI_500_VECTORIZE", "文档向量化失败"),
+    VECTORIZATION_IN_PROGRESS("AI_409_VECTORIZING", "文档正在向量化中"),
+    KB_NOT_VECTORIZED("AI_400_KB_NOT_VECTORIZED", "知识库未开启向量化"),
+    VECTOR_STORE_NOT_CONFIGURED("AI_500_VECTOR_STORE", "向量存储未配置"),
     ;
 
     private final String code;

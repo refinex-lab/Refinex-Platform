@@ -807,6 +807,14 @@ public interface AiRepository {
      */
     void batchInsertChunks(List<DocumentChunkEntity> chunks);
 
+    /**
+     * 查询知识库下所有需要向量化的文档（vectorStatus != VECTORIZING，content 非空）
+     *
+     * @param knowledgeBaseId 知识库ID
+     * @return 待向量化的文档列表
+     */
+    List<DocumentEntity> listDocumentsForVectorization(Long knowledgeBaseId);
+
     // ── SkillKnowledge ──
 
     /**
