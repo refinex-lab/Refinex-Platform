@@ -19,6 +19,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
                 org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration.class,
                 org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration.class,
                 org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration.class,
+                org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration.class,
                 org.springframework.ai.model.deepseek.autoconfigure.DeepSeekChatAutoConfiguration.class,
                 org.springframework.ai.model.anthropic.autoconfigure.AnthropicChatAutoConfiguration.class,
                 org.springframework.ai.model.minimax.autoconfigure.MiniMaxChatAutoConfiguration.class,
