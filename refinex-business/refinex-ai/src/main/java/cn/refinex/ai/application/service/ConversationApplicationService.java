@@ -10,11 +10,7 @@ import cn.refinex.ai.domain.model.enums.ContinueIntentDetector;
 import cn.refinex.ai.domain.model.enums.ModelType;
 import cn.refinex.ai.domain.model.enums.RequestType;
 import cn.refinex.ai.domain.repository.AiRepository;
-import cn.refinex.ai.infrastructure.ai.ChatModelRouter;
-import cn.refinex.ai.infrastructure.ai.ImageModelRouter;
-import cn.refinex.ai.infrastructure.ai.ModerationModelRouter;
-import cn.refinex.ai.infrastructure.ai.TranscriptionModelRouter;
-import cn.refinex.ai.infrastructure.ai.VectorStoreRouter;
+import cn.refinex.ai.infrastructure.ai.*;
 import cn.refinex.ai.interfaces.vo.ChatMessageVO;
 import cn.refinex.ai.interfaces.vo.ConversationDetailVO;
 import cn.refinex.base.exception.BizException;
@@ -115,6 +111,15 @@ public class ConversationApplicationService {
 
     /**
      * 流式对话
+     * <p>
+     * 目前支持的能力：
+     * 1. 内容审核
+     * 2. 前缀续写
+     * 3. 向量检索
+     * 4. 图片理解
+     * 5. 图片生成
+     * 6. 提示模版
+     * 7. 音频处理
      *
      * @param command 流式对话命令
      * @return SSE 流
