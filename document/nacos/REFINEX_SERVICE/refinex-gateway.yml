@@ -85,3 +85,9 @@ spring:
                 - Path=/refinex-system/**
               filters:
                 - StripPrefix=1
+            - id: refinex-ai
+              uri: lb://refinex-ai
+              predicates:
+                - Path=/refinex-ai/**
+              filters:
+                - StripPrefix=1
