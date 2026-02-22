@@ -34,6 +34,8 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
                 org.springframework.ai.vectorstore.elasticsearch.autoconfigure.ElasticsearchVectorStoreAutoConfiguration.class,
                 org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreAutoConfiguration.class,
                 org.springframework.ai.vectorstore.qdrant.autoconfigure.QdrantVectorStoreAutoConfiguration.class,
+                // JdbcChatMemoryRepository 自动配置排除（引用了 Spring Boot 3.x 的 JdbcTemplateAutoConfiguration，与 Boot 4 不兼容，手动配置替代）
+                org.springframework.ai.model.chat.memory.repository.jdbc.autoconfigure.JdbcChatMemoryRepositoryAutoConfiguration.class,
         }
 )
 public class RefinexAiApplication {
