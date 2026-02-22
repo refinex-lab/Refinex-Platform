@@ -139,7 +139,16 @@ VALUES
   -- 智谱 嵌入模型
   (@provider_zhipu, 'embedding-3', 'Embedding 3', 2,
    0, 0, 0, 0, 8192, NULL, 0.005000, NULL,
-   1, 100, '2048维嵌入模型', @super_user_id, @super_user_id, 0, 0)
+   1, 100, '2048维嵌入模型', @super_user_id, @super_user_id, 0, 0),
+
+  -- OpenAI 图像生成模型
+  (@provider_openai, 'dall-e-3', 'DALL-E 3', 3,
+   0, 0, 0, 0, NULL, NULL, NULL, NULL,
+   1, 300, '图像生成模型', @super_user_id, @super_user_id, 0, 0),
+  -- 智谱 图像生成模型
+  (@provider_zhipu, 'cogview-4', 'CogView 4', 3,
+   0, 0, 0, 0, NULL, NULL, NULL, NULL,
+   1, 310, '智谱图像生成模型', @super_user_id, @super_user_id, 0, 0)
 ON DUPLICATE KEY UPDATE
   model_name = VALUES(model_name), model_type = VALUES(model_type),
   cap_vision = VALUES(cap_vision), cap_tool_call = VALUES(cap_tool_call),

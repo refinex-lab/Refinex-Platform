@@ -2,6 +2,7 @@ package cn.refinex.ai.application.command;
 
 import lombok.Data;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -41,6 +42,11 @@ public class StreamChatCommand {
      * 模板变量
      */
     private Map<String, String> templateVariables;
+
+    /**
+     * 图像URL列表(已上传的图像CDN地址，用于多模态视觉理解)
+     */
+    private List<String> imageUrls;
 
     /**
      * 组织ID(Controller 从 LoginUserHelper 注入)

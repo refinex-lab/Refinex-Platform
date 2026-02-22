@@ -48,6 +48,9 @@ public enum AiErrorCode implements ErrorCode {
     CHAT_STREAM_ERROR("AI_500_CHAT_STREAM", "对话流式响应异常"),
     PROMPT_TEMPLATE_RENDER_ERROR("AI_500_PROMPT_RENDER", "Prompt模板渲染失败"),
     PREFIX_CONTINUE_NO_HISTORY("AI_400_PREFIX_CONTINUE", "无可续写的历史消息"),
+    MODEL_VISION_NOT_SUPPORTED("AI_400_VISION", "该模型不支持图像理解"),
+    IMAGE_GEN_FAILED("AI_500_IMAGE_GEN", "图像生成失败"),
+    IMAGE_UPLOAD_FAILED("AI_500_IMAGE_UPLOAD", "图像上传失败"),
     ;
 
     private final String code;

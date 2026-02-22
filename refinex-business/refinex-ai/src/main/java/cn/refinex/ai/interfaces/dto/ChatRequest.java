@@ -1,8 +1,10 @@
 package cn.refinex.ai.interfaces.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -43,4 +45,10 @@ public class ChatRequest {
      * 系统提示词(直传，优先级低于 promptTemplateId)
      */
     private String systemPrompt;
+
+    /**
+     * 图像URL列表(已上传的图像CDN地址，用于多模态视觉理解)
+     */
+    @Size(max = 5, message = "最多支持5张图片")
+    private List<String> imageUrls;
 }

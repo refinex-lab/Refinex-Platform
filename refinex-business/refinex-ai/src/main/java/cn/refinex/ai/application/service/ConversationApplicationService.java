@@ -7,14 +7,17 @@ import cn.refinex.ai.application.dto.ConversationDTO;
 import cn.refinex.ai.domain.error.AiErrorCode;
 import cn.refinex.ai.domain.model.entity.*;
 import cn.refinex.ai.domain.model.enums.ContinueIntentDetector;
+import cn.refinex.ai.domain.model.enums.ModelType;
 import cn.refinex.ai.domain.model.enums.RequestType;
 import cn.refinex.ai.domain.repository.AiRepository;
 import cn.refinex.ai.infrastructure.ai.ChatModelRouter;
+import cn.refinex.ai.infrastructure.ai.ImageModelRouter;
 import cn.refinex.ai.interfaces.vo.ChatMessageVO;
 import cn.refinex.ai.interfaces.vo.ConversationDetailVO;
 import cn.refinex.base.exception.BizException;
 import cn.refinex.base.response.PageResponse;
 import cn.refinex.base.utils.PageUtils;
+import cn.refinex.file.api.FileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -30,20 +33,26 @@ import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
+import org.springframework.ai.content.Media;
 import org.springframework.ai.deepseek.DeepSeekAssistantMessage;
+import org.springframework.ai.image.Image;
+import org.springframework.ai.image.ImageModel;
+import org.springframework.ai.image.ImagePrompt;
+import org.springframework.ai.image.ImageResponse;
 import org.springframework.ai.template.st.StTemplateRenderer;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.stereotype.Service;
+import org.springframework.util.MimeType;
+import org.springframework.util.MimeTypeUtils;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.net.URI;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -60,8 +69,15 @@ public class ConversationApplicationService {
     private final AiRepository aiRepository;
     private final AiDomainAssembler aiDomainAssembler;
     private final ChatModelRouter chatModelRouter;
+    private final ImageModelRouter imageModelRouter;
     private final ChatMemory chatMemory;
     private final JdbcChatMemoryRepository jdbcChatMemoryRepository;
+    private final FileService fileService;
+
+    /**
+     * 字符串 "[DONE]" 的常量
+     */
+    private static final String DONE_EVENT_DATA = "[DONE]";
 
     /**
      * 每百万 token 的除数常量
@@ -86,6 +102,9 @@ public class ConversationApplicationService {
         return Mono.fromCallable(() -> prepareChat(command))
                 .subscribeOn(Schedulers.boundedElastic())
                 .flatMapMany(ctx -> {
+                    if (ModelType.isImageGen(ctx.modelType())) {
+                        return buildImageGenerationPipeline(command, ctx);
+                    }
                     if (isPrefixContinueEligible(command, ctx)) {
                         return buildPrefixContinuePipeline(command, ctx);
                     }
@@ -208,14 +227,22 @@ public class ConversationApplicationService {
 
         ChatClient chatClient = buildChatClient(ctx.chatModel(), ctx.systemPrompt());
 
-        return chatClient.prompt()
-                .user(command.getMessage())
+        ChatClient.ChatClientRequestSpec promptSpec = chatClient.prompt();
+
+        if (hasImages(command)) {
+            List<Media> mediaList = buildMediaList(command.getImageUrls());
+            promptSpec.user(u -> u.text(command.getMessage()).media(mediaList.toArray(new Media[0])));
+        } else {
+            promptSpec.user(command.getMessage());
+        }
+
+        return promptSpec
                 .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, ctx.conversationId()))
                 .stream()
                 .chatResponse()
                 .doOnNext(chatResponse -> captureMetadata(chatResponse, usageRef, finishReasonRef))
                 .flatMapIterable(chatResponse -> extractSseEvents(chatResponse, ctx.capReasoning()))
-                .concatWith(Flux.just(ServerSentEvent.<String>builder().event("done").data("[DONE]").build()))
+                .concatWith(Flux.just(ServerSentEvent.<String>builder().event("done").data(DONE_EVENT_DATA).build()))
                 .doOnComplete(() ->
                         Mono.fromRunnable(() -> onStreamComplete(command, ctx, usageRef.get(), finishReasonRef.get(),
                                         (int) (System.currentTimeMillis() - startTime.get())))
@@ -326,7 +353,7 @@ public class ConversationApplicationService {
                             collectText(chatResponse, contentCollector);
                         })
                         .flatMapIterable(chatResponse -> extractSseEvents(chatResponse, ctx.capReasoning()))
-                        .concatWith(Flux.just(ServerSentEvent.<String>builder().event("done").data("[DONE]").build()))
+                        .concatWith(Flux.just(ServerSentEvent.<String>builder().event("done").data(DONE_EVENT_DATA).build()))
                         .doOnComplete(() ->
                                 Mono.fromRunnable(() -> onPrefixContinueComplete(command, ctx, contentCollector,
                                                 usageRef, finishReasonRef, startTime))
@@ -444,58 +471,128 @@ public class ConversationApplicationService {
      * @return 对话上下文
      */
     private ChatContext prepareChat(StreamChatCommand command) {
+        ConversationResolution resolution = resolveConversation(command);
+
+        ModelMetadata metadata = resolveModelMetadata(resolution.modelId(), command);
+
+        ChatModel chatModel = ModelType.isImageGen(metadata.modelType())
+                ? null
+                : resolveChatModel(resolution.modelId(), command.getEstabId());
+
+        return new ChatContext(
+                resolution.conversationId(), resolution.modelId(), resolution.systemPrompt(),
+                chatModel, resolution.isNewConversation(),
+                metadata.capReasoning(), metadata.providerCode(), metadata.modelType()
+        );
+    }
+
+    /**
+     * 解析或创建会话，返回会话基本信息
+     *
+     * @param command 流式对话命令
+     * @return 会话解析结果
+     */
+    private ConversationResolution resolveConversation(StreamChatCommand command) {
         String conversationId = command.getConversationId();
         Long modelId = command.getModelId();
-        String systemPrompt = null;
-        boolean isNewConversation = false;
 
         if (conversationId != null && !conversationId.isBlank()) {
-            // 已有对话：校验存在 + 归属
             ConversationEntity conversation = requireConversation(conversationId);
             requireOwnership(conversation, command.getUserId());
-            if (modelId == null) {
-                modelId = conversation.getModelId();
-            }
-            systemPrompt = conversation.getSystemPrompt();
-        } else {
-            // 新建对话
-            conversationId = UUID.randomUUID().toString();
-            systemPrompt = resolveSystemPrompt(command);
-            isNewConversation = true;
-
-            ConversationEntity newConversation = new ConversationEntity();
-            newConversation.setConversationId(conversationId);
-            newConversation.setEstabId(command.getEstabId());
-            newConversation.setUserId(command.getUserId());
-            newConversation.setTitle(truncateTitle(command.getMessage()));
-            newConversation.setModelId(modelId);
-            newConversation.setSystemPrompt(systemPrompt);
-            newConversation.setPinned(0);
-            newConversation.setStatus(1);
-
-            aiRepository.insertConversation(newConversation);
+            Long resolvedModelId = modelId != null ? modelId : conversation.getModelId();
+            return new ConversationResolution(conversationId, resolvedModelId, conversation.getSystemPrompt(), false);
         }
 
-        // 解析 ChatModel
-        ChatModel chatModel = modelId != null
-                ? chatModelRouter.resolve(command.getEstabId(), modelId)
-                : chatModelRouter.resolveDefault(command.getEstabId());
+        conversationId = UUID.randomUUID().toString();
+        String systemPrompt = resolveSystemPrompt(command);
 
-        // 解析 capReasoning 和 providerCode
-        boolean capReasoning = false;
+        ConversationEntity newConversation = new ConversationEntity();
+        newConversation.setConversationId(conversationId);
+        newConversation.setEstabId(command.getEstabId());
+        newConversation.setUserId(command.getUserId());
+        newConversation.setTitle(truncateTitle(command.getMessage()));
+        newConversation.setModelId(modelId);
+        newConversation.setSystemPrompt(systemPrompt);
+        newConversation.setPinned(0);
+        newConversation.setStatus(1);
+        aiRepository.insertConversation(newConversation);
+
+        return new ConversationResolution(conversationId, modelId, systemPrompt, true);
+    }
+
+    /**
+     * 解析模型元数据（capReasoning、providerCode、modelType）并校验 capVision
+     *
+     * @param modelId 模型ID（可为 null）
+     * @param command 流式对话命令（用于判断是否携带图片）
+     * @return 模型元数据
+     */
+    private ModelMetadata resolveModelMetadata(Long modelId, StreamChatCommand command) {
+        if (modelId == null) {
+            return new ModelMetadata(false, null, null);
+        }
+
+        ModelEntity modelEntity = aiRepository.findModelById(modelId);
+        if (modelEntity == null) {
+            return new ModelMetadata(false, null, null);
+        }
+
+        boolean capReasoning = modelEntity.getCapReasoning() != null && modelEntity.getCapReasoning() == 1;
+
+        if (hasImages(command) && (modelEntity.getCapVision() == null || modelEntity.getCapVision() != 1)) {
+            throw new BizException(AiErrorCode.MODEL_VISION_NOT_SUPPORTED);
+        }
+
         String providerCode = null;
-        if (modelId != null) {
-            ModelEntity modelEntity = aiRepository.findModelById(modelId);
-            if (modelEntity != null) {
-                capReasoning = modelEntity.getCapReasoning() != null && modelEntity.getCapReasoning() == 1;
-                ProviderEntity provider = aiRepository.findProviderById(modelEntity.getProviderId());
-                if (provider != null) {
-                    providerCode = provider.getProviderCode();
-                }
-            }
+        ProviderEntity provider = aiRepository.findProviderById(modelEntity.getProviderId());
+        if (provider != null) {
+            providerCode = provider.getProviderCode();
         }
 
-        return new ChatContext(conversationId, modelId, systemPrompt, chatModel, isNewConversation, capReasoning, providerCode);
+        return new ModelMetadata(capReasoning, providerCode, modelEntity.getModelType());
+    }
+
+    /**
+     * 解析 ChatModel（按 modelId 或租户默认）
+     *
+     * @param modelId 模型ID（可为 null）
+     * @param estabId 组织ID
+     * @return ChatModel 实例
+     */
+    private ChatModel resolveChatModel(Long modelId, Long estabId) {
+        return modelId != null
+                ? chatModelRouter.resolve(estabId, modelId)
+                : chatModelRouter.resolveDefault(estabId);
+    }
+
+    /**
+     * 会话解析结果（内部传递用）
+     *
+     * @param conversationId    会话唯一标识
+     * @param modelId           模型ID
+     * @param systemPrompt      系统提示词
+     * @param isNewConversation 是否为新建对话
+     */
+    private record ConversationResolution(
+            String conversationId,
+            Long modelId,
+            String systemPrompt,
+            boolean isNewConversation
+    ) {
+    }
+
+    /**
+     * 模型元数据（内部传递用）
+     *
+     * @param capReasoning 是否支持深度推理
+     * @param providerCode 供应商编码
+     * @param modelType    模型类型
+     */
+    private record ModelMetadata(
+            boolean capReasoning,
+            String providerCode,
+            Integer modelType
+    ) {
     }
 
     /**
@@ -715,6 +812,128 @@ public class ConversationApplicationService {
     }
 
     /**
+     * 构建图像生成管道
+     * <p>
+     * 同步调用 ImageModel.call()，结果通过 SSE event: image 返回。
+     *
+     * @param command 流式对话命令
+     * @param ctx     对话上下文
+     * @return SSE 流
+     */
+    private Flux<ServerSentEvent<String>> buildImageGenerationPipeline(StreamChatCommand command, ChatContext ctx) {
+        return Mono.fromCallable(() -> {
+                    long startTime = System.currentTimeMillis();
+                    try {
+                        ImageModel imageModel = imageModelRouter.resolve(command.getEstabId(), ctx.modelId());
+                        ImagePrompt imagePrompt = new ImagePrompt(command.getMessage());
+                        ImageResponse imageResponse = imageModel.call(imagePrompt);
+
+                        Image image = imageResponse.getResult().getOutput();
+                        String imageUrl = resolveImageUrl(image, command.getEstabId());
+
+                        // 持久化到 ChatMemory
+                        chatMemory.add(ctx.conversationId(), List.of(
+                                new UserMessage(command.getMessage()),
+                                new AssistantMessage("![generated-image](" + imageUrl + ")")
+                        ));
+
+                        recordImageUsageLog(command, ctx, (int) (System.currentTimeMillis() - startTime), true, null);
+                        return imageUrl;
+                    } catch (Exception e) {
+                        recordImageUsageLog(command, ctx, (int) (System.currentTimeMillis() - startTime), false, e.getMessage());
+                        throw e;
+                    }
+                }).subscribeOn(Schedulers.boundedElastic())
+                .flatMapMany(imageUrl -> Flux.just(
+                        ServerSentEvent.<String>builder().event("image").data(imageUrl).build(),
+                        ServerSentEvent.<String>builder().event("done").data(DONE_EVENT_DATA).build()
+                ));
+    }
+
+    /**
+     * 从 Image 结果中解析或上传得到可访问 URL
+     *
+     * @param image   ImageModel 返回的图像结果
+     * @param estabId 组织ID
+     * @return 图像访问 URL
+     */
+    private String resolveImageUrl(Image image, Long estabId) {
+        if (image.getUrl() != null && !image.getUrl().isEmpty()) {
+            return image.getUrl();
+        }
+
+        if (image.getB64Json() != null && !image.getB64Json().isEmpty()) {
+            byte[] bytes = Base64.getDecoder().decode(image.getB64Json());
+            String path = String.join("/", "ai-gen", String.valueOf(estabId), UUID.randomUUID() + ".png");
+            return fileService.upload(path, new ByteArrayInputStream(bytes));
+        }
+
+        throw new BizException(AiErrorCode.IMAGE_GEN_FAILED);
+    }
+
+    /**
+     * 记录图像生成调用日志
+     *
+     * @param command      流式对话命令
+     * @param ctx          对话上下文
+     * @param durationMs   耗时（毫秒）
+     * @param success      是否成功
+     * @param errorMessage 错误信息
+     */
+    private void recordImageUsageLog(StreamChatCommand command, ChatContext ctx, int durationMs, boolean success, String errorMessage) {
+        try {
+            UsageLogEntity usageLog = new UsageLogEntity();
+            usageLog.setEstabId(command.getEstabId());
+            usageLog.setUserId(command.getUserId());
+            usageLog.setConversationId(ctx.conversationId());
+            usageLog.setModelId(ctx.modelId());
+            usageLog.setRequestType(RequestType.IMAGE_GEN.getCode());
+            usageLog.setDurationMs(durationMs);
+            usageLog.setSuccess(success ? 1 : 0);
+            usageLog.setErrorMessage(errorMessage);
+            aiRepository.insertUsageLog(usageLog);
+        } catch (Exception e) {
+            log.error("记录图像生成调用日志失败, conversationId={}", ctx.conversationId(), e);
+        }
+    }
+
+    /**
+     * 判断请求是否携带图片
+     *
+     * @param command 流式对话命令
+     * @return true 表示携带图片
+     */
+    private boolean hasImages(StreamChatCommand command) {
+        return command.getImageUrls() != null && !command.getImageUrls().isEmpty();
+    }
+
+    /**
+     * 从 URL 列表构建 Media 列表
+     *
+     * @param imageUrls 图像 URL 列表
+     * @return Media 列表
+     */
+    private List<Media> buildMediaList(List<String> imageUrls) {
+        return imageUrls.stream()
+                .map(url -> new Media(inferImageMimeType(url), URI.create(url)))
+                .toList();
+    }
+
+    /**
+     * 根据 URL 后缀推断图像 MIME 类型
+     *
+     * @param url 图像 URL
+     * @return MIME 类型，默认 JPEG
+     */
+    private MimeType inferImageMimeType(String url) {
+        String lower = url.toLowerCase();
+        if (lower.contains(".png")) return MimeTypeUtils.IMAGE_PNG;
+        if (lower.contains(".gif")) return MimeTypeUtils.IMAGE_GIF;
+        if (lower.contains(".webp")) return MimeType.valueOf("image/webp");
+        return MimeTypeUtils.IMAGE_JPEG;
+    }
+
+    /**
      * 查询对话并校验存在
      *
      * @param conversationId 会话唯一标识
@@ -746,10 +965,11 @@ public class ConversationApplicationService {
      * @param conversationId    会话唯一标识
      * @param modelId           模型ID
      * @param systemPrompt      系统提示词
-     * @param chatModel         ChatModel 实例
+     * @param chatModel         ChatModel 实例（图像生成模型时为 null）
      * @param isNewConversation 是否为新建对话
      * @param capReasoning      是否支持深度推理
      * @param providerCode      供应商编码
+     * @param modelType         模型类型 1聊天 2嵌入 3图像生成 4语音转文字 5文字转语音 6重排序
      */
     private record ChatContext(
             String conversationId,
@@ -758,7 +978,8 @@ public class ConversationApplicationService {
             ChatModel chatModel,
             boolean isNewConversation,
             boolean capReasoning,
-            String providerCode
+            String providerCode,
+            Integer modelType
     ) {
     }
 }
