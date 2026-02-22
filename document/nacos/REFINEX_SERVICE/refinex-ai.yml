@@ -13,6 +13,11 @@ spring:
       client:
         # 禁用 ChatClient 自动配置（由 ChatModelRouter 动态构建）
         enabled: false
+      memory:
+        repository:
+          jdbc:
+            # DDL 已手动建表，禁止框架自动初始化
+            initialize-schema: never
 
   servlet:
     multipart:

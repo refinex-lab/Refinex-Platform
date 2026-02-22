@@ -67,4 +67,12 @@ public interface AiDomainAssembler {
      * @return 技能 DTO
      */
     SkillDTO toSkillDto(SkillEntity skillEntity);
+
+    /**
+     * 将对话实体转换为对话 DTO
+     *
+     * @param conversationEntity 对话实体
+     * @return 对话 DTO
+     */
+    ConversationDTO toConversationDto(ConversationEntity conversationEntity);
 }

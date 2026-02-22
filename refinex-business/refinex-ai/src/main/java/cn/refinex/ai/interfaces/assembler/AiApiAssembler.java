@@ -323,6 +323,59 @@ public interface AiApiAssembler {
 
     // ── 脱敏辅助方法 ──
 
+    // ── Conversation ──
+
+    /**
+     * 对话请求转换为流式对话命令
+     *
+     * @param request 对话请求
+     * @return 流式对话命令
+     */
+    @Mapping(target = "estabId", ignore = true)
+    @Mapping(target = "userId", ignore = true)
+    StreamChatCommand toStreamChatCommand(ChatRequest request);
+
+    /**
+     * 对话列表查询参数转换为查询命令
+     *
+     * @param query 对话列表查询参数
+     * @return 查询对话列表命令
+     */
+    @Mapping(target = "estabId", ignore = true)
+    @Mapping(target = "userId", ignore = true)
+    QueryConversationListCommand toQueryConversationListCommand(ConversationListQuery query);
+
+    /**
+     * 对话DTO转换为对话VO
+     *
+     * @param dto 对话DTO
+     * @return 对话VO
+     */
+    @Mapping(target = "gmtCreate", ignore = true)
+    @Mapping(target = "gmtModified", ignore = true)
+    ConversationVO toConversationVo(ConversationDTO dto);
+
+    /**
+     * 对话DTO列表转换为对话VO列表
+     *
+     * @param dtos 对话DTO列表
+     * @return 对话VO列表
+     */
+    List<ConversationVO> toConversationVoList(List<ConversationDTO> dtos);
+
+    /**
+     * 对话DTO转换为对话详情VO
+     *
+     * @param dto 对话DTO
+     * @return 对话详情VO
+     */
+    @Mapping(target = "gmtCreate", ignore = true)
+    @Mapping(target = "gmtModified", ignore = true)
+    @Mapping(target = "messages", ignore = true)
+    ConversationDetailVO toConversationDetailVo(ConversationDTO dto);
+
+    // ── 脱敏辅助方法 ──
+
     /**
      * API Key脱敏：非空时显示 ****xxxx（后4位），否则返回null
      *

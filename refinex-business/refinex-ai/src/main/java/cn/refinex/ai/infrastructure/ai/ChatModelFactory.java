@@ -4,18 +4,23 @@ import cn.refinex.ai.domain.error.AiErrorCode;
 import cn.refinex.ai.domain.model.entity.ModelEntity;
 import cn.refinex.ai.domain.model.entity.ModelProvisionEntity;
 import cn.refinex.ai.domain.model.entity.ProviderEntity;
+import cn.refinex.ai.domain.model.enums.ProviderProtocol;
 import cn.refinex.base.exception.BizException;
-import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.anthropic.AnthropicChatModel;
+import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.anthropic.api.AnthropicApi;
+import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.deepseek.DeepSeekChatModel;
+import org.springframework.ai.deepseek.DeepSeekChatOptions;
 import org.springframework.ai.deepseek.api.DeepSeekApi;
 import org.springframework.ai.minimax.MiniMaxChatModel;
+import org.springframework.ai.minimax.MiniMaxChatOptions;
 import org.springframework.ai.minimax.api.MiniMaxApi;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.ai.zhipuai.ZhiPuAiChatModel;
+import org.springframework.ai.zhipuai.ZhiPuAiChatOptions;
 import org.springframework.ai.zhipuai.api.ZhiPuAiApi;
 import org.springframework.stereotype.Component;
 
@@ -32,32 +37,34 @@ public class ChatModelFactory {
     /**
      * 根据三层配置创建 ChatModel 实例
      *
-     * @param provider       供应商实体
-     * @param model          模型实体
-     * @param provision      租户模型开通实体
+     * @param provider        供应商实体
+     * @param model           模型实体
+     * @param provision       租户模型开通实体
      * @param decryptedApiKey 解密后的 API Key
      * @return ChatModel 实例
      */
-    public ChatModel createChatModel(ProviderEntity provider, ModelEntity model,
-                                     ModelProvisionEntity provision, String decryptedApiKey) {
+    public ChatModel createChatModel(ProviderEntity provider, ModelEntity model, ModelProvisionEntity provision, String decryptedApiKey) {
         String baseUrl = resolveBaseUrl(provision, provider);
         String modelCode = model.getModelCode();
-        String protocol = provider.getProtocol();
+        ProviderProtocol protocol = ProviderProtocol.fromCode(provider.getProtocol());
+        if (protocol == null) {
+            throw new BizException(AiErrorCode.UNSUPPORTED_PROTOCOL);
+        }
 
         return switch (protocol) {
-            case "openai" -> createOpenAiProtocolModel(provider.getProviderCode(), baseUrl, decryptedApiKey, modelCode);
-            case "anthropic" -> createAnthropicModel(baseUrl, decryptedApiKey, modelCode);
-            default -> throw new BizException(AiErrorCode.UNSUPPORTED_PROTOCOL);
+            case OPENAI -> createOpenAiProtocolModel(provider.getProviderCode(), baseUrl, decryptedApiKey, modelCode);
+            case ANTHROPIC -> createAnthropicModel(baseUrl, decryptedApiKey, modelCode);
+            case OLLAMA -> throw new BizException(AiErrorCode.UNSUPPORTED_PROTOCOL); // TODO: Ollama 支持
         };
     }
 
     /**
      * 创建 OpenAI 协议族模型（OpenAI / DeepSeek / ZhiPu / MiniMax / 其他兼容）
      *
-     * @param providerCode   供应商编码
-     * @param baseUrl        API 基础地址
-     * @param apiKey         API Key
-     * @param modelCode      模型编码
+     * @param providerCode 供应商编码
+     * @param baseUrl      API 基础地址
+     * @param apiKey       API Key
+     * @param modelCode    模型编码
      * @return ChatModel 实例
      */
     private ChatModel createOpenAiProtocolModel(String providerCode, String baseUrl, String apiKey, String modelCode) {
@@ -83,9 +90,11 @@ public class ChatModelFactory {
                 .baseUrl(baseUrl)
                 .apiKey(apiKey)
                 .build();
+
         OpenAiChatOptions options = OpenAiChatOptions.builder()
                 .model(modelCode)
                 .build();
+
         return OpenAiChatModel.builder()
                 .openAiApi(api)
                 .defaultOptions(options)
@@ -105,9 +114,10 @@ public class ChatModelFactory {
                 .baseUrl(baseUrl)
                 .apiKey(apiKey)
                 .build();
+
         return DeepSeekChatModel.builder()
                 .deepSeekApi(api)
-                .defaultOptions(org.springframework.ai.deepseek.DeepSeekChatOptions.builder()
+                .defaultOptions(DeepSeekChatOptions.builder()
                         .model(modelCode)
                         .build())
                 .build();
@@ -126,10 +136,10 @@ public class ChatModelFactory {
                 .baseUrl(baseUrl)
                 .apiKey(apiKey)
                 .build();
-        return new ZhiPuAiChatModel(api,
-                org.springframework.ai.zhipuai.ZhiPuAiChatOptions.builder()
-                        .model(modelCode)
-                        .build());
+
+        return new ZhiPuAiChatModel(api, ZhiPuAiChatOptions.builder()
+                .model(modelCode)
+                .build());
     }
 
     /**
@@ -142,10 +152,10 @@ public class ChatModelFactory {
      */
     private ChatModel createMiniMaxModel(String baseUrl, String apiKey, String modelCode) {
         MiniMaxApi api = new MiniMaxApi(baseUrl, apiKey);
-        return new MiniMaxChatModel(api,
-                org.springframework.ai.minimax.MiniMaxChatOptions.builder()
-                        .model(modelCode)
-                        .build());
+
+        return new MiniMaxChatModel(api, MiniMaxChatOptions.builder()
+                .model(modelCode)
+                .build());
     }
 
     /**
@@ -161,9 +171,10 @@ public class ChatModelFactory {
                 .baseUrl(baseUrl)
                 .apiKey(apiKey)
                 .build();
+
         return AnthropicChatModel.builder()
                 .anthropicApi(api)
-                .defaultOptions(org.springframework.ai.anthropic.AnthropicChatOptions.builder()
+                .defaultOptions(AnthropicChatOptions.builder()
                         .model(modelCode)
                         .build())
                 .build();

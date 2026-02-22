@@ -42,6 +42,11 @@ public enum AiErrorCode implements ErrorCode {
     API_KEY_MISSING("AI_400_API_KEY", "API Key未配置"),
     UNSUPPORTED_PROTOCOL("AI_400_PROTOCOL", "不支持的接口协议"),
     DEFAULT_MODEL_NOT_CONFIGURED("AI_404_DEFAULT_MODEL", "该租户未配置默认模型"),
+
+    CONVERSATION_NOT_FOUND("AI_404_CONVERSATION", "对话不存在"),
+    CONVERSATION_NOT_OWNED("AI_403_CONVERSATION", "无权访问该对话"),
+    CHAT_STREAM_ERROR("AI_500_CHAT_STREAM", "对话流式响应异常"),
+    PROMPT_TEMPLATE_RENDER_ERROR("AI_500_PROMPT_RENDER", "Prompt模板渲染失败"),
     ;
 
     private final String code;

@@ -5,6 +5,7 @@ import cn.refinex.ai.application.command.*;
 import cn.refinex.ai.application.dto.*;
 import cn.refinex.ai.domain.error.AiErrorCode;
 import cn.refinex.ai.domain.model.entity.*;
+import cn.refinex.ai.domain.model.enums.ProviderProtocol;
 import cn.refinex.ai.domain.repository.AiRepository;
 import cn.refinex.ai.infrastructure.ai.ChatModelRegistry;
 import cn.refinex.base.config.RefinexCryptoProperties;
@@ -12,6 +13,7 @@ import cn.refinex.base.exception.BizException;
 import cn.refinex.base.response.PageResponse;
 import cn.refinex.base.utils.AesUtils;
 import cn.refinex.base.utils.PageUtils;
+import cn.refinex.satoken.helper.LoginUserHelper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -112,7 +114,7 @@ public class AiApplicationService {
         ProviderEntity entity = new ProviderEntity();
         entity.setProviderCode(providerCode);
         entity.setProviderName(command.getProviderName().trim());
-        entity.setProtocol(getIfNull(trimToNull(command.getProtocol()), "openai"));
+        entity.setProtocol(getIfNull(trimToNull(command.getProtocol()), ProviderProtocol.OPENAI.getCode()));
         entity.setBaseUrl(trimToNull(command.getBaseUrl()));
         entity.setIconUrl(trimToNull(command.getIconUrl()));
         entity.setStatus(getIfNull(command.getStatus(), 1));
@@ -232,8 +234,7 @@ public class AiApplicationService {
      */
     @Transactional(rollbackFor = Exception.class)
     public ModelDTO createModel(CreateModelCommand command) {
-        if (command == null || command.getProviderId() == null
-                || isBlank(command.getModelCode()) || isBlank(command.getModelName())) {
+        if (command == null || command.getProviderId() == null || isBlank(command.getModelCode()) || isBlank(command.getModelName())) {
             throw new BizException(AiErrorCode.INVALID_PARAM);
         }
 
@@ -327,7 +328,7 @@ public class AiApplicationService {
         int pageSize = PageUtils.normalizePageSize(command == null ? null : command.getPageSize(),
                 PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE);
 
-        Long estabId = 0L; // TODO: 从 UserContext 获取当前租户ID
+        Long estabId = LoginUserHelper.getEstabId();
 
         PageResponse<PromptTemplateEntity> entities = aiRepository.listPromptTemplates(
                 estabId,
@@ -353,7 +354,7 @@ public class AiApplicationService {
      * @return Prompt模板列表
      */
     public List<PromptTemplateDTO> listAllPromptTemplates(Integer status, String category) {
-        Long estabId = 0L; // TODO: 从 UserContext 获取当前租户ID
+        Long estabId = LoginUserHelper.getEstabId();
         List<PromptTemplateEntity> entities = aiRepository.listAllPromptTemplates(estabId, status, category);
         List<PromptTemplateDTO> result = new ArrayList<>();
         for (PromptTemplateEntity entity : entities) {
@@ -385,7 +386,7 @@ public class AiApplicationService {
             throw new BizException(AiErrorCode.INVALID_PARAM);
         }
 
-        Long estabId = 0L; // TODO: 从 UserContext 获取当前租户ID
+        Long estabId = LoginUserHelper.getEstabId();
         String promptCode = command.getPromptCode().trim();
 
         if (aiRepository.countPromptTemplateCode(estabId, promptCode, null) > 0) {
@@ -596,7 +597,7 @@ public class AiApplicationService {
         int pageSize = PageUtils.normalizePageSize(command == null ? null : command.getPageSize(),
                 PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE);
 
-        Long estabId = 0L; // TODO: 从 UserContext 获取当前租户ID
+        Long estabId = LoginUserHelper.getEstabId();
 
         PageResponse<ToolEntity> entities = aiRepository.listTools(
                 estabId,
@@ -622,7 +623,7 @@ public class AiApplicationService {
      * @return 工具列表
      */
     public List<ToolDTO> listAllTools(String toolType, Integer status) {
-        Long estabId = 0L; // TODO: 从 UserContext 获取当前租户ID
+        Long estabId = LoginUserHelper.getEstabId();
         List<ToolEntity> entities = aiRepository.listAllTools(estabId, toolType, status);
         List<ToolDTO> result = new ArrayList<>();
         for (ToolEntity entity : entities) {
@@ -654,7 +655,7 @@ public class AiApplicationService {
             throw new BizException(AiErrorCode.INVALID_PARAM);
         }
 
-        Long estabId = 0L; // TODO: 从 UserContext 获取当前租户ID
+        Long estabId = LoginUserHelper.getEstabId();
         String toolCode = command.getToolCode().trim();
 
         if (aiRepository.countToolCode(estabId, toolCode, null) > 0) {
@@ -740,7 +741,7 @@ public class AiApplicationService {
         int pageSize = PageUtils.normalizePageSize(command == null ? null : command.getPageSize(),
                 PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE);
 
-        Long estabId = 0L; // TODO: 从 UserContext 获取当前租户ID
+        Long estabId = LoginUserHelper.getEstabId();
 
         PageResponse<McpServerEntity> entities = aiRepository.listMcpServers(
                 estabId,
@@ -766,7 +767,7 @@ public class AiApplicationService {
      * @return MCP服务器列表
      */
     public List<McpServerDTO> listAllMcpServers(String transportType, Integer status) {
-        Long estabId = 0L; // TODO: 从 UserContext 获取当前租户ID
+        Long estabId = LoginUserHelper.getEstabId();
         List<McpServerEntity> entities = aiRepository.listAllMcpServers(estabId, transportType, status);
         List<McpServerDTO> result = new ArrayList<>();
         for (McpServerEntity entity : entities) {
@@ -798,7 +799,7 @@ public class AiApplicationService {
             throw new BizException(AiErrorCode.INVALID_PARAM);
         }
 
-        Long estabId = 0L; // TODO: 从 UserContext 获取当前租户ID
+        Long estabId = LoginUserHelper.getEstabId();
         String serverCode = command.getServerCode().trim();
 
         if (aiRepository.countMcpServerCode(estabId, serverCode, null) > 0) {
@@ -880,7 +881,7 @@ public class AiApplicationService {
         int pageSize = PageUtils.normalizePageSize(command == null ? null : command.getPageSize(),
                 PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE);
 
-        Long estabId = 0L; // TODO: 从 UserContext 获取当前租户ID
+        Long estabId = LoginUserHelper.getEstabId();
 
         PageResponse<SkillEntity> entities = aiRepository.listSkills(
                 estabId,
@@ -906,7 +907,7 @@ public class AiApplicationService {
      * @return 技能列表
      */
     public List<SkillDTO> listAllSkills(Integer status) {
-        Long estabId = 0L; // TODO: 从 UserContext 获取当前租户ID
+        Long estabId = LoginUserHelper.getEstabId();
         List<SkillEntity> entities = aiRepository.listAllSkills(estabId, status);
         List<SkillDTO> result = new ArrayList<>();
         for (SkillEntity entity : entities) {
@@ -942,7 +943,7 @@ public class AiApplicationService {
             throw new BizException(AiErrorCode.INVALID_PARAM);
         }
 
-        Long estabId = 0L; // TODO: 从 UserContext 获取当前租户ID
+        Long estabId = LoginUserHelper.getEstabId();
         String skillCode = command.getSkillCode().trim();
 
         if (aiRepository.countSkillCode(estabId, skillCode, null) > 0) {

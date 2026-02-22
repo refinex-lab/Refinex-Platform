@@ -32,6 +32,8 @@ public class AiRepositoryImpl implements AiRepository {
     private final AiMcpServerMapper aiMcpServerMapper;
     private final AiSkillMapper aiSkillMapper;
     private final AiSkillToolMapper aiSkillToolMapper;
+    private final AiConversationMapper aiConversationMapper;
+    private final AiUsageLogMapper aiUsageLogMapper;
     private final ProviderDoConverter providerDoConverter;
     private final ModelDoConverter modelDoConverter;
     private final PromptTemplateDoConverter promptTemplateDoConverter;
@@ -40,6 +42,8 @@ public class AiRepositoryImpl implements AiRepository {
     private final McpServerDoConverter mcpServerDoConverter;
     private final SkillDoConverter skillDoConverter;
     private final SkillToolDoConverter skillToolDoConverter;
+    private final ConversationDoConverter conversationDoConverter;
+    private final UsageLogDoConverter usageLogDoConverter;
 
     // ── Provider ──
 
@@ -1155,5 +1159,109 @@ public class AiRepositoryImpl implements AiRepository {
                 Wrappers.lambdaQuery(AiSkillToolDo.class)
                         .eq(AiSkillToolDo::getSkillId, skillId)
         );
+    }
+
+    // ── Conversation ──
+
+    /**
+     * 根据会话唯一标识查询对话
+     *
+     * @param conversationId 会话唯一标识(UUID)
+     * @return 对话实体，不存在返回 null
+     */
+    @Override
+    public ConversationEntity findConversationByConversationId(String conversationId) {
+        AiConversationDo row = aiConversationMapper.selectOne(
+                Wrappers.lambdaQuery(AiConversationDo.class)
+                        .eq(AiConversationDo::getConversationId, conversationId)
+                        .eq(AiConversationDo::getDeleted, 0)
+                        .last("LIMIT 1")
+        );
+        return row == null ? null : conversationDoConverter.toEntity(row);
+    }
+
+    /**
+     * 查询对话分页列表
+     *
+     * @param estabId     组织ID
+     * @param userId      用户ID
+     * @param currentPage 当前页码
+     * @param pageSize    每页数量
+     * @return 对话分页列表
+     */
+    @Override
+    public PageResponse<ConversationEntity> listConversations(Long estabId, Long userId, int currentPage, int pageSize) {
+        LambdaQueryWrapper<AiConversationDo> query = Wrappers.lambdaQuery(AiConversationDo.class)
+                .eq(AiConversationDo::getEstabId, estabId)
+                .eq(AiConversationDo::getUserId, userId)
+                .eq(AiConversationDo::getDeleted, 0)
+                .orderByDesc(AiConversationDo::getPinned, AiConversationDo::getGmtModified);
+
+        Page<AiConversationDo> page = new Page<>(currentPage, pageSize);
+        Page<AiConversationDo> rowsPage = aiConversationMapper.selectPage(page, query);
+
+        List<ConversationEntity> result = new ArrayList<>();
+        for (AiConversationDo row : rowsPage.getRecords()) {
+            result.add(conversationDoConverter.toEntity(row));
+        }
+
+        return PageResponse.of(result, rowsPage.getTotal(), (int) rowsPage.getSize(), (int) rowsPage.getCurrent());
+    }
+
+    /**
+     * 插入对话
+     *
+     * @param conversation 对话实体
+     * @return 插入的对话实体
+     */
+    @Override
+    public ConversationEntity insertConversation(ConversationEntity conversation) {
+        AiConversationDo row = conversationDoConverter.toDo(conversation);
+        aiConversationMapper.insert(row);
+        return conversationDoConverter.toEntity(row);
+    }
+
+    /**
+     * 更新对话
+     *
+     * @param conversation 对话实体
+     */
+    @Override
+    public void updateConversation(ConversationEntity conversation) {
+        AiConversationDo row = conversationDoConverter.toDo(conversation);
+        aiConversationMapper.updateById(row);
+    }
+
+    /**
+     * 根据会话唯一标识删除对话（逻辑删除）
+     *
+     * @param conversationId 会话唯一标识(UUID)
+     */
+    @Override
+    public void deleteConversationByConversationId(String conversationId) {
+        AiConversationDo row = aiConversationMapper.selectOne(
+                Wrappers.lambdaQuery(AiConversationDo.class)
+                        .eq(AiConversationDo::getConversationId, conversationId)
+                        .eq(AiConversationDo::getDeleted, 0)
+                        .last("LIMIT 1")
+        );
+        if (row != null) {
+            aiConversationMapper.deleteById(row.getId());
+        }
+    }
+
+    // ── UsageLog ──
+
+    /**
+     * 插入调用日志
+     *
+     * @param usageLog 调用日志实体
+     * @return 插入的调用日志实体
+     */
+    @Override
+    public UsageLogEntity insertUsageLog(UsageLogEntity usageLog) {
+        AiUsageLogDo row = usageLogDoConverter.toDo(usageLog);
+        aiUsageLogMapper.insert(row);
+        return usageLogDoConverter.toEntity(row);
     }
 }

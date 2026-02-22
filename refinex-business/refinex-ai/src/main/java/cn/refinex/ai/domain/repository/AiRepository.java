@@ -520,4 +520,57 @@ public interface AiRepository {
      * @param skillId 技能ID
      */
     void deleteSkillToolsBySkillId(Long skillId);
+
+    // ── Conversation ──
+
+    /**
+     * 根据会话唯一标识查询对话
+     *
+     * @param conversationId 会话唯一标识(UUID)
+     * @return 对话实体，不存在返回 null
+     */
+    ConversationEntity findConversationByConversationId(String conversationId);
+
+    /**
+     * 查询对话分页列表
+     *
+     * @param estabId     组织ID
+     * @param userId      用户ID
+     * @param currentPage 当前页码
+     * @param pageSize    每页数量
+     * @return 对话分页列表
+     */
+    PageResponse<ConversationEntity> listConversations(Long estabId, Long userId, int currentPage, int pageSize);
+
+    /**
+     * 插入对话
+     *
+     * @param conversation 对话实体
+     * @return 插入的对话实体
+     */
+    ConversationEntity insertConversation(ConversationEntity conversation);
+
+    /**
+     * 更新对话
+     *
+     * @param conversation 对话实体
+     */
+    void updateConversation(ConversationEntity conversation);
+
+    /**
+     * 根据会话唯一标识删除对话（逻辑删除）
+     *
+     * @param conversationId 会话唯一标识(UUID)
+     */
+    void deleteConversationByConversationId(String conversationId);
+
+    // ── UsageLog ──
+
+    /**
+     * 插入调用日志
+     *
+     * @param usageLog 调用日志实体
+     * @return 插入的调用日志实体
+     */
+    UsageLogEntity insertUsageLog(UsageLogEntity usageLog);
 }
