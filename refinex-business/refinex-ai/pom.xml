@@ -156,7 +156,16 @@
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-starter-web</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>cn.dev33</groupId>
+                    <artifactId>sa-token-spring-boot3-starter</artifactId>
+                </exclusion>
             </exclusions>
+        </dependency>
+        <!-- Sa-Token Reactor 版（替代 Servlet 版，WebFlux 环境必须） -->
+        <dependency>
+            <groupId>cn.dev33</groupId>
+            <artifactId>sa-token-reactor-spring-boot3-starter</artifactId>
         </dependency>
         <dependency>
             <groupId>cn.refinex</groupId>

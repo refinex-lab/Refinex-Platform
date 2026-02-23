@@ -5,6 +5,7 @@ import cn.refinex.ai.application.command.QueryPromptTemplateListCommand;
 import cn.refinex.ai.application.command.UpdatePromptTemplateCommand;
 import cn.refinex.ai.application.dto.PromptTemplateDTO;
 import cn.refinex.ai.application.service.AiApplicationService;
+import cn.refinex.ai.infrastructure.config.ReactiveLoginUserHolder;
 import cn.refinex.ai.interfaces.assembler.AiApiAssembler;
 import cn.refinex.ai.interfaces.dto.PromptTemplateCreateRequest;
 import cn.refinex.ai.interfaces.dto.PromptTemplateListQuery;
@@ -18,6 +19,7 @@ import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -40,20 +42,27 @@ public class PromptTemplateController {
     /**
      * 查询Prompt模板分页列表
      *
-     * @param query 查询参数
+     * @param query    查询参数
+     * @param exchange 当前请求上下文
      * @return Prompt模板分页列表
      */
     @GetMapping
-    public Mono<PageResult<PromptTemplateVO>> listPromptTemplates(@Valid PromptTemplateListQuery query) {
+    public Mono<PageResult<PromptTemplateVO>> listPromptTemplates(@Valid PromptTemplateListQuery query,
+                                                                   ServerWebExchange exchange) {
         return Mono.fromCallable(() -> {
-            QueryPromptTemplateListCommand command = aiApiAssembler.toQueryPromptTemplateListCommand(query);
-            PageResponse<PromptTemplateDTO> templates = aiApplicationService.listPromptTemplates(command);
-            return PageResult.success(
-                    aiApiAssembler.toPromptTemplateVoList(templates.getData()),
-                    templates.getTotal(),
-                    templates.getCurrentPage(),
-                    templates.getPageSize()
-            );
+            ReactiveLoginUserHolder.initFromExchange(exchange);
+            try {
+                QueryPromptTemplateListCommand command = aiApiAssembler.toQueryPromptTemplateListCommand(query);
+                PageResponse<PromptTemplateDTO> templates = aiApplicationService.listPromptTemplates(command);
+                return PageResult.success(
+                        aiApiAssembler.toPromptTemplateVoList(templates.getData()),
+                        templates.getTotal(),
+                        templates.getCurrentPage(),
+                        templates.getPageSize()
+                );
+            } finally {
+                ReactiveLoginUserHolder.clear();
+            }
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
@@ -62,15 +71,22 @@ public class PromptTemplateController {
      *
      * @param status   状态（0-禁用，1-启用）
      * @param category 分类
+     * @param exchange 当前请求上下文
      * @return 全部Prompt模板列表
      */
     @GetMapping("/all")
     public Mono<Result<List<PromptTemplateVO>>> listAllPromptTemplates(
             @RequestParam(required = false) Integer status,
-            @RequestParam(required = false) String category) {
+            @RequestParam(required = false) String category,
+            ServerWebExchange exchange) {
         return Mono.fromCallable(() -> {
-            List<PromptTemplateDTO> templates = aiApplicationService.listAllPromptTemplates(status, category);
-            return Result.success(aiApiAssembler.toPromptTemplateVoList(templates));
+            ReactiveLoginUserHolder.initFromExchange(exchange);
+            try {
+                List<PromptTemplateDTO> templates = aiApplicationService.listAllPromptTemplates(status, category);
+                return Result.success(aiApiAssembler.toPromptTemplateVoList(templates));
+            } finally {
+                ReactiveLoginUserHolder.clear();
+            }
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
@@ -92,15 +108,22 @@ public class PromptTemplateController {
     /**
      * 创建Prompt模板
      *
-     * @param request 创建Prompt模板请求参数
+     * @param request  创建Prompt模板请求参数
+     * @param exchange 当前请求上下文
      * @return 创建的Prompt模板详情
      */
     @PostMapping
-    public Mono<Result<PromptTemplateVO>> createPromptTemplate(@Valid @RequestBody PromptTemplateCreateRequest request) {
+    public Mono<Result<PromptTemplateVO>> createPromptTemplate(@Valid @RequestBody PromptTemplateCreateRequest request,
+                                                                ServerWebExchange exchange) {
         return Mono.fromCallable(() -> {
-            CreatePromptTemplateCommand command = aiApiAssembler.toCreatePromptTemplateCommand(request);
-            PromptTemplateDTO created = aiApplicationService.createPromptTemplate(command);
-            return Result.success(aiApiAssembler.toPromptTemplateVo(created));
+            ReactiveLoginUserHolder.initFromExchange(exchange);
+            try {
+                CreatePromptTemplateCommand command = aiApiAssembler.toCreatePromptTemplateCommand(request);
+                PromptTemplateDTO created = aiApplicationService.createPromptTemplate(command);
+                return Result.success(aiApiAssembler.toPromptTemplateVo(created));
+            } finally {
+                ReactiveLoginUserHolder.clear();
+            }
         }).subscribeOn(Schedulers.boundedElastic());
     }
 

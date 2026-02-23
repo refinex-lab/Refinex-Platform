@@ -118,7 +118,15 @@
           <groupId>org.springframework.boot</groupId>
           <artifactId>spring-boot-starter-web</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>cn.dev33</groupId>
+          <artifactId>sa-token-spring-boot3-starter</artifactId>
+        </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>cn.dev33</groupId>
+      <artifactId>sa-token-reactor-spring-boot3-starter</artifactId>
     </dependency>
     <dependency>
       <groupId>cn.refinex</groupId>

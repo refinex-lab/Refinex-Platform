@@ -5,6 +5,7 @@ import cn.refinex.ai.application.command.QueryMcpServerListCommand;
 import cn.refinex.ai.application.command.UpdateMcpServerCommand;
 import cn.refinex.ai.application.dto.McpServerDTO;
 import cn.refinex.ai.application.service.AiApplicationService;
+import cn.refinex.ai.infrastructure.config.ReactiveLoginUserHolder;
 import cn.refinex.ai.interfaces.assembler.AiApiAssembler;
 import cn.refinex.ai.interfaces.dto.McpServerCreateRequest;
 import cn.refinex.ai.interfaces.dto.McpServerListQuery;
@@ -18,6 +19,7 @@ import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -40,20 +42,27 @@ public class McpServerController {
     /**
      * 查询MCP服务器分页列表
      *
-     * @param query 查询参数
+     * @param query    查询参数
+     * @param exchange 当前请求上下文
      * @return MCP服务器分页列表
      */
     @GetMapping
-    public Mono<PageResult<McpServerVO>> listMcpServers(@Valid McpServerListQuery query) {
+    public Mono<PageResult<McpServerVO>> listMcpServers(@Valid McpServerListQuery query,
+                                                        ServerWebExchange exchange) {
         return Mono.fromCallable(() -> {
-            QueryMcpServerListCommand command = aiApiAssembler.toQueryMcpServerListCommand(query);
-            PageResponse<McpServerDTO> servers = aiApplicationService.listMcpServers(command);
-            return PageResult.success(
-                    aiApiAssembler.toMcpServerVoList(servers.getData()),
-                    servers.getTotal(),
-                    servers.getCurrentPage(),
-                    servers.getPageSize()
-            );
+            ReactiveLoginUserHolder.initFromExchange(exchange);
+            try {
+                QueryMcpServerListCommand command = aiApiAssembler.toQueryMcpServerListCommand(query);
+                PageResponse<McpServerDTO> servers = aiApplicationService.listMcpServers(command);
+                return PageResult.success(
+                        aiApiAssembler.toMcpServerVoList(servers.getData()),
+                        servers.getTotal(),
+                        servers.getCurrentPage(),
+                        servers.getPageSize()
+                );
+            } finally {
+                ReactiveLoginUserHolder.clear();
+            }
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
@@ -62,15 +71,22 @@ public class McpServerController {
      *
      * @param transportType 传输类型(stdio/sse)
      * @param status        状态（0-禁用，1-启用）
+     * @param exchange      当前请求上下文
      * @return 全部MCP服务器列表
      */
     @GetMapping("/all")
     public Mono<Result<List<McpServerVO>>> listAllMcpServers(
             @RequestParam(required = false) String transportType,
-            @RequestParam(required = false) Integer status) {
+            @RequestParam(required = false) Integer status,
+            ServerWebExchange exchange) {
         return Mono.fromCallable(() -> {
-            List<McpServerDTO> servers = aiApplicationService.listAllMcpServers(transportType, status);
-            return Result.success(aiApiAssembler.toMcpServerVoList(servers));
+            ReactiveLoginUserHolder.initFromExchange(exchange);
+            try {
+                List<McpServerDTO> servers = aiApplicationService.listAllMcpServers(transportType, status);
+                return Result.success(aiApiAssembler.toMcpServerVoList(servers));
+            } finally {
+                ReactiveLoginUserHolder.clear();
+            }
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
@@ -92,15 +108,22 @@ public class McpServerController {
     /**
      * 创建MCP服务器
      *
-     * @param request 创建MCP服务器请求参数
+     * @param request  创建MCP服务器请求参数
+     * @param exchange 当前请求上下文
      * @return 创建的MCP服务器详情
      */
     @PostMapping
-    public Mono<Result<McpServerVO>> createMcpServer(@Valid @RequestBody McpServerCreateRequest request) {
+    public Mono<Result<McpServerVO>> createMcpServer(@Valid @RequestBody McpServerCreateRequest request,
+                                                      ServerWebExchange exchange) {
         return Mono.fromCallable(() -> {
-            CreateMcpServerCommand command = aiApiAssembler.toCreateMcpServerCommand(request);
-            McpServerDTO created = aiApplicationService.createMcpServer(command);
-            return Result.success(aiApiAssembler.toMcpServerVo(created));
+            ReactiveLoginUserHolder.initFromExchange(exchange);
+            try {
+                CreateMcpServerCommand command = aiApiAssembler.toCreateMcpServerCommand(request);
+                McpServerDTO created = aiApplicationService.createMcpServer(command);
+                return Result.success(aiApiAssembler.toMcpServerVo(created));
+            } finally {
+                ReactiveLoginUserHolder.clear();
+            }
         }).subscribeOn(Schedulers.boundedElastic());
     }
 

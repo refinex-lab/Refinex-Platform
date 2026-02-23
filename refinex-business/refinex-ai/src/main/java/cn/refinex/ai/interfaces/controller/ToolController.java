@@ -5,6 +5,7 @@ import cn.refinex.ai.application.command.QueryToolListCommand;
 import cn.refinex.ai.application.command.UpdateToolCommand;
 import cn.refinex.ai.application.dto.ToolDTO;
 import cn.refinex.ai.application.service.AiApplicationService;
+import cn.refinex.ai.infrastructure.config.ReactiveLoginUserHolder;
 import cn.refinex.ai.interfaces.assembler.AiApiAssembler;
 import cn.refinex.ai.interfaces.dto.ToolCreateRequest;
 import cn.refinex.ai.interfaces.dto.ToolListQuery;
@@ -18,6 +19,7 @@ import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -40,20 +42,27 @@ public class ToolController {
     /**
      * 查询工具分页列表
      *
-     * @param query 查询参数
+     * @param query    查询参数
+     * @param exchange 当前请求上下文
      * @return 工具分页列表
      */
     @GetMapping
-    public Mono<PageResult<ToolVO>> listTools(@Valid ToolListQuery query) {
+    public Mono<PageResult<ToolVO>> listTools(@Valid ToolListQuery query,
+                                              ServerWebExchange exchange) {
         return Mono.fromCallable(() -> {
-            QueryToolListCommand command = aiApiAssembler.toQueryToolListCommand(query);
-            PageResponse<ToolDTO> tools = aiApplicationService.listTools(command);
-            return PageResult.success(
-                    aiApiAssembler.toToolVoList(tools.getData()),
-                    tools.getTotal(),
-                    tools.getCurrentPage(),
-                    tools.getPageSize()
-            );
+            ReactiveLoginUserHolder.initFromExchange(exchange);
+            try {
+                QueryToolListCommand command = aiApiAssembler.toQueryToolListCommand(query);
+                PageResponse<ToolDTO> tools = aiApplicationService.listTools(command);
+                return PageResult.success(
+                        aiApiAssembler.toToolVoList(tools.getData()),
+                        tools.getTotal(),
+                        tools.getCurrentPage(),
+                        tools.getPageSize()
+                );
+            } finally {
+                ReactiveLoginUserHolder.clear();
+            }
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
@@ -62,15 +71,22 @@ public class ToolController {
      *
      * @param toolType 工具类型(FUNCTION/MCP/HTTP)
      * @param status   状态（0-禁用，1-启用）
+     * @param exchange 当前请求上下文
      * @return 全部工具列表
      */
     @GetMapping("/all")
     public Mono<Result<List<ToolVO>>> listAllTools(
             @RequestParam(required = false) String toolType,
-            @RequestParam(required = false) Integer status) {
+            @RequestParam(required = false) Integer status,
+            ServerWebExchange exchange) {
         return Mono.fromCallable(() -> {
-            List<ToolDTO> tools = aiApplicationService.listAllTools(toolType, status);
-            return Result.success(aiApiAssembler.toToolVoList(tools));
+            ReactiveLoginUserHolder.initFromExchange(exchange);
+            try {
+                List<ToolDTO> tools = aiApplicationService.listAllTools(toolType, status);
+                return Result.success(aiApiAssembler.toToolVoList(tools));
+            } finally {
+                ReactiveLoginUserHolder.clear();
+            }
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
@@ -91,15 +107,22 @@ public class ToolController {
     /**
      * 创建工具
      *
-     * @param request 创建工具请求参数
+     * @param request  创建工具请求参数
+     * @param exchange 当前请求上下文
      * @return 创建的工具详情
      */
     @PostMapping
-    public Mono<Result<ToolVO>> createTool(@Valid @RequestBody ToolCreateRequest request) {
+    public Mono<Result<ToolVO>> createTool(@Valid @RequestBody ToolCreateRequest request,
+                                           ServerWebExchange exchange) {
         return Mono.fromCallable(() -> {
-            CreateToolCommand command = aiApiAssembler.toCreateToolCommand(request);
-            ToolDTO created = aiApplicationService.createTool(command);
-            return Result.success(aiApiAssembler.toToolVo(created));
+            ReactiveLoginUserHolder.initFromExchange(exchange);
+            try {
+                CreateToolCommand command = aiApiAssembler.toCreateToolCommand(request);
+                ToolDTO created = aiApplicationService.createTool(command);
+                return Result.success(aiApiAssembler.toToolVo(created));
+            } finally {
+                ReactiveLoginUserHolder.clear();
+            }
         }).subscribeOn(Schedulers.boundedElastic());
     }
 

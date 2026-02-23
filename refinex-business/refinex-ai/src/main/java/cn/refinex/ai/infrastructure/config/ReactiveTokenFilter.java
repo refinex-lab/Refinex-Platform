@@ -1,6 +1,8 @@
 package cn.refinex.ai.infrastructure.config;
 
 import cn.dev33.satoken.stp.StpUtil;
+import cn.refinex.api.user.model.context.LoginUser;
+import cn.refinex.satoken.helper.LoginUserHelper;
 import cn.refinex.web.autoconfigure.RefinexWebProperties;
 import cn.refinex.web.context.UserContext;
 import cn.refinex.web.utils.TokenUtils;
@@ -44,6 +46,17 @@ import java.util.UUID;
  *   <li>实现 {@link WebFilter} 而非 Servlet {@code Filter}</li>
  *   <li>阻塞操作（Redis Lua、Sa-Token 查询）通过 {@code subscribeOn(boundedElastic)} 调度</li>
  *   <li>UserContext 基于 ThreadLocal，在 boundedElastic 线程上设置/清理</li>
+ * </ul>
+ * <p>
+ * Sa-Token 1.44.0 兼容说明：
+ * <ul>
+ *   <li>Sa-Token 1.44.0 的 {@code SaReactorFilter} 在 finally 中提前清除了 SaTokenContext，
+ *       导致后续 {@code Mono.fromCallable} 跳线程后 {@code StpUtil.getSession()} 等方法不可用
+ *       （参见 <a href="https://github.com/dromara/Sa-Token/issues/846">Sa-Token #846</a>）</li>
+ *   <li>解决方案：在 Filter 中通过 {@code StpUtil.getLoginIdByToken(token)}（不依赖 SaTokenContext）
+ *       获取 loginId，再通过 {@code LoginUserHelper.getLoginUser(loginId)}（直接查 Redis Session）
+ *       获取 {@link LoginUser}，存入 {@link ReactiveLoginUserHolder} ThreadLocal</li>
+ *   <li>Controller 层通过 {@link ReactiveLoginUserHolder} 获取用户信息，完全绕过 StpUtil 上下文依赖</li>
  * </ul>
  *
  * @author refinex
@@ -105,11 +118,27 @@ public class ReactiveTokenFilter implements WebFilter {
         return Mono.fromCallable(() -> validateAndConsumeToken(token, isStress))
                 .subscribeOn(Schedulers.boundedElastic())
                 .flatMap(validToken -> {
-                    // 在 boundedElastic 线程上设置 UserContext，后续阻塞操作也在此线程
+                    // 设置 UserContext（ThreadLocal），后续阻塞操作也在此线程
                     UserContext.setToken(validToken);
                     UserContext.setStressTest(isStress);
-                    // 继续FilterChain，后续操作在 boundedElastic 线程
-                    return chain.filter(exchange).doFinally(signal -> UserContext.clear());
+
+                    // 通过 token 获取 loginId（直接查 Redis，不依赖 SaTokenContext）
+                    // 再通过 loginId 获取 LoginUser（直接查 Session，不依赖 SaTokenContext）
+                    // 存入 Exchange 属性（线程安全），供 Controller 层跨线程读取
+                    try {
+                        Object loginId = StpUtil.getLoginIdByToken(validToken);
+                        if (loginId != null) {
+                            LoginUser loginUser = LoginUserHelper.getLoginUser(loginId);
+                            ReactiveLoginUserHolder.setToExchange(exchange, loginId, loginUser);
+                        }
+                    } catch (Exception e) {
+                        log.warn("Failed to resolve LoginUser from token", e);
+                    }
+
+                    // 继续 FilterChain
+                    return chain.filter(exchange).doFinally(signal -> {
+                        UserContext.clear();
+                    });
                 })
                 .onErrorResume(e -> {
                     log.error("ReactiveTokenFilter internal error", e);

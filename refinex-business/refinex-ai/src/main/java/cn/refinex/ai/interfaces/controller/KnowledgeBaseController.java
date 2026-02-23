@@ -4,6 +4,7 @@ import cn.refinex.ai.application.command.*;
 import cn.refinex.ai.application.dto.*;
 import cn.refinex.ai.application.service.KbApplicationService;
 import cn.refinex.ai.application.service.VectorizationService;
+import cn.refinex.ai.infrastructure.config.ReactiveLoginUserHolder;
 import cn.refinex.ai.interfaces.assembler.KbApiAssembler;
 import cn.refinex.ai.interfaces.dto.*;
 import cn.refinex.ai.interfaces.vo.*;
@@ -15,6 +16,7 @@ import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -40,34 +42,48 @@ public class KnowledgeBaseController {
     /**
      * 查询知识库分页列表
      *
-     * @param query 查询参数
+     * @param query    查询参数
+     * @param exchange 当前请求上下文
      * @return 知识库分页列表
      */
     @GetMapping
-    public Mono<PageResult<KnowledgeBaseVO>> listKnowledgeBases(@Valid KnowledgeBaseListQuery query) {
+    public Mono<PageResult<KnowledgeBaseVO>> listKnowledgeBases(@Valid KnowledgeBaseListQuery query,
+                                                                ServerWebExchange exchange) {
         return Mono.fromCallable(() -> {
-            QueryKnowledgeBaseListCommand command = kbApiAssembler.toQueryKnowledgeBaseListCommand(query);
-            PageResponse<KnowledgeBaseDTO> kbs = kbApplicationService.listKnowledgeBases(command);
-            return PageResult.success(
-                    kbApiAssembler.toKnowledgeBaseVoList(kbs.getData()),
-                    kbs.getTotal(),
-                    kbs.getCurrentPage(),
-                    kbs.getPageSize()
-            );
+            ReactiveLoginUserHolder.initFromExchange(exchange);
+            try {
+                QueryKnowledgeBaseListCommand command = kbApiAssembler.toQueryKnowledgeBaseListCommand(query);
+                PageResponse<KnowledgeBaseDTO> kbs = kbApplicationService.listKnowledgeBases(command);
+                return PageResult.success(
+                        kbApiAssembler.toKnowledgeBaseVoList(kbs.getData()),
+                        kbs.getTotal(),
+                        kbs.getCurrentPage(),
+                        kbs.getPageSize()
+                );
+            } finally {
+                ReactiveLoginUserHolder.clear();
+            }
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
     /**
      * 查询全部知识库（不分页，用于下拉选择）
      *
-     * @param status 状态（0-禁用，1-启用）
+     * @param status   状态（0-禁用，1-启用）
+     * @param exchange 当前请求上下文
      * @return 全部知识库列表
      */
     @GetMapping("/all")
-    public Mono<Result<List<KnowledgeBaseVO>>> listAllKnowledgeBases(@RequestParam(required = false) Integer status) {
+    public Mono<Result<List<KnowledgeBaseVO>>> listAllKnowledgeBases(@RequestParam(required = false) Integer status,
+                                                                     ServerWebExchange exchange) {
         return Mono.fromCallable(() -> {
-            List<KnowledgeBaseDTO> kbs = kbApplicationService.listAllKnowledgeBases(status);
-            return Result.success(kbApiAssembler.toKnowledgeBaseVoList(kbs));
+            ReactiveLoginUserHolder.initFromExchange(exchange);
+            try {
+                List<KnowledgeBaseDTO> kbs = kbApplicationService.listAllKnowledgeBases(status);
+                return Result.success(kbApiAssembler.toKnowledgeBaseVoList(kbs));
+            } finally {
+                ReactiveLoginUserHolder.clear();
+            }
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
@@ -88,15 +104,22 @@ public class KnowledgeBaseController {
     /**
      * 创建知识库
      *
-     * @param request 创建知识库请求参数
+     * @param request  创建知识库请求参数
+     * @param exchange 当前请求上下文
      * @return 创建的知识库详情
      */
     @PostMapping
-    public Mono<Result<KnowledgeBaseVO>> createKnowledgeBase(@Valid @RequestBody KnowledgeBaseCreateRequest request) {
+    public Mono<Result<KnowledgeBaseVO>> createKnowledgeBase(@Valid @RequestBody KnowledgeBaseCreateRequest request,
+                                                              ServerWebExchange exchange) {
         return Mono.fromCallable(() -> {
-            CreateKnowledgeBaseCommand command = kbApiAssembler.toCreateKnowledgeBaseCommand(request);
-            KnowledgeBaseDTO created = kbApplicationService.createKnowledgeBase(command);
-            return Result.success(kbApiAssembler.toKnowledgeBaseVo(created));
+            ReactiveLoginUserHolder.initFromExchange(exchange);
+            try {
+                CreateKnowledgeBaseCommand command = kbApiAssembler.toCreateKnowledgeBaseCommand(request);
+                KnowledgeBaseDTO created = kbApplicationService.createKnowledgeBase(command);
+                return Result.success(kbApiAssembler.toKnowledgeBaseVo(created));
+            } finally {
+                ReactiveLoginUserHolder.clear();
+            }
         }).subscribeOn(Schedulers.boundedElastic());
     }
 

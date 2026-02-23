@@ -15,7 +15,7 @@ import cn.refinex.ai.infrastructure.ai.VectorStoreRouter;
 import cn.refinex.base.exception.BizException;
 import cn.refinex.base.response.PageResponse;
 import cn.refinex.base.utils.PageUtils;
-import cn.refinex.satoken.helper.LoginUserHelper;
+import cn.refinex.ai.infrastructure.config.ReactiveLoginUserHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.document.Document;
@@ -64,7 +64,7 @@ public class KbApplicationService {
         int pageSize = PageUtils.normalizePageSize(command == null ? null : command.getPageSize(),
                 PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE);
 
-        Long estabId = LoginUserHelper.getEstabId();
+        Long estabId = ReactiveLoginUserHolder.getEstabId();
 
         PageResponse<KnowledgeBaseEntity> entities = aiRepository.listKnowledgeBases(
                 estabId,
@@ -88,7 +88,7 @@ public class KbApplicationService {
      * @return 知识库列表
      */
     public List<KnowledgeBaseDTO> listAllKnowledgeBases(Integer status) {
-        Long estabId = LoginUserHelper.getEstabId();
+        Long estabId = ReactiveLoginUserHolder.getEstabId();
         List<KnowledgeBaseEntity> entities = aiRepository.listAllKnowledgeBases(estabId, status);
         List<KnowledgeBaseDTO> result = new ArrayList<>();
         for (KnowledgeBaseEntity entity : entities) {
@@ -120,7 +120,7 @@ public class KbApplicationService {
             throw new BizException(AiErrorCode.INVALID_PARAM);
         }
 
-        Long estabId = LoginUserHelper.getEstabId();
+        Long estabId = ReactiveLoginUserHolder.getEstabId();
         String kbCode = command.getKbCode().trim();
 
         if (aiRepository.countKbCode(estabId, kbCode, null) > 0) {
