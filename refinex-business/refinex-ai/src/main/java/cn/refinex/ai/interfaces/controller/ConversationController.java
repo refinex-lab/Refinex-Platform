@@ -47,8 +47,7 @@ public class ConversationController {
      * @return SSE 流
      */
     @PostMapping(value = "/chat", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<ServerSentEvent<String>> chat(@Valid @RequestBody ChatRequest request,
-                                              ServerWebExchange exchange) {
+    public Flux<ServerSentEvent<String>> chat(@Valid @RequestBody ChatRequest request, ServerWebExchange exchange) {
         ReactiveLoginUserHolder.initFromExchange(exchange);
         try {
             StreamChatCommand command = aiApiAssembler.toStreamChatCommand(request);
@@ -68,8 +67,7 @@ public class ConversationController {
      * @return 对话分页列表
      */
     @GetMapping
-    public Mono<PageResult<ConversationVO>> listConversations(@Valid ConversationListQuery query,
-                                                              ServerWebExchange exchange) {
+    public Mono<PageResult<ConversationVO>> listConversations(@Valid ConversationListQuery query, ServerWebExchange exchange) {
         return Mono.fromCallable(() -> {
             ReactiveLoginUserHolder.initFromExchange(exchange);
             try {
@@ -97,8 +95,7 @@ public class ConversationController {
      * @return 对话详情
      */
     @GetMapping("/{conversationId}")
-    public Mono<Result<ConversationDetailVO>> getConversation(@PathVariable String conversationId,
-                                                              ServerWebExchange exchange) {
+    public Mono<Result<ConversationDetailVO>> getConversation(@PathVariable String conversationId, ServerWebExchange exchange) {
         return Mono.fromCallable(() -> {
             ReactiveLoginUserHolder.initFromExchange(exchange);
             try {
@@ -119,8 +116,7 @@ public class ConversationController {
      * @return 操作结果
      */
     @DeleteMapping("/{conversationId}")
-    public Mono<Result<Void>> deleteConversation(@PathVariable String conversationId,
-                                                  ServerWebExchange exchange) {
+    public Mono<Result<Void>> deleteConversation(@PathVariable String conversationId, ServerWebExchange exchange) {
         return Mono.fromCallable(() -> {
             ReactiveLoginUserHolder.initFromExchange(exchange);
             try {
@@ -166,8 +162,7 @@ public class ConversationController {
      * @return 操作结果
      */
     @PutMapping("/{conversationId}/pin")
-    public Mono<Result<Void>> togglePin(@PathVariable String conversationId,
-                                        ServerWebExchange exchange) {
+    public Mono<Result<Void>> togglePin(@PathVariable String conversationId, ServerWebExchange exchange) {
         return Mono.fromCallable(() -> {
             ReactiveLoginUserHolder.initFromExchange(exchange);
             try {

@@ -44,10 +44,6 @@ sa-token:
   token-name: Refinex-Token
 
 refinex:
-  web:
-    # 关闭 TokenFilter，统一使用 Sa-Token 进行鉴权
-    enabled: false
-
   # ── 向量存储配置 ──
   vector-store:
     # 激活的向量存储后端: redis / elasticsearch / pgvector / qdrant / simple
