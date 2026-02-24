@@ -330,6 +330,28 @@ public class KnowledgeBaseController {
     }
 
     /**
+     * 更新文档内容（纯文本）
+     *
+     * @param kbId    知识库ID
+     * @param docId   文档ID
+     * @param request 更新文档内容请求参数
+     * @return 更新后的文档详情
+     */
+    @PutMapping("/{kbId}/documents/{docId}/content")
+    public Mono<Result<DocumentVO>> updateDocumentContent(
+            @PathVariable @Positive(message = "知识库ID必须大于0") Long kbId,
+            @PathVariable @Positive(message = "文档ID必须大于0") Long docId,
+            @Valid @RequestBody DocumentContentUpdateRequest request) {
+        return Mono.fromCallable(() -> {
+            UpdateDocumentContentCommand command = new UpdateDocumentContentCommand();
+            command.setDocumentId(docId);
+            command.setContent(request.getContent());
+            DocumentDTO updated = kbApplicationService.updateDocumentContent(command);
+            return Result.success(kbApiAssembler.toDocumentVo(updated));
+        }).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    /**
      * 删除文档
      *
      * @param kbId  知识库ID

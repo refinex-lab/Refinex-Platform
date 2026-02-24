@@ -433,6 +433,35 @@ public class KbApplicationService {
     }
 
     /**
+     * 更新文档内容（纯文本），同时重算 charCount/tokenCount 并重置向量状态
+     *
+     * @param command 更新文档内容命令
+     * @return 更新后的文档DTO
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public DocumentDTO updateDocumentContent(UpdateDocumentContentCommand command) {
+        if (command == null || command.getDocumentId() == null || command.getContent() == null) {
+            throw new BizException(AiErrorCode.INVALID_PARAM);
+        }
+
+        DocumentEntity existing = requireDocument(command.getDocumentId());
+        String content = command.getContent();
+
+        existing.setContent(content);
+        existing.setCharCount(content.length());
+        existing.setTokenCount(estimateTokenCount(content));
+
+        // 内容变更后，已有向量数据失效，重置向量状态为未向量化
+        if (existing.getVectorStatus() != null && existing.getVectorStatus() == 2) {
+            existing.setVectorStatus(0);
+            existing.setChunkCount(0);
+        }
+
+        aiRepository.updateDocument(existing);
+        return kbDomainAssembler.toDocumentDto(requireDocument(existing.getId()));
+    }
+
+    /**
      * 删除文档（级联删除切片，更新 docCount）
      *
      * @param id 文档ID
