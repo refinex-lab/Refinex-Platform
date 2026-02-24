@@ -249,6 +249,33 @@ public class ConversationApplicationService {
         aiRepository.updateConversation(conversation);
     }
 
+    /**
+     * 归档用户所有进行中的对话
+     *
+     * @param estabId 组织ID
+     * @param userId  当前用户ID
+     */
+    public void archiveAllConversations(Long estabId, Long userId) {
+        aiRepository.archiveAllConversations(estabId, userId);
+    }
+
+    /**
+     * 删除用户所有对话（逻辑删除 + 清除 ChatMemory）
+     *
+     * @param estabId 组织ID
+     * @param userId  当前用户ID
+     */
+    public void deleteAllConversations(Long estabId, Long userId) {
+        List<String> conversationIds = aiRepository.deleteAllConversations(estabId, userId);
+        for (String cid : conversationIds) {
+            try {
+                chatMemory.clear(cid);
+            } catch (Exception e) {
+                log.warn("清除 ChatMemory 失败, conversationId={}", cid, e);
+            }
+        }
+    }
+
     // ── 私有方法 ──
 
     /**

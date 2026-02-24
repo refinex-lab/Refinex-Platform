@@ -2,6 +2,8 @@ package cn.refinex.ai.domain.model.entity;
 
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 /**
  * AI对话领域实体
  *
@@ -64,4 +66,14 @@ public class ConversationEntity {
      * 逻辑删除 0未删 1已删
      */
     private Integer deleted;
+
+    /**
+     * 创建时间
+     */
+    private LocalDateTime gmtCreate;
+
+    /**
+     * 修改时间
+     */
+    private LocalDateTime gmtModified;
 }

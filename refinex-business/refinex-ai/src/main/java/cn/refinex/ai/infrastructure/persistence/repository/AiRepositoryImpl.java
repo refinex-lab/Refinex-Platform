@@ -1324,6 +1324,50 @@ public class AiRepositoryImpl implements AiRepository {
         }
     }
 
+    /**
+     * 批量归档用户所有进行中的对话
+     *
+     * @param estabId 组织ID
+     * @param userId  用户ID
+     * @return 归档的对话数量
+     */
+    @Override
+    public int archiveAllConversations(Long estabId, Long userId) {
+        AiConversationDo update = new AiConversationDo();
+        update.setStatus(2);
+        return aiConversationMapper.update(update,
+                Wrappers.lambdaUpdate(AiConversationDo.class)
+                        .eq(AiConversationDo::getEstabId, estabId)
+                        .eq(AiConversationDo::getUserId, userId)
+                        .eq(AiConversationDo::getStatus, 1)
+                        .eq(AiConversationDo::getDeleted, 0)
+        );
+    }
+
+    /**
+     * 批量删除用户所有对话（逻辑删除）
+     *
+     * @param estabId 组织ID
+     * @param userId  用户ID
+     * @return 删除的对话ID列表（用于清除 ChatMemory）
+     */
+    @Override
+    public List<String> deleteAllConversations(Long estabId, Long userId) {
+        List<AiConversationDo> rows = aiConversationMapper.selectList(
+                Wrappers.lambdaQuery(AiConversationDo.class)
+                        .eq(AiConversationDo::getEstabId, estabId)
+                        .eq(AiConversationDo::getUserId, userId)
+                        .eq(AiConversationDo::getDeleted, 0)
+                        .select(AiConversationDo::getId, AiConversationDo::getConversationId)
+        );
+        List<String> conversationIds = new ArrayList<>();
+        for (AiConversationDo row : rows) {
+            conversationIds.add(row.getConversationId());
+            aiConversationMapper.deleteById(row.getId());
+        }
+        return conversationIds;
+    }
+
     // ── UsageLog ──
 
     /**

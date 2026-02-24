@@ -195,4 +195,46 @@ public class ConversationController {
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
+
+    /**
+     * 归档所有进行中的对话
+     *
+     * @param exchange 当前请求上下文
+     * @return 操作结果
+     */
+    @PutMapping("/archive-all")
+    public Mono<Result<Void>> archiveAll(ServerWebExchange exchange) {
+        return Mono.fromCallable(() -> {
+            ReactiveLoginUserHolder.initFromExchange(exchange);
+            try {
+                Long estabId = ReactiveLoginUserHolder.getEstabId();
+                Long userId = ReactiveLoginUserHolder.getUserId();
+                conversationApplicationService.archiveAllConversations(estabId, userId);
+                return Result.<Void>success();
+            } finally {
+                ReactiveLoginUserHolder.clear();
+            }
+        }).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    /**
+     * 删除所有对话
+     *
+     * @param exchange 当前请求上下文
+     * @return 操作结果
+     */
+    @DeleteMapping("/all")
+    public Mono<Result<Void>> deleteAll(ServerWebExchange exchange) {
+        return Mono.fromCallable(() -> {
+            ReactiveLoginUserHolder.initFromExchange(exchange);
+            try {
+                Long estabId = ReactiveLoginUserHolder.getEstabId();
+                Long userId = ReactiveLoginUserHolder.getUserId();
+                conversationApplicationService.deleteAllConversations(estabId, userId);
+                return Result.<Void>success();
+            } finally {
+                ReactiveLoginUserHolder.clear();
+            }
+        }).subscribeOn(Schedulers.boundedElastic());
+    }
 }

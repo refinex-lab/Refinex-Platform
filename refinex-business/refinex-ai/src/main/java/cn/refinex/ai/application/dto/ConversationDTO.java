@@ -2,6 +2,8 @@ package cn.refinex.ai.application.dto;
 
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 /**
  * 对话 DTO
  *
@@ -59,4 +61,14 @@ public class ConversationDTO {
      * 扩展信息(如温度、top_p等对话级参数覆盖)
      */
     private String extJson;
+
+    /**
+     * 创建时间
+     */
+    private LocalDateTime gmtCreate;
+
+    /**
+     * 修改时间
+     */
+    private LocalDateTime gmtModified;
 }

@@ -591,6 +591,24 @@ public interface AiRepository {
      */
     void deleteConversationByConversationId(String conversationId);
 
+    /**
+     * 批量归档用户所有进行中的对话
+     *
+     * @param estabId 组织ID
+     * @param userId  用户ID
+     * @return 归档的对话数量
+     */
+    int archiveAllConversations(Long estabId, Long userId);
+
+    /**
+     * 批量删除用户所有对话（逻辑删除）
+     *
+     * @param estabId 组织ID
+     * @param userId  用户ID
+     * @return 删除的对话ID列表（用于清除 ChatMemory）
+     */
+    List<String> deleteAllConversations(Long estabId, Long userId);
+
     // ── KnowledgeBase ──
 
     /**

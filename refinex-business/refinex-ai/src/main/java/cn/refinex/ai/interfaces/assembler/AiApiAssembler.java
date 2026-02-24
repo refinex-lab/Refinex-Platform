@@ -8,6 +8,8 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
@@ -351,8 +353,8 @@ public interface AiApiAssembler {
      * @param dto 对话DTO
      * @return 对话VO
      */
-    @Mapping(target = "gmtCreate", ignore = true)
-    @Mapping(target = "gmtModified", ignore = true)
+    @Mapping(target = "gmtCreate", source = "gmtCreate", qualifiedByName = "formatDateTime")
+    @Mapping(target = "gmtModified", source = "gmtModified", qualifiedByName = "formatDateTime")
     ConversationVO toConversationVo(ConversationDTO dto);
 
     /**
@@ -369,8 +371,8 @@ public interface AiApiAssembler {
      * @param dto 对话DTO
      * @return 对话详情VO
      */
-    @Mapping(target = "gmtCreate", ignore = true)
-    @Mapping(target = "gmtModified", ignore = true)
+    @Mapping(target = "gmtCreate", source = "gmtCreate", qualifiedByName = "formatDateTime")
+    @Mapping(target = "gmtModified", source = "gmtModified", qualifiedByName = "formatDateTime")
     @Mapping(target = "messages", ignore = true)
     ConversationDetailVO toConversationDetailVo(ConversationDTO dto);
 
@@ -410,5 +412,19 @@ public interface AiApiAssembler {
         } catch (Exception e) {
             return "***";
         }
+    }
+
+    /**
+     * LocalDateTime 格式化为字符串（yyyy-MM-dd HH:mm:ss）
+     *
+     * @param dateTime 时间
+     * @return 格式化后的字符串
+     */
+    @Named("formatDateTime")
+    default String formatDateTime(LocalDateTime dateTime) {
+        if (dateTime == null) {
+            return null;
+        }
+        return dateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
     }
 }
