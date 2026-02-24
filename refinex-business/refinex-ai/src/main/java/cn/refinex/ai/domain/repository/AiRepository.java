@@ -562,11 +562,12 @@ public interface AiRepository {
      *
      * @param estabId     组织ID
      * @param userId      用户ID
+     * @param status      状态 1进行中 2已归档
      * @param currentPage 当前页码
      * @param pageSize    每页数量
      * @return 对话分页列表
      */
-    PageResponse<ConversationEntity> listConversations(Long estabId, Long userId, int currentPage, int pageSize);
+    PageResponse<ConversationEntity> listConversations(Long estabId, Long userId, Integer status, int currentPage, int pageSize);
 
     /**
      * 插入对话

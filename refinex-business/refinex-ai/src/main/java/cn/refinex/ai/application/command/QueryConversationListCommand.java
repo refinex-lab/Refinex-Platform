@@ -29,4 +29,9 @@ public class QueryConversationListCommand {
      * 每页数量
      */
     private Integer pageSize;
+
+    /**
+     * 状态 1进行中 2已归档
+     */
+    private Integer status;
 }

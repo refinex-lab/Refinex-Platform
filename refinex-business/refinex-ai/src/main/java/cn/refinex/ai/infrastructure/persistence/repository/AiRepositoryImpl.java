@@ -1257,16 +1257,18 @@ public class AiRepositoryImpl implements AiRepository {
      *
      * @param estabId     组织ID
      * @param userId      用户ID
+     * @param status      状态 1进行中 2已归档
      * @param currentPage 当前页码
      * @param pageSize    每页数量
      * @return 对话分页列表
      */
     @Override
-    public PageResponse<ConversationEntity> listConversations(Long estabId, Long userId, int currentPage, int pageSize) {
+    public PageResponse<ConversationEntity> listConversations(Long estabId, Long userId, Integer status, int currentPage, int pageSize) {
         LambdaQueryWrapper<AiConversationDo> query = Wrappers.lambdaQuery(AiConversationDo.class)
                 .eq(AiConversationDo::getEstabId, estabId)
                 .eq(AiConversationDo::getUserId, userId)
                 .eq(AiConversationDo::getDeleted, 0)
+                .eq(status != null, AiConversationDo::getStatus, status)
                 .orderByDesc(AiConversationDo::getPinned, AiConversationDo::getGmtModified);
 
         Page<AiConversationDo> page = new Page<>(currentPage, pageSize);

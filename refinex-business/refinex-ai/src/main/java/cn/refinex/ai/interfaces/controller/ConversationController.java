@@ -174,4 +174,25 @@ public class ConversationController {
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
+
+    /**
+     * 切换对话归档状态
+     *
+     * @param conversationId 会话唯一标识
+     * @param exchange       当前请求上下文
+     * @return 操作结果
+     */
+    @PutMapping("/{conversationId}/archive")
+    public Mono<Result<Void>> toggleArchive(@PathVariable String conversationId, ServerWebExchange exchange) {
+        return Mono.fromCallable(() -> {
+            ReactiveLoginUserHolder.initFromExchange(exchange);
+            try {
+                Long userId = ReactiveLoginUserHolder.getUserId();
+                conversationApplicationService.toggleArchive(conversationId, userId);
+                return Result.<Void>success();
+            } finally {
+                ReactiveLoginUserHolder.clear();
+            }
+        }).subscribeOn(Schedulers.boundedElastic());
+    }
 }

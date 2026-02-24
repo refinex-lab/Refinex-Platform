@@ -148,7 +148,7 @@ public class ConversationApplicationService {
         int currentPage = PageUtils.normalizeCurrentPage(command.getCurrentPage());
         int pageSize = PageUtils.normalizePageSize(command.getPageSize(), PageUtils.DEFAULT_PAGE_SIZE, PageUtils.DEFAULT_MAX_PAGE_SIZE);
 
-        PageResponse<ConversationEntity> entities = aiRepository.listConversations(command.getEstabId(), command.getUserId(), currentPage, pageSize);
+        PageResponse<ConversationEntity> entities = aiRepository.listConversations(command.getEstabId(), command.getUserId(), command.getStatus(), currentPage, pageSize);
 
         List<ConversationDTO> result = new ArrayList<>();
         for (ConversationEntity entity : entities.getData()) {
@@ -232,6 +232,20 @@ public class ConversationApplicationService {
         requireOwnership(conversation, userId);
 
         conversation.setPinned(conversation.getPinned() != null && conversation.getPinned() == 1 ? 0 : 1);
+        aiRepository.updateConversation(conversation);
+    }
+
+    /**
+     * 切换对话归档状态
+     *
+     * @param conversationId 会话唯一标识
+     * @param userId         当前用户ID
+     */
+    public void toggleArchive(String conversationId, Long userId) {
+        ConversationEntity conversation = requireConversation(conversationId);
+        requireOwnership(conversation, userId);
+
+        conversation.setStatus(conversation.getStatus() != null && conversation.getStatus() == 2 ? 1 : 2);
         aiRepository.updateConversation(conversation);
     }
 
