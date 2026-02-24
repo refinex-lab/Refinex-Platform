@@ -752,6 +752,55 @@ public class UserApplicationService {
     }
 
     /**
+     * 当前用户重置密码（无需旧密码）
+     *
+     * @param command 重置密码命令
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void resetCurrentUserPassword(ResetCurrentUserPasswordCommand command) {
+        if (command == null || command.getUserId() == null
+                || command.getNewPassword() == null || command.getNewPassword().isBlank()) {
+            throw new BizException(UserErrorCode.INVALID_PARAM);
+        }
+
+        UserEntity user = userRepository.findUserById(command.getUserId());
+        if (user == null || (user.getDeleted() != null && user.getDeleted() == 1)) {
+            throw new BizException(UserErrorCode.USER_NOT_FOUND);
+        }
+
+        UserIdentityEntity usernamePasswordIdentity = userRepository.findIdentityByUserIdAndType(
+                command.getUserId(), IdentityType.USERNAME_PASSWORD.getCode());
+        UserIdentityEntity emailPasswordIdentity = userRepository.findIdentityByUserIdAndType(
+                command.getUserId(), IdentityType.EMAIL_PASSWORD.getCode());
+
+        List<UserIdentityEntity> passwordIdentities = new ArrayList<>();
+        if (usernamePasswordIdentity != null && usernamePasswordIdentity.getStatus() != null
+                && usernamePasswordIdentity.getStatus() == 1) {
+            passwordIdentities.add(usernamePasswordIdentity);
+        }
+        if (emailPasswordIdentity != null && emailPasswordIdentity.getStatus() != null
+                && emailPasswordIdentity.getStatus() == 1) {
+            passwordIdentities.add(emailPasswordIdentity);
+        }
+        if (passwordIdentities.isEmpty()) {
+            throw new BizException(UserErrorCode.PASSWORD_RESET_NOT_SUPPORTED);
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        String encodedPassword = passwordEncoder.encode(command.getNewPassword());
+        for (UserIdentityEntity identity : passwordIdentities) {
+            userRepository.updateIdentityCredential(
+                    identity.getId(),
+                    encodedPassword,
+                    DEFAULT_PASSWORD_ENCODER,
+                    identity.getVerified(),
+                    identity.getVerifiedAt() == null ? now : identity.getVerifiedAt()
+            );
+        }
+        userRepository.resetLoginFailCount(command.getUserId());
+    }
+
+    /**
      * 上传用户头像
      *
      * @param command     上传头像命令

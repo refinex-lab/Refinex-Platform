@@ -7,6 +7,7 @@ import cn.refinex.base.exception.SystemException;
 import cn.refinex.base.exception.code.BizErrorCode;
 import cn.refinex.user.application.command.ChangePasswordCommand;
 import cn.refinex.user.application.command.QueryUserInfoCommand;
+import cn.refinex.user.application.command.ResetCurrentUserPasswordCommand;
 import cn.refinex.user.application.command.UploadUserAvatarCommand;
 import cn.refinex.user.application.command.UpdateUserProfileCommand;
 import cn.refinex.user.application.dto.UserAccountDTO;
@@ -16,6 +17,7 @@ import cn.refinex.user.application.service.UserApplicationService;
 import cn.refinex.user.domain.error.UserErrorCode;
 import cn.refinex.user.interfaces.assembler.UserApiAssembler;
 import cn.refinex.user.interfaces.dto.UserPasswordChangeRequest;
+import cn.refinex.user.interfaces.dto.UserPasswordResetRequest;
 import cn.refinex.user.interfaces.dto.UserProfileUpdateRequest;
 import cn.refinex.user.interfaces.vo.UserAccountVO;
 import cn.refinex.user.interfaces.vo.UserEstabVO;
@@ -149,6 +151,21 @@ public class UserController {
         command.setOldPassword(request.getOldPassword());
         command.setNewPassword(request.getNewPassword());
         userApplicationService.changePassword(command);
+        return Result.success();
+    }
+
+    /**
+     * 重置当前登录用户密码（无需旧密码）
+     *
+     * @param request 重置密码请求
+     * @return 操作结果
+     */
+    @PostMapping("/me/password/reset")
+    public Result<Void> resetPassword(@Valid @RequestBody UserPasswordResetRequest request) {
+        ResetCurrentUserPasswordCommand command = new ResetCurrentUserPasswordCommand();
+        command.setUserId(requireCurrentUserId());
+        command.setNewPassword(request.getNewPassword());
+        userApplicationService.resetCurrentUserPassword(command);
         return Result.success();
     }
 
