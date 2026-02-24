@@ -29,7 +29,7 @@
     <spring-cloud.version>2025.0.1</spring-cloud.version>
     <jetcache.version>2.7.8</jetcache.version>
     <mybatis-plus-jsqlparser.version>3.5.15</mybatis-plus-jsqlparser.version>
-    <mapstruct.version>1.6.0.Beta1</mapstruct.version>
+    <mapstruct.version>1.6.3</mapstruct.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <mybatis-plus-generator.version>3.5.15</mybatis-plus-generator.version>
     <caffeine.version>3.2.3</caffeine.version>
@@ -49,7 +49,7 @@
     <maven.compiler.target>${java.version}</maven.compiler.target>
     <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
     <druid.version>1.2.27</druid.version>
-    <redisson.version>4.2.0</redisson.version>
+    <redisson.version>3.51.0</redisson.version>
     <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
     <mysql.version>8.3.0</mysql.version>
     <xxl-job.version>3.3.2</xxl-job.version>
@@ -147,7 +147,7 @@
       </dependency>
       <dependency>
         <groupId>com.baomidou</groupId>
-        <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
+        <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
         <version>${mybatis-plus.version}</version>
       </dependency>
       <dependency>
@@ -167,7 +167,7 @@
       </dependency>
       <dependency>
         <groupId>com.alibaba</groupId>
-        <artifactId>druid-spring-boot-starter</artifactId>
+        <artifactId>druid-spring-boot-3-starter</artifactId>
         <version>${druid.version}</version>
       </dependency>
       <dependency>
