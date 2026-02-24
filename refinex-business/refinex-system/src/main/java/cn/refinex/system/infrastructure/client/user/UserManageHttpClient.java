@@ -1,19 +1,18 @@
 package cn.refinex.system.infrastructure.client.user;
 
 import cn.refinex.api.user.model.dto.*;
-import cn.refinex.base.response.PageResponse;
 import cn.refinex.base.response.MultiResponse;
+import cn.refinex.base.response.PageResponse;
 import cn.refinex.base.response.SingleResponse;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.service.annotation.*;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * 用户管理 HTTP 客户端
  *
  * @author refinex
  */
-@HttpExchange("/internal/users")
+@FeignClient(name = "refinex-user", path = "/internal/users")
 public interface UserManageHttpClient {
 
     /**
@@ -22,7 +21,7 @@ public interface UserManageHttpClient {
      * @param query 查询条件
      * @return 用户列表
      */
-    @PostExchange("/manage/list")
+    @PostMapping("/manage/list")
     PageResponse<UserManageDTO> listUsers(@RequestBody UserManageListQuery query);
 
     /**
@@ -31,8 +30,8 @@ public interface UserManageHttpClient {
      * @param userId 用户ID
      * @return 用户详情
      */
-    @GetExchange("/manage/{userId}")
-    SingleResponse<UserManageDTO> getUser(@PathVariable Long userId);
+    @GetMapping("/manage/{userId}")
+    SingleResponse<UserManageDTO> getUser(@PathVariable("userId") Long userId);
 
     /**
      * 创建用户
@@ -40,7 +39,7 @@ public interface UserManageHttpClient {
      * @param command 创建命令
      * @return 用户详情
      */
-    @PostExchange("/manage")
+    @PostMapping("/manage")
     SingleResponse<UserManageDTO> createUser(@RequestBody UserManageCreateCommand command);
 
     /**
@@ -50,8 +49,8 @@ public interface UserManageHttpClient {
      * @param command 更新命令
      * @return 用户详情
      */
-    @PutExchange("/manage/{userId}")
-    SingleResponse<UserManageDTO> updateUser(@PathVariable Long userId, @RequestBody UserManageUpdateCommand command);
+    @PutMapping("/manage/{userId}")
+    SingleResponse<UserManageDTO> updateUser(@PathVariable("userId") Long userId, @RequestBody UserManageUpdateCommand command);
 
     /**
      * 删除用户
@@ -59,8 +58,8 @@ public interface UserManageHttpClient {
      * @param userId 用户ID
      * @return 操作结果
      */
-    @DeleteExchange("/manage/{userId}")
-    SingleResponse<Void> deleteUser(@PathVariable Long userId);
+    @DeleteMapping("/manage/{userId}")
+    SingleResponse<Void> deleteUser(@PathVariable("userId") Long userId);
 
     /**
      * 批量删除用户
@@ -68,7 +67,7 @@ public interface UserManageHttpClient {
      * @param command 批量删除命令
      * @return 操作结果
      */
-    @PostExchange("/manage/batch-delete")
+    @PostMapping("/manage/batch-delete")
     SingleResponse<Void> batchDeleteUsers(@RequestBody UserManageBatchDeleteCommand command);
 
     /**
@@ -77,8 +76,8 @@ public interface UserManageHttpClient {
      * @param userId 用户ID
      * @return 身份列表
      */
-    @GetExchange("/manage/{userId}/identities")
-    MultiResponse<UserIdentityManageDTO> listIdentities(@PathVariable Long userId);
+    @GetMapping("/manage/{userId}/identities")
+    MultiResponse<UserIdentityManageDTO> listIdentities(@PathVariable("userId") Long userId);
 
     /**
      * 查询用户所属企业列表
@@ -86,8 +85,8 @@ public interface UserManageHttpClient {
      * @param userId 用户ID
      * @return 所属企业列表
      */
-    @GetExchange("/manage/{userId}/estabs")
-    MultiResponse<UserManageEstabDTO> listUserEstabs(@PathVariable Long userId);
+    @GetMapping("/manage/{userId}/estabs")
+    MultiResponse<UserManageEstabDTO> listUserEstabs(@PathVariable("userId") Long userId);
 
     /**
      * 创建身份
@@ -96,8 +95,8 @@ public interface UserManageHttpClient {
      * @param command 创建命令
      * @return 身份
      */
-    @PostExchange("/manage/{userId}/identities")
-    SingleResponse<UserIdentityManageDTO> createIdentity(@PathVariable Long userId,
+    @PostMapping("/manage/{userId}/identities")
+    SingleResponse<UserIdentityManageDTO> createIdentity(@PathVariable("userId") Long userId,
                                                          @RequestBody UserIdentityManageCreateCommand command);
 
     /**
@@ -107,8 +106,8 @@ public interface UserManageHttpClient {
      * @param command    更新命令
      * @return 身份
      */
-    @PutExchange("/manage/identities/{identityId}")
-    SingleResponse<UserIdentityManageDTO> updateIdentity(@PathVariable Long identityId,
+    @PutMapping("/manage/identities/{identityId}")
+    SingleResponse<UserIdentityManageDTO> updateIdentity(@PathVariable("identityId") Long identityId,
                                                          @RequestBody UserIdentityManageUpdateCommand command);
 
     /**
@@ -117,6 +116,6 @@ public interface UserManageHttpClient {
      * @param identityId 身份ID
      * @return 操作结果
      */
-    @DeleteExchange("/manage/identities/{identityId}")
-    SingleResponse<Void> deleteIdentity(@PathVariable Long identityId);
+    @DeleteMapping("/manage/identities/{identityId}")
+    SingleResponse<Void> deleteIdentity(@PathVariable("identityId") Long identityId);
 }

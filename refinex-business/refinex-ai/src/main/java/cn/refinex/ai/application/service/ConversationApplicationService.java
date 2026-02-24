@@ -89,7 +89,7 @@ public class ConversationApplicationService {
     private final ChatMemory chatMemory;
     private final JdbcChatMemoryRepository jdbcChatMemoryRepository;
     private final FileService fileService;
-    private final tools.jackson.databind.ObjectMapper jsonMapper;
+    private final com.fasterxml.jackson.databind.ObjectMapper jsonMapper;
 
     /**
      * 字符串 "[DONE]" 的常量
@@ -999,8 +999,7 @@ public class ConversationApplicationService {
         try {
             String json = jsonMapper.writeValueAsString(refs);
             return ServerSentEvent.<String>builder().event("references").data(json).build();
-        } catch (tools.jackson.core.JacksonException e) {
-            log.error("序列化 references 事件失败", e);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
             return ServerSentEvent.<String>builder().event("references").data("[]").build();
         }
     }
@@ -1014,7 +1013,7 @@ public class ConversationApplicationService {
     @SuppressWarnings("unchecked")
     private void restoreRagParamsFromExtJson(StreamChatCommand command, String extJson) {
         try {
-            Map<String, Object> ext = jsonMapper.readValue(extJson, new tools.jackson.core.type.TypeReference<>() {
+            Map<String, Object> ext = jsonMapper.readValue(extJson, new com.fasterxml.jackson.core.type.TypeReference<>() {
             });
             List<Integer> ids = (List<Integer>) ext.get("knowledgeBaseIds");
             if (ids != null && !ids.isEmpty()) {
@@ -1048,7 +1047,7 @@ public class ConversationApplicationService {
                 ext.put("ragSimilarityThreshold", command.getRagSimilarityThreshold());
             }
             return jsonMapper.writeValueAsString(ext);
-        } catch (tools.jackson.core.JacksonException e) {
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
             log.warn("构建 RAG extJson 失败", e);
             return null;
         }

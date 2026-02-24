@@ -14,12 +14,3 @@ spring:
       max-file-size: 5MB
       # 请求总体大小限制
       max-request-size: 10MB
-
-refinex:
-  web:
-    # 关闭 TokenFilter，统一由网关 + Sa-Token 做登录态鉴权
-    enabled: false
-
-sa-token:
-  # 与网关/认证服务统一 Token Header 名称
-  token-name: Refinex-Token

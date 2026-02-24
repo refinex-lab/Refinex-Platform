@@ -7,10 +7,6 @@ server:
   # Gateway 服务端口
   port: 8080
 
-sa-token:
-  # 网关层透传 Token 名称
-  token-name: Refinex-Token
-
 refinex:
   gateway:
     auth:

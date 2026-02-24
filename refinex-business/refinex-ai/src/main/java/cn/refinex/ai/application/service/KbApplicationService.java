@@ -30,7 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.apache.commons.lang3.ObjectUtils.getIfNull;
+import static java.util.Objects.requireNonNullElse;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.trimToNull;
 
@@ -133,14 +133,14 @@ public class KbApplicationService {
         entity.setKbName(command.getKbName().trim());
         entity.setDescription(trimToNull(command.getDescription()));
         entity.setIcon(trimToNull(command.getIcon()));
-        entity.setVisibility(getIfNull(command.getVisibility(), 0));
-        entity.setVectorized(getIfNull(command.getVectorized(), 0));
+        entity.setVisibility(requireNonNullElse(command.getVisibility(), 0));
+        entity.setVectorized(requireNonNullElse(command.getVectorized(), 0));
         entity.setEmbeddingModelId(command.getEmbeddingModelId());
         entity.setChunkSize(command.getChunkSize());
         entity.setChunkOverlap(command.getChunkOverlap());
         entity.setDocCount(0);
-        entity.setStatus(getIfNull(command.getStatus(), 1));
-        entity.setSort(getIfNull(command.getSort(), 0));
+        entity.setStatus(requireNonNullElse(command.getStatus(), 1));
+        entity.setSort(requireNonNullElse(command.getSort(), 0));
         entity.setRemark(trimToNull(command.getRemark()));
         entity.setExtJson(trimToNull(command.getExtJson()));
 
@@ -164,13 +164,13 @@ public class KbApplicationService {
         existing.setKbName(command.getKbName().trim());
         existing.setDescription(trimToNull(command.getDescription()));
         existing.setIcon(trimToNull(command.getIcon()));
-        existing.setVisibility(getIfNull(command.getVisibility(), existing.getVisibility()));
-        existing.setVectorized(getIfNull(command.getVectorized(), existing.getVectorized()));
+        existing.setVisibility(requireNonNullElse(command.getVisibility(), existing.getVisibility()));
+        existing.setVectorized(requireNonNullElse(command.getVectorized(), existing.getVectorized()));
         existing.setEmbeddingModelId(command.getEmbeddingModelId());
         existing.setChunkSize(command.getChunkSize());
         existing.setChunkOverlap(command.getChunkOverlap());
-        existing.setStatus(getIfNull(command.getStatus(), existing.getStatus()));
-        existing.setSort(getIfNull(command.getSort(), existing.getSort()));
+        existing.setStatus(requireNonNullElse(command.getStatus(), existing.getStatus()));
+        existing.setSort(requireNonNullElse(command.getSort(), existing.getSort()));
         existing.setRemark(trimToNull(command.getRemark()));
         existing.setExtJson(trimToNull(command.getExtJson()));
 
@@ -226,7 +226,7 @@ public class KbApplicationService {
 
         requireKnowledgeBase(command.getKnowledgeBaseId());
 
-        Long parentId = getIfNull(command.getParentId(), 0L);
+        Long parentId = requireNonNullElse(command.getParentId(), 0L);
         String folderName = command.getFolderName().trim();
 
         if (aiRepository.countFolderName(command.getKnowledgeBaseId(), parentId, folderName, null) > 0) {
@@ -237,7 +237,7 @@ public class KbApplicationService {
         entity.setKnowledgeBaseId(command.getKnowledgeBaseId());
         entity.setParentId(parentId);
         entity.setFolderName(folderName);
-        entity.setSort(getIfNull(command.getSort(), 0));
+        entity.setSort(requireNonNullElse(command.getSort(), 0));
         entity.setRemark(trimToNull(command.getRemark()));
         entity.setExtJson(trimToNull(command.getExtJson()));
 
@@ -359,7 +359,7 @@ public class KbApplicationService {
 
         requireKnowledgeBase(command.getKnowledgeBaseId());
 
-        Long folderId = getIfNull(command.getFolderId(), 0L);
+        Long folderId = requireNonNullElse(command.getFolderId(), 0L);
         String docName = command.getDocName().trim();
 
         if (aiRepository.countDocumentName(command.getKnowledgeBaseId(), folderId, docName, null) > 0) {
@@ -375,8 +375,8 @@ public class KbApplicationService {
         entity.setFileSize(command.getFileSize());
         entity.setVectorStatus(0);
         entity.setChunkCount(0);
-        entity.setStatus(getIfNull(command.getStatus(), 1));
-        entity.setSort(getIfNull(command.getSort(), 0));
+        entity.setStatus(requireNonNullElse(command.getStatus(), 1));
+        entity.setSort(requireNonNullElse(command.getSort(), 0));
         entity.setRemark(trimToNull(command.getRemark()));
         entity.setExtJson(trimToNull(command.getExtJson()));
 
@@ -415,7 +415,7 @@ public class KbApplicationService {
 
         DocumentEntity existing = requireDocument(command.getDocumentId());
         String docName = command.getDocName().trim();
-        Long folderId = getIfNull(command.getFolderId(), existing.getFolderId());
+        Long folderId = requireNonNullElse(command.getFolderId(), existing.getFolderId());
 
         if (aiRepository.countDocumentName(existing.getKnowledgeBaseId(), folderId, docName, existing.getId()) > 0) {
             throw new BizException(AiErrorCode.KB_DOCUMENT_NAME_DUPLICATED);
@@ -423,8 +423,8 @@ public class KbApplicationService {
 
         existing.setDocName(docName);
         existing.setFolderId(folderId);
-        existing.setStatus(getIfNull(command.getStatus(), existing.getStatus()));
-        existing.setSort(getIfNull(command.getSort(), existing.getSort()));
+        existing.setStatus(requireNonNullElse(command.getStatus(), existing.getStatus()));
+        existing.setSort(requireNonNullElse(command.getSort(), existing.getSort()));
         existing.setRemark(trimToNull(command.getRemark()));
         existing.setExtJson(trimToNull(command.getExtJson()));
 

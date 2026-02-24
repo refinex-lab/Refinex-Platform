@@ -26,7 +26,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static org.apache.commons.lang3.ObjectUtils.getIfNull;
+import static java.util.Objects.requireNonNullElse;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.trimToNull;
 
@@ -119,11 +119,11 @@ public class AiApplicationService {
         ProviderEntity entity = new ProviderEntity();
         entity.setProviderCode(providerCode);
         entity.setProviderName(command.getProviderName().trim());
-        entity.setProtocol(getIfNull(trimToNull(command.getProtocol()), ProviderProtocol.OPENAI.getCode()));
+        entity.setProtocol(requireNonNullElse(trimToNull(command.getProtocol()), ProviderProtocol.OPENAI.getCode()));
         entity.setBaseUrl(trimToNull(command.getBaseUrl()));
         entity.setIconUrl(trimToNull(command.getIconUrl()));
-        entity.setStatus(getIfNull(command.getStatus(), 1));
-        entity.setSort(getIfNull(command.getSort(), 0));
+        entity.setStatus(requireNonNullElse(command.getStatus(), 1));
+        entity.setSort(requireNonNullElse(command.getSort(), 0));
         entity.setRemark(trimToNull(command.getRemark()));
         entity.setExtJson(trimToNull(command.getExtJson()));
 
@@ -145,11 +145,11 @@ public class AiApplicationService {
 
         ProviderEntity existing = requireProvider(command.getProviderId());
         existing.setProviderName(command.getProviderName().trim());
-        existing.setProtocol(getIfNull(trimToNull(command.getProtocol()), existing.getProtocol()));
+        existing.setProtocol(requireNonNullElse(trimToNull(command.getProtocol()), existing.getProtocol()));
         existing.setBaseUrl(trimToNull(command.getBaseUrl()));
         existing.setIconUrl(trimToNull(command.getIconUrl()));
-        existing.setStatus(getIfNull(command.getStatus(), existing.getStatus()));
-        existing.setSort(getIfNull(command.getSort(), existing.getSort()));
+        existing.setStatus(requireNonNullElse(command.getStatus(), existing.getStatus()));
+        existing.setSort(requireNonNullElse(command.getSort(), existing.getSort()));
         existing.setRemark(trimToNull(command.getRemark()));
         existing.setExtJson(trimToNull(command.getExtJson()));
 
@@ -255,18 +255,18 @@ public class AiApplicationService {
         entity.setProviderId(command.getProviderId());
         entity.setModelCode(modelCode);
         entity.setModelName(command.getModelName().trim());
-        entity.setModelType(getIfNull(command.getModelType(), 1));
-        entity.setCapVision(getIfNull(command.getCapVision(), 0));
-        entity.setCapToolCall(getIfNull(command.getCapToolCall(), 0));
-        entity.setCapStructuredOutput(getIfNull(command.getCapStructuredOutput(), 0));
-        entity.setCapStreaming(getIfNull(command.getCapStreaming(), 1));
-        entity.setCapReasoning(getIfNull(command.getCapReasoning(), 0));
+        entity.setModelType(requireNonNullElse(command.getModelType(), 1));
+        entity.setCapVision(requireNonNullElse(command.getCapVision(), 0));
+        entity.setCapToolCall(requireNonNullElse(command.getCapToolCall(), 0));
+        entity.setCapStructuredOutput(requireNonNullElse(command.getCapStructuredOutput(), 0));
+        entity.setCapStreaming(requireNonNullElse(command.getCapStreaming(), 1));
+        entity.setCapReasoning(requireNonNullElse(command.getCapReasoning(), 0));
         entity.setMaxContextWindow(command.getMaxContextWindow());
         entity.setMaxOutputTokens(command.getMaxOutputTokens());
         entity.setInputPrice(command.getInputPrice());
         entity.setOutputPrice(command.getOutputPrice());
-        entity.setStatus(getIfNull(command.getStatus(), 1));
-        entity.setSort(getIfNull(command.getSort(), 0));
+        entity.setStatus(requireNonNullElse(command.getStatus(), 1));
+        entity.setSort(requireNonNullElse(command.getSort(), 0));
         entity.setRemark(trimToNull(command.getRemark()));
         entity.setExtJson(trimToNull(command.getExtJson()));
 
@@ -288,18 +288,18 @@ public class AiApplicationService {
 
         ModelEntity existing = requireModel(command.getModelId());
         existing.setModelName(command.getModelName().trim());
-        existing.setModelType(getIfNull(command.getModelType(), existing.getModelType()));
-        existing.setCapVision(getIfNull(command.getCapVision(), existing.getCapVision()));
-        existing.setCapToolCall(getIfNull(command.getCapToolCall(), existing.getCapToolCall()));
-        existing.setCapStructuredOutput(getIfNull(command.getCapStructuredOutput(), existing.getCapStructuredOutput()));
-        existing.setCapStreaming(getIfNull(command.getCapStreaming(), existing.getCapStreaming()));
-        existing.setCapReasoning(getIfNull(command.getCapReasoning(), existing.getCapReasoning()));
+        existing.setModelType(requireNonNullElse(command.getModelType(), existing.getModelType()));
+        existing.setCapVision(requireNonNullElse(command.getCapVision(), existing.getCapVision()));
+        existing.setCapToolCall(requireNonNullElse(command.getCapToolCall(), existing.getCapToolCall()));
+        existing.setCapStructuredOutput(requireNonNullElse(command.getCapStructuredOutput(), existing.getCapStructuredOutput()));
+        existing.setCapStreaming(requireNonNullElse(command.getCapStreaming(), existing.getCapStreaming()));
+        existing.setCapReasoning(requireNonNullElse(command.getCapReasoning(), existing.getCapReasoning()));
         existing.setMaxContextWindow(command.getMaxContextWindow());
         existing.setMaxOutputTokens(command.getMaxOutputTokens());
         existing.setInputPrice(command.getInputPrice());
         existing.setOutputPrice(command.getOutputPrice());
-        existing.setStatus(getIfNull(command.getStatus(), existing.getStatus()));
-        existing.setSort(getIfNull(command.getSort(), existing.getSort()));
+        existing.setStatus(requireNonNullElse(command.getStatus(), existing.getStatus()));
+        existing.setSort(requireNonNullElse(command.getSort(), existing.getSort()));
         existing.setRemark(trimToNull(command.getRemark()));
         existing.setExtJson(trimToNull(command.getExtJson()));
 
@@ -407,12 +407,12 @@ public class AiApplicationService {
         entity.setCategory(trimToNull(command.getCategory()));
         entity.setContent(command.getContent());
         entity.setVariables(trimToNull(command.getVariables()));
-        entity.setVarOpen(getIfNull(trimToNull(command.getVarOpen()), "{{"));
-        entity.setVarClose(getIfNull(trimToNull(command.getVarClose()), "}}"));
-        entity.setLanguage(getIfNull(trimToNull(command.getLanguage()), "zh-CN"));
-        entity.setIsBuiltin(getIfNull(command.getIsBuiltin(), 0));
-        entity.setStatus(getIfNull(command.getStatus(), 1));
-        entity.setSort(getIfNull(command.getSort(), 0));
+        entity.setVarOpen(requireNonNullElse(trimToNull(command.getVarOpen()), "{{"));
+        entity.setVarClose(requireNonNullElse(trimToNull(command.getVarClose()), "}}"));
+        entity.setLanguage(requireNonNullElse(trimToNull(command.getLanguage()), "zh-CN"));
+        entity.setIsBuiltin(requireNonNullElse(command.getIsBuiltin(), 0));
+        entity.setStatus(requireNonNullElse(command.getStatus(), 1));
+        entity.setSort(requireNonNullElse(command.getSort(), 0));
         entity.setRemark(trimToNull(command.getRemark()));
         entity.setExtJson(trimToNull(command.getExtJson()));
 
@@ -437,12 +437,12 @@ public class AiApplicationService {
         existing.setCategory(trimToNull(command.getCategory()));
         existing.setContent(command.getContent());
         existing.setVariables(trimToNull(command.getVariables()));
-        existing.setVarOpen(getIfNull(trimToNull(command.getVarOpen()), existing.getVarOpen()));
-        existing.setVarClose(getIfNull(trimToNull(command.getVarClose()), existing.getVarClose()));
-        existing.setLanguage(getIfNull(trimToNull(command.getLanguage()), existing.getLanguage()));
-        existing.setIsBuiltin(getIfNull(command.getIsBuiltin(), existing.getIsBuiltin()));
-        existing.setStatus(getIfNull(command.getStatus(), existing.getStatus()));
-        existing.setSort(getIfNull(command.getSort(), existing.getSort()));
+        existing.setVarOpen(requireNonNullElse(trimToNull(command.getVarOpen()), existing.getVarOpen()));
+        existing.setVarClose(requireNonNullElse(trimToNull(command.getVarClose()), existing.getVarClose()));
+        existing.setLanguage(requireNonNullElse(trimToNull(command.getLanguage()), existing.getLanguage()));
+        existing.setIsBuiltin(requireNonNullElse(command.getIsBuiltin(), existing.getIsBuiltin()));
+        existing.setStatus(requireNonNullElse(command.getStatus(), existing.getStatus()));
+        existing.setSort(requireNonNullElse(command.getSort(), existing.getSort()));
         existing.setRemark(trimToNull(command.getRemark()));
         existing.setExtJson(trimToNull(command.getExtJson()));
 
@@ -521,7 +521,7 @@ public class AiApplicationService {
             throw new BizException(AiErrorCode.INVALID_PARAM);
         }
 
-        Long estabId = getIfNull(command.getEstabId(), 0L);
+        Long estabId = requireNonNullElse(command.getEstabId(), 0L);
 
         // 校验模型存在且启用
         ModelEntity model = requireModel(command.getModelId());
@@ -541,8 +541,8 @@ public class AiApplicationService {
         entity.setApiBaseUrl(trimToNull(command.getApiBaseUrl()));
         entity.setDailyQuota(command.getDailyQuota());
         entity.setMonthlyQuota(command.getMonthlyQuota());
-        entity.setIsDefault(getIfNull(command.getIsDefault(), 0));
-        entity.setStatus(getIfNull(command.getStatus(), 1));
+        entity.setIsDefault(requireNonNullElse(command.getIsDefault(), 0));
+        entity.setStatus(requireNonNullElse(command.getStatus(), 1));
         entity.setRemark(trimToNull(command.getRemark()));
         entity.setExtJson(trimToNull(command.getExtJson()));
 
@@ -573,8 +573,8 @@ public class AiApplicationService {
         existing.setApiBaseUrl(trimToNull(command.getApiBaseUrl()));
         existing.setDailyQuota(command.getDailyQuota());
         existing.setMonthlyQuota(command.getMonthlyQuota());
-        existing.setIsDefault(getIfNull(command.getIsDefault(), existing.getIsDefault()));
-        existing.setStatus(getIfNull(command.getStatus(), existing.getStatus()));
+        existing.setIsDefault(requireNonNullElse(command.getIsDefault(), existing.getIsDefault()));
+        existing.setStatus(requireNonNullElse(command.getStatus(), existing.getStatus()));
         existing.setRemark(trimToNull(command.getRemark()));
         existing.setExtJson(trimToNull(command.getExtJson()));
 
@@ -686,10 +686,10 @@ public class AiApplicationService {
         entity.setInputSchema(trimToNull(command.getInputSchema()));
         entity.setOutputSchema(trimToNull(command.getOutputSchema()));
         entity.setHandlerRef(trimToNull(command.getHandlerRef()));
-        entity.setRequireConfirm(getIfNull(command.getRequireConfirm(), 0));
-        entity.setIsBuiltin(getIfNull(command.getIsBuiltin(), 0));
-        entity.setStatus(getIfNull(command.getStatus(), 1));
-        entity.setSort(getIfNull(command.getSort(), 0));
+        entity.setRequireConfirm(requireNonNullElse(command.getRequireConfirm(), 0));
+        entity.setIsBuiltin(requireNonNullElse(command.getIsBuiltin(), 0));
+        entity.setStatus(requireNonNullElse(command.getStatus(), 1));
+        entity.setSort(requireNonNullElse(command.getSort(), 0));
         entity.setRemark(trimToNull(command.getRemark()));
         entity.setExtJson(trimToNull(command.getExtJson()));
 
@@ -711,15 +711,15 @@ public class AiApplicationService {
 
         ToolEntity existing = requireTool(command.getToolId());
         existing.setToolName(command.getToolName().trim());
-        existing.setToolType(getIfNull(trimToNull(command.getToolType()), existing.getToolType()));
+        existing.setToolType(requireNonNullElse(trimToNull(command.getToolType()), existing.getToolType()));
         existing.setDescription(trimToNull(command.getDescription()));
         existing.setInputSchema(trimToNull(command.getInputSchema()));
         existing.setOutputSchema(trimToNull(command.getOutputSchema()));
         existing.setHandlerRef(trimToNull(command.getHandlerRef()));
-        existing.setRequireConfirm(getIfNull(command.getRequireConfirm(), existing.getRequireConfirm()));
-        existing.setIsBuiltin(getIfNull(command.getIsBuiltin(), existing.getIsBuiltin()));
-        existing.setStatus(getIfNull(command.getStatus(), existing.getStatus()));
-        existing.setSort(getIfNull(command.getSort(), existing.getSort()));
+        existing.setRequireConfirm(requireNonNullElse(command.getRequireConfirm(), existing.getRequireConfirm()));
+        existing.setIsBuiltin(requireNonNullElse(command.getIsBuiltin(), existing.getIsBuiltin()));
+        existing.setStatus(requireNonNullElse(command.getStatus(), existing.getStatus()));
+        existing.setSort(requireNonNullElse(command.getSort(), existing.getSort()));
         existing.setRemark(trimToNull(command.getRemark()));
         existing.setExtJson(trimToNull(command.getExtJson()));
 
@@ -830,8 +830,8 @@ public class AiApplicationService {
         entity.setCommand(trimToNull(command.getCommand()));
         entity.setArgs(trimToNull(command.getArgs()));
         entity.setEnvVars(trimToNull(command.getEnvVars()));
-        entity.setStatus(getIfNull(command.getStatus(), 1));
-        entity.setSort(getIfNull(command.getSort(), 0));
+        entity.setStatus(requireNonNullElse(command.getStatus(), 1));
+        entity.setSort(requireNonNullElse(command.getSort(), 0));
         entity.setRemark(trimToNull(command.getRemark()));
         entity.setExtJson(trimToNull(command.getExtJson()));
 
@@ -853,13 +853,13 @@ public class AiApplicationService {
 
         McpServerEntity existing = requireMcpServer(command.getMcpServerId());
         existing.setServerName(command.getServerName().trim());
-        existing.setTransportType(getIfNull(trimToNull(command.getTransportType()), existing.getTransportType()));
+        existing.setTransportType(requireNonNullElse(trimToNull(command.getTransportType()), existing.getTransportType()));
         existing.setEndpointUrl(trimToNull(command.getEndpointUrl()));
         existing.setCommand(trimToNull(command.getCommand()));
         existing.setArgs(trimToNull(command.getArgs()));
         existing.setEnvVars(trimToNull(command.getEnvVars()));
-        existing.setStatus(getIfNull(command.getStatus(), existing.getStatus()));
-        existing.setSort(getIfNull(command.getSort(), existing.getSort()));
+        existing.setStatus(requireNonNullElse(command.getStatus(), existing.getStatus()));
+        existing.setSort(requireNonNullElse(command.getSort(), existing.getSort()));
         existing.setRemark(trimToNull(command.getRemark()));
         existing.setExtJson(trimToNull(command.getExtJson()));
 
@@ -988,9 +988,9 @@ public class AiApplicationService {
         entity.setTemperature(command.getTemperature());
         entity.setTopP(command.getTopP());
         entity.setMaxTokens(command.getMaxTokens());
-        entity.setIsBuiltin(getIfNull(command.getIsBuiltin(), 0));
-        entity.setStatus(getIfNull(command.getStatus(), 1));
-        entity.setSort(getIfNull(command.getSort(), 0));
+        entity.setIsBuiltin(requireNonNullElse(command.getIsBuiltin(), 0));
+        entity.setStatus(requireNonNullElse(command.getStatus(), 1));
+        entity.setSort(requireNonNullElse(command.getSort(), 0));
         entity.setRemark(trimToNull(command.getRemark()));
         entity.setExtJson(trimToNull(command.getExtJson()));
 
@@ -1043,9 +1043,9 @@ public class AiApplicationService {
         existing.setTemperature(command.getTemperature());
         existing.setTopP(command.getTopP());
         existing.setMaxTokens(command.getMaxTokens());
-        existing.setIsBuiltin(getIfNull(command.getIsBuiltin(), existing.getIsBuiltin()));
-        existing.setStatus(getIfNull(command.getStatus(), existing.getStatus()));
-        existing.setSort(getIfNull(command.getSort(), existing.getSort()));
+        existing.setIsBuiltin(requireNonNullElse(command.getIsBuiltin(), existing.getIsBuiltin()));
+        existing.setStatus(requireNonNullElse(command.getStatus(), existing.getStatus()));
+        existing.setSort(requireNonNullElse(command.getSort(), existing.getSort()));
         existing.setRemark(trimToNull(command.getRemark()));
         existing.setExtJson(trimToNull(command.getExtJson()));
 

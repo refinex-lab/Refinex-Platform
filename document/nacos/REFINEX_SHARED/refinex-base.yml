@@ -158,6 +158,10 @@ refinex:
     # SMTP 写入超时（毫秒）
     write-timeout: 5000
 
+sa-token:
+  # Token Header 名称（全局统一，各服务共享）
+  token-name: Refinex-Token
+
 spring:
   mail:
     # 以下映射为 Spring Mail 标准配置，供 JavaMailSender 自动配置读取

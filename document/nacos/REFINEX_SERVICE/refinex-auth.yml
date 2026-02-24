@@ -8,22 +8,21 @@ server:
   port: 8081
 
 spring:
-  http:
-    clients:
-      # HTTP Service Client 全局连接超时
-      connect-timeout: 2s
-      # HTTP Service Client 全局读取超时
-      read-timeout: 5s
-    serviceclient:
-      refinex-user:
-        # 用户服务调用地址（内部服务建议 lb://）
-        base-url: lb://refinex-user
-        # 用户服务专属读取超时
-        read-timeout: 3s
+  cloud:
+    openfeign:
+      client:
+        config:
+          # 全局默认配置
+          default:
+            connect-timeout: 2000
+            read-timeout: 5000
+            logger-level: BASIC
+          # refinex-user 服务专属配置
+          refinex-user:
+            connect-timeout: 2000
+            read-timeout: 3000
 
 sa-token:
-  # Token 名称
-  token-name: Refinex-Token
   # Token 绝对过期时间（秒）
   timeout: ${refinex.auth.token-timeout-seconds:7200}
   # Token 活跃过期时间（秒）
@@ -36,10 +35,6 @@ sa-token:
   token-style: uuid
 
 refinex:
-  web:
-    # 关闭 TokenFilter，统一由网关 + Sa-Token 做登录态鉴权
-    enabled: false
-
   auth:
     # 短信验证码过期时间（秒）
     sms-code-expire-seconds: 300

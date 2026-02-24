@@ -26,23 +26,6 @@ spring:
       # 单次请求最大大小
       max-request-size: 20MB
 
-  http:
-    clients:
-      # HTTP Service Client 全局连接超时
-      connect-timeout: 2s
-      # HTTP Service Client 全局读取超时
-      read-timeout: 5s
-    serviceclient:
-      refinex-user:
-        # 用户服务调用地址
-        base-url: lb://refinex-user
-        # 用户服务读取超时
-        read-timeout: 3s
-
-sa-token:
-  # 与网关/认证服务统一 Token Header 名称
-  token-name: Refinex-Token
-
 refinex:
   # ── 向量存储配置 ──
   vector-store:

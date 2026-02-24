@@ -5,7 +5,6 @@ import cn.refinex.api.user.model.context.LoginUser;
 import cn.refinex.satoken.helper.LoginUserHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.Strings;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
@@ -128,7 +127,7 @@ public class ReactiveTokenFilter implements WebFilter {
         }
 
         String normalized = token.trim();
-        if (Strings.CI.startsWith(normalized, BEARER_PREFIX)) {
+        if (StringUtils.startsWithIgnoreCase(normalized, BEARER_PREFIX)) {
             return normalized.substring(BEARER_PREFIX.length()).trim();
         }
         return normalized;
