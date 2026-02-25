@@ -24,7 +24,7 @@ public class ModelListQuery extends PageRequest {
     private Long providerId;
 
     /**
-     * 模型类型 1聊天 2嵌入 3图像生成 4语音转文字 5文字转语音 6重排序
+     * 模型类型 1聊天 2嵌入 3图像生成 4语音转文字 5文字转语音 6重排序 7内容审核
      */
     @Min(value = 1, message = "模型类型取值非法")
     @Max(value = 6, message = "模型类型取值非法")

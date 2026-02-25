@@ -14,6 +14,8 @@ import cn.refinex.base.response.PageResponse;
 import cn.refinex.web.vo.PageResult;
 import cn.refinex.web.vo.Result;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
@@ -115,6 +117,21 @@ public class ModelProvisionController {
         return Mono.fromCallable(() -> {
             aiApplicationService.deleteModelProvision(provisionId);
             return Result.<Void>success();
+        }).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    /**
+     * 查询租户指定模型类型的全部已启用开通列表
+     *
+     * @param modelType 模型类型 1聊天 2嵌入 3图像生成 4语音转文字 5文字转语音 6重排序
+     * @return 租户指定类型的模型开通列表
+     */
+    @GetMapping("/by-type/{modelType}")
+    public Mono<Result<java.util.List<ModelProvisionVO>>> listProvisionsByModelType(
+            @PathVariable @Min(value = 1, message = "模型类型取值非法") @Max(value = 7, message = "模型类型取值非法") Integer modelType) {
+        return Mono.fromCallable(() -> {
+            java.util.List<ModelProvisionDTO> provisions = aiApplicationService.listActiveProvisionsByModelType(modelType);
+            return Result.success(aiApiAssembler.toModelProvisionVoList(provisions));
         }).subscribeOn(Schedulers.boundedElastic());
     }
 }

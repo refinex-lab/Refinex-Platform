@@ -711,6 +711,32 @@ public class AiRepositoryImpl implements AiRepository {
         return row == null ? null : modelProvisionDoConverter.toEntity(row);
     }
 
+    /**
+     * 查询租户指定模型类型的全部已启用开通列表
+     *
+     * @param estabId   组织ID
+     * @param modelType 模型类型 1聊天 2嵌入 3图像生成 4语音转文字 5文字转语音 6重排序 7内容审核
+     * @return 租户指定类型的模型开通列表
+     */
+    @Override
+    public List<ModelProvisionEntity> listActiveProvisionsByModelType(Long estabId, Integer modelType) {
+        List<AiModelProvisionDo> rows = aiModelProvisionMapper.selectList(
+                Wrappers.lambdaQuery(AiModelProvisionDo.class)
+                        .eq(AiModelProvisionDo::getEstabId, estabId)
+                        .eq(AiModelProvisionDo::getStatus, 1)
+                        .eq(AiModelProvisionDo::getDeleted, 0)
+                        .inSql(AiModelProvisionDo::getModelId,
+                                "SELECT id FROM ai_model WHERE model_type = " + modelType + " AND deleted = 0")
+                        .orderByDesc(AiModelProvisionDo::getIsDefault)
+                        .orderByAsc(AiModelProvisionDo::getId)
+        );
+        List<ModelProvisionEntity> result = new ArrayList<>();
+        for (AiModelProvisionDo row : rows) {
+            result.add(modelProvisionDoConverter.toEntity(row));
+        }
+        return result;
+    }
+
     // ── Tool ──
 
     /**

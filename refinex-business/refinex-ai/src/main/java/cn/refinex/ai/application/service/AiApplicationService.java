@@ -597,6 +597,23 @@ public class AiApplicationService {
         chatModelRegistry.evict(provisionId);
     }
 
+    /**
+     * 查询租户指定模型类型的全部已启用开通列表（含模型/供应商信息）
+     *
+     * @param modelType 模型类型 1聊天 2嵌入 3图像生成 4语音转文字 5文字转语音 6重排序
+     * @return 租户指定类型的模型开通列表
+     */
+    public List<ModelProvisionDTO> listActiveProvisionsByModelType(Integer modelType) {
+        Long estabId = ReactiveLoginUserHolder.getEstabId();
+        List<ModelProvisionEntity> entities = aiRepository.listActiveProvisionsByModelType(estabId, modelType);
+        List<ModelProvisionDTO> result = new ArrayList<>();
+        for (ModelProvisionEntity entity : entities) {
+            result.add(aiDomainAssembler.toModelProvisionDto(entity));
+        }
+        enrichModelProvisionDtos(result);
+        return result;
+    }
+
     // ══════════════════════════════════════
     // Tool（工具）
     // ══════════════════════════════════════

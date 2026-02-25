@@ -19,7 +19,7 @@ public class QueryModelListCommand extends PageRequest {
     private Long providerId;
 
     /**
-     * 模型类型 1聊天 2嵌入 3图像生成 4语音转文字 5文字转语音 6重排序
+     * 模型类型 1聊天 2嵌入 3图像生成 4语音转文字 5文字转语音 6重排序 7内容审核
      */
     private Integer modelType;
 

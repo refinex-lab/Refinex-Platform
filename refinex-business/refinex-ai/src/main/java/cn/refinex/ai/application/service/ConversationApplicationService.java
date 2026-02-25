@@ -1333,7 +1333,7 @@ public class ConversationApplicationService {
      * @param isNewConversation      是否为新建对话
      * @param capReasoning           是否支持深度推理
      * @param providerCode           供应商编码
-     * @param modelType              模型类型 1聊天 2嵌入 3图像生成 4语音转文字 5文字转语音 6重排序
+     * @param modelType              模型类型 1聊天 2嵌入 3图像生成 4语音转文字 5文字转语音 6重排序 7内容审核
      * @param knowledgeBaseIds       知识库ID列表（RAG）
      * @param vectorStore            VectorStore 实例（RAG）
      * @param ragTopK                RAG检索返回文档数

@@ -87,7 +87,7 @@ public interface AiRepository {
      * 查询模型分页列表
      *
      * @param providerId  供应商ID
-     * @param modelType   模型类型 1聊天 2嵌入 3图像生成 4语音转文字 5文字转语音 6重排序
+     * @param modelType   模型类型 1聊天 2嵌入 3图像生成 4语音转文字 5文字转语音 6重排序 7内容审核
      * @param status      状态 1启用 0停用
      * @param keyword     搜索关键词
      * @param currentPage 当前页码
@@ -308,10 +308,19 @@ public interface AiRepository {
      * 查询租户指定类型的默认模型开通（is_default=1, status=1, deleted=0, model_type匹配）
      *
      * @param estabId   组织ID
-     * @param modelType 模型类型 1聊天 2嵌入 3图像生成 4语音转文字 5文字转语音 6重排序
+     * @param modelType 模型类型 1聊天 2嵌入 3图像生成 4语音转文字 5文字转语音 6重排序 7内容审核
      * @return 租户指定类型的默认模型开通实体，不存在返回 null
      */
     ModelProvisionEntity findDefaultProvisionByType(Long estabId, Integer modelType);
+
+    /**
+     * 查询租户指定模型类型的全部已启用开通列表（status=1, deleted=0, model_type匹配）
+     *
+     * @param estabId   组织ID
+     * @param modelType 模型类型 1聊天 2嵌入 3图像生成 4语音转文字 5文字转语音 6重排序 7内容审核
+     * @return 租户指定类型的模型开通列表
+     */
+    List<ModelProvisionEntity> listActiveProvisionsByModelType(Long estabId, Integer modelType);
 
     // ── Tool ──
 
